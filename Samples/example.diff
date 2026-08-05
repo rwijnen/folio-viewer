@@ -1,0 +1,112 @@
+diff --git a/Config/settings.json b/Config/settings.json
+index de6ab0a..900a1c8 100644
+--- a/Config/settings.json
++++ b/Config/settings.json
+@@ -1,11 +1,13 @@
+ {
+   "appName": "Greeter",
+-  "version": "1.2.0",
+-  "locale": "en_GB",
++  "version": "1.3.0",
++  "locale": "nl_NL",
+   "features": {
+     "smallTalk": true,
+     "farewells": true,
+-    "telemetry": false
++    "telemetry": true,
++    "wordDiff": true
+   },
+-  "retryCount": 3
++  "retryCount": 5,
++  "timeoutSeconds": 30
+ }
+diff --git a/Sources/Farewell.swift b/Sources/Farewell.swift
+new file mode 100644
+index 0000000..d4b223a
+--- /dev/null
++++ b/Sources/Farewell.swift
+@@ -0,0 +1,15 @@
++import Foundation
++
++/// Added by the sample diff — the original does not exist on disk.
++struct Farewell {
++    let language: Greeter.Language
++
++    func message(for name: String) -> String {
++        switch language {
++        case .english: return "Bye, \(name)."
++        case .dutch: return "Doei, \(name)."
++        case .german: return "Tschüss, \(name)."
++        case .french: return "Au revoir, \(name)."
++        }
++    }
++}
+diff --git a/Sources/Greeter.swift b/Sources/Greeter.swift
+index ee7e73b..92fe84d 100644
+--- a/Sources/Greeter.swift
++++ b/Sources/Greeter.swift
+@@ -3,26 +3,31 @@ import Foundation
+ /// Greets people in a handful of languages.
+ struct Greeter {
+ 
+-    enum Language: String {
++    enum Language: String, CaseIterable {
+         case english
+         case dutch
+         case german
++        case french
+     }
+ 
+     let language: Language
++    let punctuation: String
+ 
+-    init(language: Language = .english) {
++    init(language: Language = .english, punctuation: String = "!") {
+         self.language = language
++        self.punctuation = punctuation
+     }
+ 
+     func greeting(for name: String) -> String {
+         switch language {
+         case .english:
+-            return "Hello, \(name)!"
++            return "Hello, \(name)\(punctuation)"
+         case .dutch:
+-            return "Hallo, \(name)!"
++            return "Goedendag, \(name)\(punctuation)"
+         case .german:
+-            return "Hallo, \(name)!"
++            return "Guten Tag, \(name)\(punctuation)"
++        case .french:
++            return "Bonjour, \(name)\(punctuation)"
+         }
+     }
+ 
+@@ -52,12 +57,16 @@ struct Greeter {
+     }
+ 
+     func validate(name: String) throws {
+-        guard !name.isEmpty else {
++        guard !name.trimmingCharacters(in: .whitespaces).isEmpty else {
+             throw GreeterError.emptyName
+         }
++        guard name.count <= 64 else {
++            throw GreeterError.nameTooLong(name.count)
++        }
+     }
+ }
+ 
+ enum GreeterError: Error {
+     case emptyName
++    case nameTooLong(Int)
+ }
+diff --git a/Sources/Legacy.swift b/Sources/Legacy.swift
+deleted file mode 100644
+index 4ad87c0..0000000
+--- a/Sources/Legacy.swift
++++ /dev/null
+@@ -1,4 +0,0 @@
+-// Superseded by Greeter; kept only for the sample diff to delete it.
+-struct LegacyGreeter {
+-    func hello() -> String { "hi" }
+-}

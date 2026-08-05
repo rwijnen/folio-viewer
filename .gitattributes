@@ -1,0 +1,5 @@
+# Keep GitHub's language stats about Folio's own code: the vendored mermaid bundle is
+# 3.4 MB of minified JavaScript and would otherwise dominate them.
+Resources/Web/mermaid.min.js linguist-vendored
+Docs/*.png binary
+* text=auto eol=lf

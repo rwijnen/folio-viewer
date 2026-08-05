@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the app
+        run: ./build.sh
+
+      - name: Test before publishing
+        run: swift test
+
+      - name: Package
+        run: |
+          ditto -c -k --keepParent build/Folio.app Folio.app.zip
+          shasum -a 256 Folio.app.zip | tee Folio.app.zip.sha256
+
+      - name: Publish the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            Folio.app.zip
+            Folio.app.zip.sha256
+          generate_release_notes: true
+          body: |
+            ## Installing this build
+
+            This app is **ad-hoc signed, not notarised** — there is no paid Apple
+            Developer certificate behind it. macOS will therefore refuse to open it on
+            the first try. Either remove the download quarantine:
+
+            ```bash
+            unzip Folio.app.zip -d /Applications
+            xattr -dr com.apple.quarantine /Applications/Folio.app
+            open /Applications/Folio.app
+            ```
+
+            …or right-click the app in Finder and choose **Open**, then confirm once.
+
+            Building from source avoids this entirely and takes about ten seconds:
+            see [INSTALL.md](INSTALL.md).

@@ -1,0 +1,11 @@
+{
+  "appName": "Greeter",
+  "version": "1.2.0",
+  "locale": "en_GB",
+  "features": {
+    "smallTalk": true,
+    "farewells": true,
+    "telemetry": false
+  },
+  "retryCount": 3
+}

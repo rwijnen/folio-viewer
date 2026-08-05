@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build and test
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: |
+          swift --version
+          sw_vers
+
+      - name: Build
+        run: |
+          swift build -c release --product Folio
+          swift build -c release --product folio-register
+
+      # Some suites drive AppKit and WebKit directly. If a runner ever lacks the GUI
+      # session they need, set FOLIO_SKIP_UI_TESTS=1 to skip just those.
+      - name: Test
+        run: swift test
+
+      - name: Assemble the app bundle
+        run: ./build.sh
+
+      - name: Check the bundle
+        run: |
+          test -x build/Folio.app/Contents/MacOS/Folio
+          test -x build/Folio.app/Contents/MacOS/folio-register
+          test -f build/Folio.app/Contents/Resources/mermaid.min.js
+          test -f build/Folio.app/Contents/Resources/AppIcon.icns
+          plutil -lint build/Folio.app/Contents/Info.plist
+          codesign --verify --verbose=2 build/Folio.app
+
+      - name: Package for download
+        run: ditto -c -k --keepParent build/Folio.app Folio.app.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Folio.app
+          path: Folio.app.zip
+          if-no-files-found: error

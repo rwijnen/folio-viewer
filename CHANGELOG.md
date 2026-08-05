@@ -1,0 +1,81 @@
+# Changelog
+
+All notable changes to Folio are recorded here. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project follows
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+Nothing yet.
+
+## [1.0.0] — 2026-08-05
+
+First public release. Folio shows diffs side by side and Markdown either rendered or raw,
+in one window with tabs, without ever writing to your files or touching the network.
+
+### Diffs
+
+- Split view with the original on the left and the changed version on the right, rows
+  aligned line-for-line, per-side line numbers and filler cells for one-sided changes.
+- The changed side is produced by **applying the patch in memory** to the original read
+  from disk — nothing is written back.
+- Hunks are located by content rather than by line number, so a diff still applies after
+  the file has drifted; offsets and whitespace-only matches are reported in a banner.
+- **Works from either side.** If the file on disk is the *changed* version — the usual
+  case once a patch has been applied — the patch is run backwards to reconstruct the
+  original, and a banner says so. If neither direction applies, the hunks are shown on
+  their own with `@@` markers rather than failing.
+- Intra-line word diff, collapsible runs of unchanged context, and a sidebar listing
+  every file in the diff with `+`/`−` counts and add / delete / rename / binary badges.
+- Original files are located automatically: a remembered folder per diff, the enclosing
+  git working copy, the diff's own folder and its ancestors, then one level of
+  subfolders. Overridable per diff (⇧⌘B) or per file.
+- Parses `git diff`, `git format-patch`, `diff -u` and `svn diff` output, including
+  renames, mode changes, binary stubs and zero-context hunks.
+
+### Markdown
+
+- Rendered view (⌘1) and source view (⌘2), with a heading outline in the sidebar that
+  jumps in either mode.
+- Markdown is converted to HTML **in Swift**, covering ATX and setext headings, nested
+  ordered/unordered/task lists, pipe tables with alignment, blockquotes, fenced and
+  indented code, thematic breaks, reference links, images, autolinks, emphasis,
+  strikethrough, inline code and hard breaks.
+- **mermaid diagrams are drawn**, using mermaid 11.16.1 bundled inside the app, so they
+  work with no network access. A diagram that fails to parse shows mermaid's own error
+  next to its source rather than disappearing.
+- Code fences are highlighted by the same lexer the diff panels use, across ~30
+  languages including Swift, TypeScript, Python, Apex, JSON, YAML, XML and SQL.
+- Source view highlights Markdown structure and lexes fenced code as the language it
+  declares.
+- Local images are inlined as `data:` URIs; remote images are reported, never fetched.
+
+### The window
+
+- One window with tabs. Each tab keeps its own reading mode, folds, scroll position and
+  search results, and reopening a file that is already open brings its tab forward.
+- Returning to a tab resumes exactly where you were, and a rendered page keeps its
+  already-drawn diagrams instead of re-drawing them.
+- ⌘F searches both diff panels and the source view natively, and the rendered page
+  through injected JavaScript; both report `n of m` and step with ⌘G / ⇧⌘G.
+- Follows links: to a sibling `.md` or `.diff` in Folio, to your browser for http(s).
+
+### Security posture
+
+- Raw HTML in Markdown is escaped except a whitelist of attribute-free formatting tags.
+- `javascript:` and other exotic URL schemes are stripped from links.
+- The rendered page runs under a strict `Content-Security-Policy` with a per-load nonce;
+  the bundled mermaid bootstrap is the only script that can run.
+- No network access at build time or run time.
+
+### Building and installing
+
+- Builds with the **Command Line Tools alone** — no Xcode required. `./build.sh` produces
+  an ad-hoc signed `Folio.app` with a generated icon.
+- `./build.sh --set-default` installs it and claims `.diff`, `.patch`, `.rej`, `.md`,
+  `.markdown`, `.mdown`, `.mkd`, `.mdx` and `.mdc`, then verifies each association by
+  asking Launch Services which app would open a probe file.
+- 109 tests over the model, tab and scroll layers, run with Swift Testing.
+
+[Unreleased]: https://github.com/rwijnen/folio-viewer/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/rwijnen/folio-viewer/releases/tag/v1.0.0

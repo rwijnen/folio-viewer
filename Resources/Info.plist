@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleExecutable</key>
+	<string>Folio</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.robinwijnen.Folio</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Folio</string>
+	<key>CFBundleDisplayName</key>
+	<string>Folio</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.developer-tools</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<!-- A viewer has nothing worth restoring; without this, relaunching brings back
+	     empty windows from the previous session. -->
+	<key>NSQuitAlwaysKeepsWindows</key>
+	<false/>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>Split-diff and Markdown viewer for macOS.</string>
+
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<!-- macOS already defines public.patch-file for .diff/.patch, so claim
+			     that type rather than shadowing it with a private one. -->
+			<key>CFBundleTypeName</key>
+			<string>Diff or Patch File</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>AppIcon</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.patch-file</string>
+				<string>com.robinwijnen.folio.diff</string>
+			</array>
+			<!-- Claim the raw extensions too: an extension-level claim from another
+			     editor otherwise outranks a UTI-only claim for .diff. -->
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>diff</string>
+				<string>patch</string>
+				<string>rej</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Markdown Document</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<!-- Owner, not Alternate: an extension-level claim from another editor
+			     outranks a lesser rank, which is why .md would not stick before. -->
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>CFBundleTypeIconFile</key>
+			<string>AppIcon</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>net.daringfireball.markdown</string>
+			</array>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>md</string>
+				<string>markdown</string>
+				<string>mdown</string>
+				<string>mkd</string>
+				<string>mdx</string>
+				<string>mdc</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Text File</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>None</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.plain-text</string>
+			</array>
+		</dict>
+	</array>
+
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<!-- Only for .rej, which macOS does not type. .diff/.patch are
+			     public.patch-file and are claimed above. -->
+			<key>UTTypeIdentifier</key>
+			<string>com.robinwijnen.folio.diff</string>
+			<key>UTTypeDescription</key>
+			<string>Rejected Patch File</string>
+			<key>UTTypeIconFile</key>
+			<string>AppIcon</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.plain-text</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>rej</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
+</dict>
+</plist>

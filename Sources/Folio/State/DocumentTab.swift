@@ -1,0 +1,273 @@
+import Foundation
+import Observation
+
+/// One row of the file sidebar: the parsed diff entry plus where its original lives.
+struct FileEntry: Identifiable {
+    var id: UUID { diff.id }
+    var diff: FileDiff
+    var resolvedOriginal: URL?
+    /// Set by the user through "Locate Original…" and preferred over path resolution.
+    var manualOriginal: URL?
+
+    var originalURL: URL? { manualOriginal ?? resolvedOriginal }
+}
+
+/// Fully prepared content for the currently selected file of a diff.
+struct LoadedFile {
+    var document: SideBySideDocument
+    var leftSpans: [[SyntaxSpan]]
+    var rightSpans: [[SyntaxSpan]]
+    var languageName: String
+    var originalURL: URL?
+    /// Why we are showing diff-only content, if we are.
+    var degradedReason: String?
+    /// Something the user should know that is not a problem (reversed patch, etc.).
+    var notice: String?
+    /// True when the left panel was rebuilt from the diff rather than read from disk.
+    var leftIsReconstructed = false
+}
+
+enum FileLoadState {
+    case empty
+    case loading
+    case loaded(LoadedFile)
+    case failed(String)
+}
+
+struct SearchMatch: Equatable {
+    var rowIndex: Int
+    var isLeft: Bool
+    var range: Range<Int>
+}
+
+/// What kind of thing a tab holds.
+enum DocumentContent: Equatable {
+    case none
+    /// A unified diff: the split view with a file sidebar.
+    case diff
+    /// A Markdown document: rendered or source.
+    case markdown
+    /// Any other text file: source only.
+    case source
+}
+
+/// Rendered or raw, for Markdown documents.
+enum ReadingMode: String, CaseIterable, Identifiable {
+    case rendered
+    case source
+
+    var id: String { rawValue }
+    var label: String { self == .rendered ? "Rendered" : "Source" }
+    var symbol: String { self == .rendered ? "doc.richtext" : "chevron.left.forwardslash.chevron.right" }
+}
+
+/// A Markdown or plain-text document, prepared for both display modes.
+struct TextDocument {
+    var url: URL
+    /// Display lines for source mode (tabs expanded).
+    var lines: [String]
+    var spans: [[SyntaxSpan]]
+    var languageName: String
+    var isMarkdown: Bool
+    /// Converted markdown body, wrapped into a full page on demand.
+    var bodyHTML: String = ""
+    var outline: [OutlineItem] = []
+    var diagramCount: Int = 0
+    var maxColumns: Int = 0
+    /// Bumped whenever the body changes, so the web view knows to reload.
+    var contentVersion: Int = 0
+
+    var name: String { url.lastPathComponent }
+    var folder: URL { url.deletingLastPathComponent() }
+}
+
+enum DisplayItem: Identifiable {
+    case row(Int)
+    case fold(Fold)
+
+    var id: String {
+        switch self {
+        case let .row(index): return "r\(index)"
+        case let .fold(fold): return "f\(fold.id)"
+        }
+    }
+}
+
+/// Everything belonging to one open document.
+///
+/// Folio keeps several of these and shows one at a time, so folds, reading mode,
+/// scroll position, search results and the render cache all have to live per document
+/// rather than on `AppState` — switching tabs must not disturb the others.
+@MainActor
+@Observable
+final class DocumentTab: Identifiable {
+
+    let id = UUID()
+    /// The file this tab was opened from.
+    var url: URL
+    var content: DocumentContent
+
+    // MARK: Diff documents
+
+    var files: [FileEntry] = []
+    var preamble: [String] = []
+    var baseFolder: URL?
+    var selectedFileID: UUID?
+    var loadState: FileLoadState = .empty
+    var expandedFolds: Set<Int> = []
+
+    // MARK: Text documents
+
+    var textDocument: TextDocument?
+    var readingMode: ReadingMode = .rendered
+    /// Bumped when the rendered page must be rebuilt (content or appearance change).
+    var pageVersion = 0
+    var diagramReport: String?
+    /// Heading currently at the top of the rendered page.
+    var visibleAnchor: String = ""
+
+    // MARK: Search, per document
+
+    var matches: [SearchMatch] = []
+    var currentMatchIndex = 0
+    /// Bumped whenever the view should scroll to the current match.
+    var scrollRequest = 0
+    var renderedMatchCount = 0
+    var renderedMatchIndex = -1
+    var renderedFocusRequest = 0
+    var renderedFocusTarget = 0
+    var pendingAnchor: String?
+    var anchorRequest = 0
+    var sourceScrollLine: Int?
+    var sourceScrollRequest = 0
+
+    /// Attributed-line cache for the diff and source views.
+    let renderer = LineRenderer()
+    /// Where each of this document's scroll views was left.
+    @ObservationIgnored let scrollOffsets = ScrollOffsetStore()
+    /// Last scroll offset reported by the rendered page, replayed after a reload.
+    @ObservationIgnored var webScrollOffset: CGFloat = 0
+    /// The live web view for this document, created on first display.
+    @ObservationIgnored private(set) var page: MarkdownPageController?
+    /// Bumped every time this tab is shown, so the least recently used pages can go.
+    @ObservationIgnored var lastShownAt: Int = 0
+    /// The wrapped page is ~3.5 MB with mermaid inlined, so build it only when it changes.
+    @ObservationIgnored var pageCache: (version: Int, html: String)?
+    @ObservationIgnored var loadTask: Task<Void, Never>?
+
+    init(url: URL, content: DocumentContent) {
+        self.url = url
+        self.content = content
+    }
+
+    // MARK: - Identity
+
+    var name: String { textDocument?.name ?? url.lastPathComponent }
+
+    var symbol: String {
+        switch content {
+        case .diff: return "arrow.left.arrow.right.square"
+        case .markdown: return "doc.richtext"
+        case .source: return "doc.plaintext"
+        case .none: return "doc"
+        }
+    }
+
+    var isMarkdown: Bool { textDocument?.isMarkdown == true }
+
+    // MARK: - Derived
+
+    var selectedEntry: FileEntry? {
+        guard let selectedFileID else { return nil }
+        return files.first { $0.id == selectedFileID }
+    }
+
+    var loadedFile: LoadedFile? {
+        if case let .loaded(file) = loadState { return file }
+        return nil
+    }
+
+    var totalAdditions: Int { files.reduce(0) { $0 + $1.diff.additions } }
+    var totalDeletions: Int { files.reduce(0) { $0 + $1.diff.deletions } }
+
+    var currentMatch: SearchMatch? {
+        matches.indices.contains(currentMatchIndex) ? matches[currentMatchIndex] : nil
+    }
+
+    /// Rows to render, with closed folds collapsed into a single marker.
+    var displayItems: [DisplayItem] {
+        guard let document = loadedFile?.document else { return [] }
+        var items: [DisplayItem] = []
+        let closedFolds = document.folds
+            .filter { !expandedFolds.contains($0.id) }
+            .sorted { $0.range.lowerBound < $1.range.lowerBound }
+        var foldIterator = closedFolds.makeIterator()
+        var nextFold = foldIterator.next()
+        var index = 0
+        while index < document.rows.count {
+            if let fold = nextFold, fold.range.lowerBound == index {
+                items.append(.fold(fold))
+                index = fold.range.upperBound
+                nextFold = foldIterator.next()
+                continue
+            }
+            items.append(.row(index))
+            index += 1
+        }
+        return items
+    }
+
+    /// Full HTML for the rendered Markdown view; nil unless this tab holds Markdown.
+    func renderedPage(isDark: Bool) -> String? {
+        guard let document = textDocument, document.isMarkdown else { return nil }
+        if let cache = pageCache, cache.version == pageVersion { return cache.html }
+        let html = HTMLPage.wrap(body: document.bodyHTML,
+                                 title: document.name,
+                                 isDark: isDark,
+                                 mermaidScript: WebResources.mermaid,
+                                 diagramCount: document.diagramCount)
+        pageCache = (pageVersion, html)
+        return html
+    }
+
+    /// Changes exactly when the web view needs to reload.
+    var renderedPageToken: String {
+        guard let document = textDocument else { return "none" }
+        return "\(id.uuidString)|\(document.url.path)|\(document.contentVersion)|\(pageVersion)"
+    }
+
+    /// The controller for the rendered page, created the first time it is needed.
+    func pageController(state: AppState) -> MarkdownPageController {
+        if let page { return page }
+        let controller = MarkdownPageController(tab: self, state: state)
+        page = controller
+        state.pageBecameLive(self)
+        return controller
+    }
+
+    /// Drops the live web view. The page keeps reporting its scroll offset as the
+    /// reader scrolls, so a later reload can put them back where they were.
+    func releasePage() {
+        page?.teardown()
+        page = nil
+    }
+
+    /// Scroll-memory key for whatever this tab is currently showing.
+    var scrollKey: String {
+        switch content {
+        case .diff:
+            return "diff:\(selectedFileID?.uuidString ?? "none")"
+        case .markdown:
+            return readingMode == .source ? "markdown-source" : "markdown-rendered"
+        case .source:
+            return "source"
+        case .none:
+            return "none"
+        }
+    }
+
+    func searchRanges(inRow row: Int, isLeft: Bool) -> [Range<Int>] {
+        guard !matches.isEmpty else { return [] }
+        return matches.filter { $0.rowIndex == row && $0.isLeft == isLeft }.map(\.range)
+    }
+}

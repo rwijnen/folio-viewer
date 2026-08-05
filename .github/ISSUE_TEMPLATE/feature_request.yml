@@ -1,0 +1,30 @@
+name: Feature request
+description: Suggest something Folio should be able to show or do.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Folio deliberately stays a **read-only viewer**: it never writes to the files it
+        opens and never uses the network. Suggestions that keep to that are much more
+        likely to land.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The situation you are in, rather than the feature you have in mind.
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you do today instead

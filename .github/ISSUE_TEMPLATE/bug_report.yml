@@ -1,0 +1,67 @@
+name: Bug report
+description: Something Folio showed you was wrong, or it would not show it at all.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Folio is a viewer, so the most useful reports come with the file that
+        misbehaved — or a small piece of it.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to reproduce it
+      placeholder: |
+        1. Open …
+        2. Switch to …
+        3. The panel shows …
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of file
+      options:
+        - A diff or patch
+        - A Markdown document
+        - A mermaid diagram inside a Markdown document
+        - Some other text file
+        - Not file-specific (window, tabs, menus, associations)
+    validations:
+      required: true
+
+  - type: textarea
+    id: sample
+    attributes:
+      label: A sample that shows it
+      description: >
+        Paste the smallest diff or Markdown that reproduces it, or attach the file.
+        Please remove anything confidential first.
+      render: text
+
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "e.g. 15.3, or the output of sw_vers -productVersion"
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Folio version
+      description: From the Folio menu → About Folio, or the tag/commit you built.
+      placeholder: "e.g. 1.0.0, or main @ abc1234"
+    validations:
+      required: true

@@ -1,0 +1,14 @@
+# Build output
+.build/
+build/
+
+# Xcode / SwiftPM local state
+*.xcodeproj
+.swiftpm/
+Package.resolved
+
+# macOS
+.DS_Store
+
+# Local editor and agent state
+.claude/settings.local.json

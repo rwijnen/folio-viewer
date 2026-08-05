@@ -1,0 +1,10 @@
+mermaid.min.js
+  version : 11.16.1
+  source  : https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js
+  fetched : 2026-08-05
+  sha256  : 18327bef70d96fb505fe7287d9f6a7362ebf07ff6576ddfaffb1a06f3e1a2954
+  bytes   : 3566058
+  licence : MIT (see the banner comments inside the file)
+
+Vendored so diagrams render with no network access at runtime. To update, download
+the same URL at a newer version, replace the file, and update this record.
