@@ -11,6 +11,10 @@ writing to your files or touching the network.
 [![macOS 14+](https://img.shields.io/badge/macOS-14%2B-black?logo=apple)](INSTALL.md#requirements)
 [![Swift 6](https://img.shields.io/badge/Swift-6-orange?logo=swift&logoColor=white)](INSTALL.md#requirements)
 [![No dependencies](https://img.shields.io/badge/dependencies-1%20(vendored)-brightgreen)](THIRD-PARTY-NOTICES.md)
+[![Vibecoded with Claude](https://img.shields.io/badge/vibecoded-Claude%20Code-8A5CF6)](#how-this-was-built)
+
+> **Written by an AI.** Folio was vibecoded — see [How this was built](#how-this-was-built)
+> for who did what, and what that means for the code you are about to run.
 
 ```bash
 git clone https://github.com/rwijnen/folio-viewer.git
@@ -149,6 +153,34 @@ compiles with the Command Line Tools alone. 150 tests run in about five seconds.
 
 Contributions are welcome; please read [CONTRIBUTING.md](CONTRIBUTING.md) first, since
 Folio's read-only, offline, non-executing constraints are deliberate.
+
+## How this was built
+
+Folio was **vibecoded**. Essentially all of its code, tests, icon and documentation were
+written by Claude (Opus 5) in [Claude Code](https://claude.com/claude-code), from prompts
+by [@rwijnen](https://github.com/rwijnen), who set out what the app should do, made the
+product decisions — scope, name, licence, what to leave out — ran each build, and reported
+what was wrong with it. Every commit carries a `Co-Authored-By: Claude` trailer, so
+`git log` shows exactly which parts that covers: all of them.
+
+This is stated plainly because you should know what you are reading before you trust it.
+It does not lower the bar the code has to clear:
+
+- The 150 tests are real tests over real fixtures, and CI runs them on every push.
+- The three rules above — never writes, never networks, never executes what it renders —
+  are the ones under test, not just claims in a README.
+- Several of them were tightened only after a test or a measurement contradicted the first
+  attempt: a search that counted 131 CSS rules as document matches, a menu whose disabled
+  items silently swallowed their keyboard shortcuts, a session restore that cost a second
+  at launch until it was made lazy. [Docs/ARCHITECTURE.md](Docs/ARCHITECTURE.md) records
+  the reasoning behind the parts that ended up unusual.
+- The screenshots are rendered from the app's own view code, not mock-ups.
+
+What it does not mean: that anyone else has audited this. Machine-written code is still
+code, with the ordinary risk of being confidently wrong in a way its author did not think
+to test. It is small, commented, and MIT-licensed precisely so you can read it before
+pointing it at anything that matters — and [issues](https://github.com/rwijnen/folio-viewer/issues)
+about anything it gets wrong are welcome.
 
 ## Licence and credits
 

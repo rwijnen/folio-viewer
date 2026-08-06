@@ -8,6 +8,9 @@ All notable changes to Folio are recorded here. The format follows
 
 ### Added
 
+- An AI-transparency note in the README and SECURITY.md: Folio was vibecoded in Claude
+  Code, and every commit carries a `Co-Authored-By: Claude` trailer.
+
 - **Folio reopens where you left off.** The open documents, their order, which one was in
   front, each one's reading mode and scroll position all come back next launch. Files that
   have moved or been deleted are dropped quietly. A document opened from Finder at launch

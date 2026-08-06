@@ -47,6 +47,10 @@ Findings that would be especially valuable:
   identity. If that matters to you, build from source — see [INSTALL.md](INSTALL.md).
 - **The app is not sandboxed.** It needs to read arbitrary files you point it at,
   including the originals referenced from a diff.
+- **The code was written by an AI and has not been independently audited.** Folio was
+  vibecoded in Claude Code; see [How this was built](README.md#how-this-was-built). The
+  rules above are covered by tests, but tests only cover what someone thought to check,
+  and no third party has reviewed this. Treat a finding here as more likely, not less.
 - **mermaid is a large third-party dependency** (3.4 MB of JavaScript) running inside the
   page. It is confined by the CSP above and cannot reach the network, but it is the
   biggest piece of code in the project that was not written for it. See
