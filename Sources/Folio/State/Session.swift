@@ -18,6 +18,9 @@ struct Session: Codable, Equatable {
         var scrollOffset: Double
         /// Scroll offset inside the rendered page.
         var webScrollOffset: Double
+        /// Headings folded away in the outline. Absent in sessions written before
+        /// the outline could fold.
+        var collapsedOutline: [String]?
     }
 
     var entries: [Entry] = []
@@ -91,7 +94,9 @@ extension AppState {
                     tab.files.firstIndex { $0.id == id }
                 },
                 scrollOffset: Double(tab.scrollOffsets.offset(for: tab.scrollKey)),
-                webScrollOffset: Double(tab.webScrollOffset)
+                webScrollOffset: Double(tab.webScrollOffset),
+                collapsedOutline: tab.collapsedOutline.isEmpty
+                    ? nil : tab.collapsedOutline.sorted()
             ))
         }
         result.activeIndex = activeTabID.flatMap { id in tabs.firstIndex { $0.id == id } }
@@ -187,5 +192,8 @@ extension AppState {
             tab.scrollOffsets.record(CGFloat(entry.scrollOffset), for: tab.scrollKey)
         }
         tab.webScrollOffset = CGFloat(entry.webScrollOffset)
+        if let collapsed = entry.collapsedOutline {
+            tab.collapsedOutline = Set(collapsed)
+        }
     }
 }

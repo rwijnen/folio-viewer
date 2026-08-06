@@ -130,11 +130,22 @@ struct DocumentView: View {
     }
 }
 
-/// Heading list for the open Markdown document.
+/// Heading list for the open Markdown document, foldable section by section.
 struct OutlineSidebar: View {
 
     @Environment(AppState.self) private var state
+    let tab: DocumentTab
     let document: TextDocument
+
+    private var layout: OutlineLayout { tab.outlineLayout }
+    private var visibleRows: [OutlineLayout.Row] {
+        layout.visibleRows(collapsed: tab.collapsedOutline)
+    }
+    /// The heading the reader is on, or the nearest one still on screen if it is folded
+    /// away — so the highlight never disappears into a collapsed section.
+    private var highlighted: String? {
+        layout.nearestVisible(to: state.visibleAnchor, collapsed: tab.collapsedOutline)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -149,51 +160,95 @@ struct OutlineSidebar: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
+                header
                 List {
-                    Section("Outline") {
-                        ForEach(document.outline) { item in
-                            Button {
-                                jump(to: item)
-                            } label: {
-                                HStack(spacing: 6) {
-                                    Text("H\(item.level)")
-                                        .font(.system(size: 8, weight: .bold, design: .monospaced))
-                                        .foregroundStyle(.tertiary)
-                                        .frame(width: 14, alignment: .leading)
-                                    Text(item.title)
-                                        .font(.system(size: 11,
-                                                      weight: item.level <= 2 ? .semibold : .regular))
-                                        .lineLimit(2)
-                                        .multilineTextAlignment(.leading)
-                                    Spacer(minLength: 0)
-                                }
-                                .padding(.leading, CGFloat(max(0, item.level - 1)) * 10)
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .listRowBackground(
-                                state.visibleAnchor == item.id
-                                    ? Theme.foldBackground : Color.clear
-                            )
-                        }
+                    ForEach(visibleRows) { row in
+                        OutlineRow(row: row,
+                                   isCurrent: highlighted == row.id,
+                                   isCollapsed: tab.collapsedOutline.contains(row.id),
+                                   hiddenCount: layout.descendants(of: row.id).count,
+                                   onToggle: { subtree in
+                                       state.toggleOutlineSection(row.id, includingDescendants: subtree)
+                                   },
+                                   onJump: { jump(to: row.item) })
+                        .listRowInsets(EdgeInsets(top: 1, leading: 4, bottom: 1, trailing: 4))
                     }
                 }
                 .listStyle(.sidebar)
             }
             Divider()
-            HStack(spacing: 4) {
-                Image(systemName: "doc.text")
-                    .font(.system(size: 9))
-                Text(document.name)
-                    .font(.system(size: 10))
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                Spacer(minLength: 0)
-            }
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
+            footer
         }
+    }
+
+    // MARK: - Chrome
+
+    private var header: some View {
+        HStack(spacing: 4) {
+            Text("Outline")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(.secondary)
+            if !tab.collapsedOutline.isEmpty {
+                Text("\(visibleRows.count) of \(layout.rows.count)")
+                    .font(.system(size: 9))
+                    .foregroundStyle(.tertiary)
+            }
+            Spacer(minLength: 0)
+
+            Menu {
+                Button("Expand All") { state.expandWholeOutline() }
+                Button("Collapse All") { state.collapseWholeOutline() }
+                Divider()
+                // The point of the whole feature: fold a long document down until its
+                // shape fits on one screen.
+                ForEach(1...max(layout.maximumDepth + 1, 1), id: \.self) { levels in
+                    Button(levels == 1 ? "Top Level Only" : "Show \(levels) Levels") {
+                        state.showOutlineLevels(levels)
+                    }
+                }
+            } label: {
+                Image(systemName: "list.bullet.indent")
+                    .font(.system(size: 10))
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help("How much of the outline to show")
+
+            Button {
+                if tab.collapsedOutline.isEmpty {
+                    state.collapseWholeOutline()
+                } else {
+                    state.expandWholeOutline()
+                }
+            } label: {
+                Image(systemName: tab.collapsedOutline.isEmpty
+                      ? "arrow.down.right.and.arrow.up.left"
+                      : "arrow.up.left.and.arrow.down.right")
+                    .font(.system(size: 9))
+            }
+            .buttonStyle(.borderless)
+            .foregroundStyle(.secondary)
+            .help(tab.collapsedOutline.isEmpty ? "Collapse all sections" : "Expand all sections")
+        }
+        .padding(.horizontal, 10)
+        .padding(.top, 8)
+        .padding(.bottom, 4)
+    }
+
+    private var footer: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "doc.text")
+                .font(.system(size: 9))
+            Text(document.name)
+                .font(.system(size: 10))
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Spacer(minLength: 0)
+        }
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
     }
 
     private func jump(to item: OutlineItem) {
@@ -202,6 +257,74 @@ struct OutlineSidebar: View {
             state.visibleAnchor = item.id
         } else {
             state.scrollSource(to: item.lineIndex)
+        }
+    }
+}
+
+/// One heading in the sidebar: a disclosure triangle when it has anything under it,
+/// indented by how deeply it nests.
+struct OutlineRow: View {
+
+    let row: OutlineLayout.Row
+    let isCurrent: Bool
+    let isCollapsed: Bool
+    /// How many headings are folded away underneath, shown as a badge.
+    let hiddenCount: Int
+    /// `true` when ⌥ was held, meaning the whole subtree.
+    var onToggle: (Bool) -> Void
+    var onJump: () -> Void
+
+    var body: some View {
+        HStack(spacing: 2) {
+            Group {
+                if row.hasChildren {
+                    Button {
+                        onToggle(NSEvent.modifierFlags.contains(.option))
+                    } label: {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 8, weight: .semibold))
+                            .rotationEffect(.degrees(isCollapsed ? 0 : 90))
+                            .frame(width: 12, height: 12)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .help(isCollapsed ? "Expand (⌥ for everything below)"
+                                      : "Collapse (⌥ for everything below)")
+                } else {
+                    Color.clear.frame(width: 12, height: 12)
+                }
+            }
+
+            Button(action: onJump) {
+                HStack(spacing: 5) {
+                    Text(row.item.title)
+                        .font(.system(size: 11,
+                                      weight: isCurrent ? .semibold
+                                                        : (row.depth == 0 ? .medium : .regular)))
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                        .foregroundStyle(row.depth == 0 ? .primary : .secondary)
+                    Spacer(minLength: 0)
+                    // A folded section says how much is hidden, so nothing is lost.
+                    if isCollapsed {
+                        Text("\(hiddenCount)")
+                            .font(.system(size: 8, weight: .medium, design: .rounded))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(Theme.gutterBackground, in: Capsule())
+                    }
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.leading, CGFloat(row.depth) * 11)
+        .padding(.vertical, 1)
+        .background {
+            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                .fill(isCurrent ? Theme.foldBackground : .clear)
         }
     }
 }

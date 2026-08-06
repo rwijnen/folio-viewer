@@ -66,13 +66,18 @@ whatever language it declares:
 
 ![Markdown source mode](Docs/markdown-source.png)
 
+The outline folds, so a long document's shape fits on one screen — per section, or the
+whole thing down to one, two or three levels:
+
+![The outline expanded, at two levels, and at top level only](Docs/outline-folding.png)
+
 | | |
 |---|---|
 | Rendered / Source | ⌘1 and ⌘2, or the toolbar switch |
 | Markdown support | ATX and setext headings, nested ordered/unordered/task lists, pipe tables with alignment, blockquotes, fenced and indented code, thematic breaks, reference links, images, autolinks, emphasis, strikethrough, inline code, hard breaks |
 | Diagrams | Every ` ```mermaid ` fence is drawn by mermaid 11, bundled in the app. One that fails to parse shows mermaid's error next to its own source instead of vanishing |
 | Code fences | Highlighted by the same lexer the diff panels use, across ~30 languages |
-| Outline | Sidebar built from the headings; click to jump, in either mode |
+| Outline | Sidebar built from the headings; click to jump, in either mode. **Foldable section by section** — collapse an `H1` and everything under it goes with it, or fold the whole document to one, two or three levels so a long file fits on one screen. ⌥-click a triangle for the whole subtree |
 | Images | Local ones inlined as `data:` URIs; remote ones reported, never fetched |
 | Follows links | Sibling `.md` / `.diff` files open in Folio; http(s) goes to your browser |
 
@@ -149,7 +154,7 @@ renderer supports.
 
 No package manager, no framework, one vendored dependency. `swift build` and a shell
 script that assembles the bundle and draws the icon with Core Graphics — the whole thing
-compiles with the Command Line Tools alone. 150 tests run in about five seconds.
+compiles with the Command Line Tools alone. 166 tests run in about five seconds.
 
 Contributions are welcome; please read [CONTRIBUTING.md](CONTRIBUTING.md) first, since
 Folio's read-only, offline, non-executing constraints are deliberate.
@@ -166,7 +171,7 @@ what was wrong with it. Every commit carries a `Co-Authored-By: Claude` trailer,
 This is stated plainly because you should know what you are reading before you trust it.
 It does not lower the bar the code has to clear:
 
-- The 150 tests are real tests over real fixtures, and CI runs them on every push.
+- The 166 tests are real tests over real fixtures, and CI runs them on every push.
 - The three rules above — never writes, never networks, never executes what it renders —
   are the ones under test, not just claims in a README.
 - Several of them were tightened only after a test or a measurement contradicted the first

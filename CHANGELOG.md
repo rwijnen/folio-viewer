@@ -8,6 +8,14 @@ All notable changes to Folio are recorded here. The format follows
 
 ### Added
 
+- **The outline folds.** Headings nest into a tree, and each section with anything under
+  it gets a disclosure triangle: collapse an `H1` and its `H2`s and `H3`s fold away with
+  it. The menu at the top of the sidebar folds the whole document to one, two or three
+  levels, so a long file's shape fits on one screen without scrolling. ⌥-click a triangle
+  to take the whole subtree with it, a folded section shows how many headings it hides,
+  the highlight falls back to the nearest visible parent, and what you folded is
+  remembered per document between launches.
+
 - An AI-transparency note in the README and SECURITY.md: Folio was vibecoded in Claude
   Code, and every commit carries a `Co-Authored-By: Claude` trailer.
 

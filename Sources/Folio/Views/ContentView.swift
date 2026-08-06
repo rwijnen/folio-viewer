@@ -51,10 +51,12 @@ struct ContentView: View {
         case .diff:
             if state.files.isEmpty { EmptySidebar() } else { FileListView() }
         case .markdown:
-            if let document = state.textDocument { OutlineSidebar(document: document) }
+            if let tab = state.active, let document = tab.textDocument {
+                OutlineSidebar(tab: tab, document: document)
+            }
         case .source:
-            if let document = state.textDocument {
-                OutlineSidebar(document: document)
+            if let tab = state.active, let document = tab.textDocument {
+                OutlineSidebar(tab: tab, document: document)
             } else {
                 EmptySidebar()
             }

@@ -125,6 +125,8 @@ final class DocumentTab: Identifiable {
     var diagramReport: String?
     /// Heading currently at the top of the rendered page.
     var visibleAnchor: String = ""
+    /// Headings whose contents are folded away in the outline sidebar.
+    var collapsedOutline: Set<String> = []
 
     // MARK: Search, per document
 
@@ -157,6 +159,9 @@ final class DocumentTab: Identifiable {
     var isPending: Bool { pendingRestore != nil }
     /// The wrapped page is ~3.5 MB with mermaid inlined, so build it only when it changes.
     @ObservationIgnored var pageCache: (version: Int, html: String)?
+    @ObservationIgnored private var cachedOutlineLayout: OutlineLayout?
+    @ObservationIgnored private var cachedOutlineCount = -1
+    @ObservationIgnored private var cachedOutlineFirst: String?
     @ObservationIgnored var loadTask: Task<Void, Never>?
 
     init(url: URL, content: DocumentContent) {
@@ -238,6 +243,21 @@ final class DocumentTab: Identifiable {
     var renderedPageToken: String {
         guard let document = textDocument else { return "none" }
         return "\(id.uuidString)|\(document.url.path)|\(document.contentVersion)|\(pageVersion)"
+    }
+
+    /// The outline as a tree. Rebuilt only when the document changes, since the sidebar
+    /// asks for it on every redraw.
+    var outlineLayout: OutlineLayout {
+        let outline = textDocument?.outline ?? []
+        if let cached = cachedOutlineLayout, cachedOutlineCount == outline.count,
+           cachedOutlineFirst == outline.first?.id {
+            return cached
+        }
+        let layout = OutlineLayout(outline)
+        cachedOutlineLayout = layout
+        cachedOutlineCount = outline.count
+        cachedOutlineFirst = outline.first?.id
+        return layout
     }
 
     /// The controller for the rendered page, created the first time it is needed.

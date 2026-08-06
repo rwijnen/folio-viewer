@@ -166,6 +166,53 @@ extension AppState {
         tab.sourceScrollRequest += 1
     }
 
+    // MARK: - Outline
+
+    /// Folds a heading's contents away, or brings them back. With `includingDescendants`
+    /// — ⌥-click, as in Finder — the whole subtree goes with it.
+    func toggleOutlineSection(_ id: String, includingDescendants: Bool = false) {
+        guard let tab = active else { return }
+        let layout = tab.outlineLayout
+        let isCollapsing = !tab.collapsedOutline.contains(id)
+        var affected: Set<String> = [id]
+        if includingDescendants {
+            affected.formUnion(layout.descendants(of: id).filter { layout.row($0)?.hasChildren == true })
+        }
+        if isCollapsing {
+            tab.collapsedOutline.formUnion(affected)
+        } else {
+            tab.collapsedOutline.subtract(affected)
+        }
+        saveSession()
+    }
+
+    /// Folds the outline down to `levels` levels, which is how a long document is made
+    /// to fit on one screen.
+    func showOutlineLevels(_ levels: Int) {
+        guard let tab = active else { return }
+        tab.collapsedOutline = tab.outlineLayout.collapsed(showing: levels)
+        saveSession()
+    }
+
+    func collapseWholeOutline() {
+        guard let tab = active else { return }
+        tab.collapsedOutline = tab.outlineLayout.collapsibleIDs
+        saveSession()
+    }
+
+    func expandWholeOutline() {
+        guard let tab = active else { return }
+        tab.collapsedOutline = []
+        saveSession()
+    }
+
+    /// Brings a heading into view in the sidebar, unfolding whatever hides it.
+    func revealInOutline(_ id: String) {
+        guard let tab = active else { return }
+        tab.collapsedOutline.subtract(tab.outlineLayout.ancestors(of: id))
+        saveSession()
+    }
+
     // MARK: - Modes
 
     func setReadingMode(_ mode: ReadingMode) {

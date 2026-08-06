@@ -33,7 +33,7 @@ flowchart TD
 ```
 
 Everything above the view layer is a pure function of its inputs, which is why nearly all
-of the 150 tests live there and none of them need a window.
+of the 166 tests live there and none of them need a window.
 
 ## Decisions worth knowing about
 
@@ -84,6 +84,14 @@ most five stay loaded; the least recently shown are torn down. Nothing is lost w
 are: the page reports its scroll offset as the reader scrolls, so a reloaded page is put
 back in place — re-applied once mermaid reports in, because diagrams change the page
 height.
+
+### The outline is a tree, inferred not declared
+
+`OutlineLayout` nests headings by their level *relative to their neighbours*, not by the
+number of `#`. Real documents skip levels — an `H1` followed by an `H3` is still a parent
+and its child — and plenty start at `H2`, which should sit at the top rather than indented
+under nothing. A stack of still-open headings gives both for free, and the depth it yields
+is what the sidebar indents by and what "show two levels" counts.
 
 ### Reopening is lazy
 
