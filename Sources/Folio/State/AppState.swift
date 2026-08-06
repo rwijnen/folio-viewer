@@ -52,6 +52,10 @@ final class AppState {
     @ObservationIgnored private let fallbackRenderer = LineRenderer()
     /// Monotonic counter behind the least-recently-shown ordering.
     @ObservationIgnored private var showCounter = 0
+    /// Off for the shared instance only while restoring, and off entirely in tests so a
+    /// test run never disturbs the real session.
+    @ObservationIgnored var sessionRestoreEnabled = false
+    @ObservationIgnored private var isRestoring = false
 
     // MARK: - Forwarding to the active document
 
@@ -112,6 +116,13 @@ final class AppState {
     /// Single entry point for every way a file arrives: Finder, ⌘O, drag and drop.
     /// A file that is already open is brought forward instead of opened twice.
     func open(at url: URL) {
+        openWithoutSaving(at: url)
+        saveSession()
+    }
+
+    /// The opening itself. Kept separate so restoring a session does not write the
+    /// session back out once per document.
+    func openWithoutSaving(at url: URL) {
         errorMessage = nil
         statusMessage = nil
         let standardized = url.standardizedFileURL
@@ -151,16 +162,43 @@ final class AppState {
 
     func adopt(_ tab: DocumentTab) {
         tabs.append(tab)
-        activeTabID = tab.id
+        setActive(tab.id)
         noteShown(tab.id)
+    }
+
+    /// Installs a restored set of tabs wholesale. Only the session uses this; every
+    /// other route goes through `adopt`.
+    func adoptRestored(_ restored: [DocumentTab], activeIndex: Int?) {
+        tabs = restored
+        let index = activeIndex.flatMap { restored.indices.contains($0) ? $0 : nil } ?? 0
+        setActive(restored.indices.contains(index) ? restored[index].id : nil)
+    }
+
+    /// The single place the front tab changes: a restored tab is only read when it gets
+    /// here, so nothing else may assign `activeTabID` directly.
+    private func setActive(_ id: UUID?) {
+        activeTabID = id
+        guard let id, let tab = tabs.first(where: { $0.id == id }) else { return }
+        prepareIfNeeded(tab)
+    }
+
+    /// Moves a tab to a new position, for dragging in the tab bar.
+    func moveTab(_ id: UUID, to destination: Int) {
+        guard let source = tabs.firstIndex(where: { $0.id == id }) else { return }
+        let target = max(0, min(destination, tabs.count - 1))
+        guard source != target else { return }
+        let tab = tabs.remove(at: source)
+        tabs.insert(tab, at: target)
+        saveSession()
     }
 
     func activate(_ id: UUID) {
         guard tabs.contains(where: { $0.id == id }), activeTabID != id else { return }
-        activeTabID = id
+        setActive(id)
         noteShown(id)
         // The find bar is shared, so re-run it against the newly active document.
         if !searchQuery.isEmpty { recomputeMatches() }
+        saveSession()
     }
 
     /// Live web views are expensive — each is a separate WebContent process holding a
@@ -200,11 +238,13 @@ final class AppState {
         tabs.remove(at: index)
         guard wasActive else { return }
         if tabs.isEmpty {
-            activeTabID = nil
+            setActive(nil)
         } else {
-            activeTabID = tabs[min(index, tabs.count - 1)].id
+            // The neighbour that comes forward may never have been read.
+            setActive(tabs[min(index, tabs.count - 1)].id)
             if !searchQuery.isEmpty { recomputeMatches() }
         }
+        saveSession()
     }
 
     func closeActiveTab() {
@@ -219,6 +259,7 @@ final class AppState {
             tab.releasePage()
         }
         tabs = tabs.filter { $0.id == activeTabID }
+        saveSession()
     }
 
     func selectAdjacentTab(offset: Int) {
@@ -234,43 +275,54 @@ final class AppState {
             tab.releasePage()
         }
         tabs = []
-        activeTabID = nil
+        setActive(nil)
     }
 
     // MARK: - Diffs
 
     func openDiff(at url: URL) {
+        let tab = DocumentTab(url: url, content: .diff)
         do {
-            let text = try TextNormalizer.readText(at: url)
-            let parsed = DiffParser.parse(text: text)
-            guard !parsed.files.isEmpty else {
-                errorMessage = "No diff content found in \(url.lastPathComponent). "
-                    + "Expected a unified diff (`git diff` or `diff -u`)."
-                return
-            }
-
-            let tab = DocumentTab(url: url, content: .diff)
-            tab.preamble = parsed.preamble
-
-            let remembered = Preferences.baseFolder(forDiffAt: url)
-            let inferred = remembered ?? PathResolver.inferBaseFolder(diffURL: url, files: parsed.files)
-            tab.baseFolder = inferred
-            tab.files = parsed.files.map { diff in
-                FileEntry(diff: diff,
-                          resolvedOriginal: PathResolver.resolve(
-                            path: diff.rawOldPath ?? diff.rawNewPath ?? "", base: inferred))
-            }
-            if inferred == nil {
-                statusMessage = "Couldn't find the original files. Choose the folder the diff was made in."
-            } else if let inferred {
-                Preferences.setBaseFolder(inferred, forDiffAt: url)
-            }
-            tab.selectedFileID = tab.files.first?.id
+            try loadDiff(into: tab)
             adopt(tab)
-            reloadSelectedFile()
+            reloadSelectedFile(for: tab)
+        } catch let error as DiffOpenError {
+            errorMessage = error.message
         } catch {
             errorMessage = "Could not read \(url.lastPathComponent): \(error.localizedDescription)"
         }
+    }
+
+    struct DiffOpenError: Error { var message: String }
+
+    /// Parses the diff and works out where its originals live, into a tab that may
+    /// already be on screen.
+    func loadDiff(into tab: DocumentTab) throws {
+        let url = tab.url
+        let text = try TextNormalizer.readText(at: url)
+        let parsed = DiffParser.parse(text: text)
+        guard !parsed.files.isEmpty else {
+            throw DiffOpenError(message: "No diff content found in \(url.lastPathComponent). "
+                + "Expected a unified diff (`git diff` or `diff -u`).")
+        }
+
+        tab.content = .diff
+        tab.preamble = parsed.preamble
+
+        let remembered = Preferences.baseFolder(forDiffAt: url)
+        let inferred = remembered ?? PathResolver.inferBaseFolder(diffURL: url, files: parsed.files)
+        tab.baseFolder = inferred
+        tab.files = parsed.files.map { diff in
+            FileEntry(diff: diff,
+                      resolvedOriginal: PathResolver.resolve(
+                        path: diff.rawOldPath ?? diff.rawNewPath ?? "", base: inferred))
+        }
+        if inferred == nil {
+            statusMessage = "Couldn't find the original files. Choose the folder the diff was made in."
+        } else if let inferred {
+            Preferences.setBaseFolder(inferred, forDiffAt: url)
+        }
+        tab.selectedFileID = tab.files.first?.id
     }
 
     func presentBaseFolderPanel() {
@@ -326,6 +378,7 @@ final class AppState {
         guard let tab = active, tab.selectedFileID != id else { return }
         tab.selectedFileID = id
         reloadSelectedFile()
+        saveSession()
     }
 
     func selectAdjacentFile(offset: Int) {
@@ -336,8 +389,8 @@ final class AppState {
         selectFile(tab.files[next].id)
     }
 
-    func reloadSelectedFile() {
-        guard let tab = active else { return }
+    func reloadSelectedFile(for requested: DocumentTab? = nil) {
+        guard let tab = requested ?? active else { return }
         tab.loadTask?.cancel()
         tab.renderer.reset()
         tab.expandedFolds.removeAll()

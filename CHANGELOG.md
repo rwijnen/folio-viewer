@@ -6,6 +6,14 @@ All notable changes to Folio are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Folio reopens where you left off.** The open documents, their order, which one was in
+  front, each one's reading mode and scroll position all come back next launch. Files that
+  have moved or been deleted are dropped quietly. A document opened from Finder at launch
+  joins the restored tabs rather than replacing them.
+- **Tabs can be dragged into any order**, and the new order is what gets remembered.
+
 ### Fixed
 
 - ⌘F did not open the find bar. Two causes: the menu item asked whether a *diff* was

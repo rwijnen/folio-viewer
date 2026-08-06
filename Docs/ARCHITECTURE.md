@@ -33,7 +33,7 @@ flowchart TD
 ```
 
 Everything above the view layer is a pure function of its inputs, which is why nearly all
-of the 129 tests live there and none of them need a window.
+of the 150 tests live there and none of them need a window.
 
 ## Decisions worth knowing about
 
@@ -84,6 +84,21 @@ most five stay loaded; the least recently shown are torn down. Nothing is lost w
 are: the page reports its scroll offset as the reader scrolls, so a reloaded page is put
 back in place — re-applied once mermaid reports in, because diagrams change the page
 height.
+
+### Reopening is lazy
+
+The session — paths, tab order, which was in front, reading mode, scroll offsets — is a
+small JSON blob in `UserDefaults`, written on every change that alters it and once more on
+quit, because scroll positions only move between those points.
+
+Restoring creates **placeholder tabs**: a URL, and the kind guessed from the extension,
+which is enough to draw the tab bar. Only the document in front is read; the rest fill
+themselves in when first shown. Reading and converting every document up front was
+measured at 43 ms each — over a second for a full set — against 2 ms for a placeholder.
+
+The consequence to watch for: any route that changes which tab is in front has to read it
+first. They all funnel through one `setActive`, which is what stops a closed tab promoting
+an unread neighbour and showing the welcome screen.
 
 ### Scroll positions come from AppKit
 

@@ -79,8 +79,14 @@ whatever language it declares:
 Every document gets a tab in the one window. Each keeps **its own** reading mode, folds,
 scroll position and search results, so switching away and back resumes exactly where you
 were — and a rendered page keeps its already-drawn diagrams rather than re-drawing them.
-Opening a file that is already open brings its tab forward. The underline says whether a
-tab holds a diff (orange), Markdown (blue) or plain source (grey).
+Opening a file that is already open brings its tab forward, and tabs can be **dragged
+into any order**. The underline says whether a tab holds a diff (orange), Markdown (blue)
+or plain source (grey).
+
+**Folio reopens where you left off.** Quit with documents open and they come back next
+launch — same order, same one in front, same reading mode and scroll position. Only the
+document you were reading is loaded at startup; the rest fill themselves in the moment you
+click them, so a full set of tabs costs about 50 ms rather than a second.
 
 ## Find
 
@@ -139,7 +145,7 @@ renderer supports.
 
 No package manager, no framework, one vendored dependency. `swift build` and a shell
 script that assembles the bundle and draws the icon with Core Graphics — the whole thing
-compiles with the Command Line Tools alone. 129 tests run in about five seconds.
+compiles with the Command Line Tools alone. 150 tests run in about five seconds.
 
 Contributions are welcome; please read [CONTRIBUTING.md](CONTRIBUTING.md) first, since
 Folio's read-only, offline, non-executing constraints are deliberate.

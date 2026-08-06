@@ -131,9 +131,9 @@ git pull
 ./build.sh --install
 ```
 
-Settings are kept in `UserDefaults` under `com.robinwijnen.Folio` and survive a
-reinstall. The only thing Folio stores is which folder a given diff's originals were
-found in.
+Settings are kept in `UserDefaults` under `com.robinwijnen.Folio` and survive a reinstall.
+Folio stores two things only: which folder a given diff's originals were found in, and the
+session — the documents that were open, their order, and where you were in them.
 
 ## Uninstalling
 

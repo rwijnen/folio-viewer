@@ -50,6 +50,16 @@ extension AppState {
 
     /// Reads and prepares a Markdown or plain-text document into a fresh tab.
     static func makeTextTab(at url: URL, asMarkdown: Bool) throws -> DocumentTab {
+        let document = try makeTextDocument(at: url, asMarkdown: asMarkdown)
+        let tab = DocumentTab(url: url, content: asMarkdown ? .markdown : .source)
+        tab.textDocument = document
+        tab.readingMode = asMarkdown ? .rendered : .source
+        tab.visibleAnchor = document.outline.first?.id ?? ""
+        return tab
+    }
+
+    /// The reading and converting on its own.
+    static func makeTextDocument(at url: URL, asMarkdown: Bool) throws -> TextDocument {
         let raw = try TextNormalizer.readText(at: url)
         let sourceLines = TextNormalizer.splitLines(raw)
         let displayLines = TextNormalizer.expandTabs(sourceLines)
@@ -74,11 +84,7 @@ extension AppState {
             document.diagramCount = output.diagramCount
         }
 
-        let tab = DocumentTab(url: url, content: asMarkdown ? .markdown : .source)
-        tab.textDocument = document
-        tab.readingMode = asMarkdown ? .rendered : .source
-        tab.visibleAnchor = document.outline.first?.id ?? ""
-        return tab
+        return document
     }
 
     /// Re-reads a document from disk, keeping its place in the tab bar and its scroll
@@ -172,6 +178,7 @@ extension AppState {
         } else {
             setMatches([])
         }
+        saveSession()
     }
 
     func toggleReadingMode() {

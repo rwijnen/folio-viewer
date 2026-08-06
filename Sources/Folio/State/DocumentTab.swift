@@ -151,6 +151,10 @@ final class DocumentTab: Identifiable {
     @ObservationIgnored private(set) var page: MarkdownPageController?
     /// Bumped every time this tab is shown, so the least recently used pages can go.
     @ObservationIgnored var lastShownAt: Int = 0
+    /// Set on a tab restored from a saved session whose file has not been read yet.
+    /// Holds what to apply once it is.
+    @ObservationIgnored var pendingRestore: Session.Entry?
+    var isPending: Bool { pendingRestore != nil }
     /// The wrapped page is ~3.5 MB with mermaid inlined, so build it only when it changes.
     @ObservationIgnored var pageCache: (version: Int, html: String)?
     @ObservationIgnored var loadTask: Task<Void, Never>?

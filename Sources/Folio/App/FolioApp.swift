@@ -94,10 +94,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // step borrows the app for a moment and then quits.
         if MenuDiagnostics.runIfRequested() { return }
 
-        guard CommandLine.arguments.contains(FileAssociation.setDefaultFlag) else { return }
-        FileAssociation.setAsDefaultHandler(logging: true) { succeeded in
-            exit(succeeded ? 0 : 1)
+        if CommandLine.arguments.contains(FileAssociation.setDefaultFlag) {
+            FileAssociation.setAsDefaultHandler(logging: true) { succeeded in
+                exit(succeeded ? 0 : 1)
+            }
+            return
         }
+
+        // Put back what was open last time. A file opened from Finder arrives after
+        // this and simply joins the restored tabs, or brings its own forward.
+        AppState.shared.sessionRestoreEnabled = true
+        AppState.shared.restoreSession()
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        // Scroll positions move constantly and are only captured when the session is
+        // written, so take one final snapshot.
+        AppState.shared.saveSession()
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {

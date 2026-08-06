@@ -1,13 +1,16 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// The strip of open documents across the top of the window.
 ///
 /// Tabs share the available width and shrink like Safari's rather than scrolling, so
-/// every open document stays reachable with one click.
+/// every open document stays reachable with one click, and they can be dragged into a
+/// different order.
 struct TabBar: View {
 
     @Environment(AppState.self) private var state
     @State private var hoveredID: UUID?
+    @State private var draggingID: UUID?
 
     private let minimumWidth: CGFloat = 84
     private let maximumWidth: CGFloat = 260
@@ -18,12 +21,21 @@ struct TabBar: View {
                 TabChip(tab: tab,
                         isActive: tab.id == state.activeTabID,
                         isHovered: hoveredID == tab.id,
+                        isDragging: draggingID == tab.id,
                         minimumWidth: minimumWidth,
                         maximumWidth: maximumWidth)
                     .onHover { inside in
                         hoveredID = inside ? tab.id : (hoveredID == tab.id ? nil : hoveredID)
                     }
                     .onTapGesture { state.activate(tab.id) }
+                    .onDrag {
+                        draggingID = tab.id
+                        return NSItemProvider(object: tab.id.uuidString as NSString)
+                    }
+                    .onDrop(of: [.text],
+                            delegate: TabDropDelegate(target: tab,
+                                                      state: state,
+                                                      draggingID: $draggingID))
                     .contextMenu {
                         Button("Close Tab") { state.closeTab(tab.id) }
                         Button("Close Other Tabs") {
@@ -57,7 +69,33 @@ struct TabBar: View {
         .padding(.top, 4)
         .background(Theme.gutterBackground)
         .overlay(alignment: .bottom) { Divider() }
+        .animation(.easeInOut(duration: 0.16), value: state.tabs.map(\.id))
     }
+}
+
+/// Reorders as the drag passes over a tab, so the row is always showing the result.
+private struct TabDropDelegate: DropDelegate {
+
+    let target: DocumentTab
+    let state: AppState
+    @Binding var draggingID: UUID?
+
+    func dropEntered(info: DropInfo) {
+        guard let draggingID, draggingID != target.id,
+              let destination = state.tabs.firstIndex(where: { $0.id == target.id }) else { return }
+        state.moveTab(draggingID, to: destination)
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        draggingID = nil
+        return true
+    }
+
+    func dropExited(info: DropInfo) {}
 }
 
 private struct TabChip: View {
@@ -66,6 +104,7 @@ private struct TabChip: View {
     let tab: DocumentTab
     let isActive: Bool
     let isHovered: Bool
+    let isDragging: Bool
     let minimumWidth: CGFloat
     let maximumWidth: CGFloat
 
@@ -115,6 +154,8 @@ private struct TabChip: View {
                 .frame(height: 2)
                 .padding(.horizontal, 6)
         }
+        // The one being dragged fades, so its new position is the thing you look at.
+        .opacity(isDragging ? 0.35 : 1)
         .contentShape(Rectangle())
     }
 
