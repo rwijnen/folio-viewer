@@ -163,7 +163,8 @@ extension AppState {
     // MARK: - Modes
 
     func setReadingMode(_ mode: ReadingMode) {
-        guard let tab = active, tab.readingMode != mode else { return }
+        // Only Markdown has two modes; the menu no longer stops this being asked.
+        guard let tab = active, tab.isMarkdown, tab.readingMode != mode else { return }
         tab.readingMode = mode
         // The two modes have separate search machinery; re-run for the new one.
         if mode == .source {

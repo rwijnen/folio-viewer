@@ -8,6 +8,15 @@ All notable changes to Folio are recorded here. The format follows
 
 ### Fixed
 
+- ⌘F did not open the find bar. Two causes: the menu item asked whether a *diff* was
+  loaded, which is never true for a Markdown document, and — the deeper one — a disabled
+  menu item swallows its keyboard shortcut while `.disabled(…)` inside `commands` does not
+  re-evaluate as state changes. Every menu action now guards itself instead, so ⌘F, ⌘G,
+  ⌘R, ⌘W, ⌘1/⌘2, ⌃⇥, ⌘]/⌘[ and ⇧⌘B all fire. ⌘F also re-focuses the field when the bar is
+  already open, and Escape closes it.
+- Folio's own menu no longer appears as a second **View** menu next to the system one; it
+  is now called **Document**.
+
 - Right-clicking a rendered Markdown document and choosing **Reload** did nothing
   visible. The page is an HTML string Folio hands to WebKit, so WebKit's own Reload
   re-rendered the same bytes rather than re-reading the file. The context menu now offers

@@ -50,8 +50,7 @@ struct FindBar: View {
             Spacer(minLength: 0)
 
             Button {
-                appState.searchQuery = ""
-                appState.isFindPresented = false
+                appState.dismissFind()
             } label: {
                 Image(systemName: "xmark")
             }
@@ -63,9 +62,10 @@ struct FindBar: View {
         .background(.bar)
         .overlay(alignment: .bottom) { Divider() }
         .onAppear { isFocused = true }
+        .onChange(of: appState.findFocusRequest) { isFocused = true }
         .onChange(of: appState.searchQuery) { appState.recomputeMatches() }
         .onChange(of: appState.searchCaseSensitive) { appState.recomputeMatches() }
-        .onExitCommand { appState.isFindPresented = false }
+        .onExitCommand { appState.dismissFind() }
     }
 
     /// The rendered page counts its own matches in JavaScript; source views count rows.

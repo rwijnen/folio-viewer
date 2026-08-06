@@ -23,55 +23,48 @@ struct FolioApp: App {
                     .keyboardShortcut("o", modifiers: .command)
                 Button("Reload from Disk") { state.reloadTextDocument() }
                     .keyboardShortcut("r", modifiers: .command)
-                    .disabled(state.textDocument == nil)
                 Divider()
                 Button("Close Tab") { state.closeActiveTab() }
                     .keyboardShortcut("w", modifiers: .command)
-                    .disabled(state.tabs.isEmpty)
                 Button("Close Other Tabs") { state.closeOtherTabs() }
-                    .disabled(state.tabs.count < 2)
             }
             CommandGroup(after: .newItem) {
                 Button("Choose Base Folder…") { state.presentBaseFolderPanel() }
                     .keyboardShortcut("b", modifiers: [.command, .shift])
-                    .disabled(state.files.isEmpty)
             }
+            // Deliberately no `.disabled(...)` anywhere in these menus. A disabled item
+            // swallows its keyboard shortcut, and the predicates do not re-evaluate
+            // reliably inside `commands` — measured: with a document open, every guarded
+            // item stayed disabled while unguarded ones worked. Each action guards itself
+            // instead, so the shortcut always fires and the app decides what it means.
             CommandGroup(after: .textEditing) {
-                Button("Find in File") {
-                    state.isFindPresented = true
-                }
-                .keyboardShortcut("f", modifiers: .command)
-                .disabled(state.loadedFile == nil)
+                Button("Find in Document") { state.presentFind() }
+                    .keyboardShortcut("f", modifiers: .command)
 
                 Button("Find Next") { state.advanceMatch(by: 1) }
                     .keyboardShortcut("g", modifiers: .command)
-                    .disabled(state.matches.isEmpty)
 
                 Button("Find Previous") { state.advanceMatch(by: -1) }
                     .keyboardShortcut("g", modifiers: [.command, .shift])
-                    .disabled(state.matches.isEmpty)
+
+                Button("Hide Find Bar") { state.dismissFind() }
+                    .keyboardShortcut(.escape, modifiers: [])
             }
-            CommandMenu("View") {
+            CommandMenu("Document") {
                 Button("Next Tab") { state.selectAdjacentTab(offset: 1) }
                     .keyboardShortcut("\t", modifiers: .control)
-                    .disabled(state.tabs.count < 2)
                 Button("Previous Tab") { state.selectAdjacentTab(offset: -1) }
                     .keyboardShortcut("\t", modifiers: [.control, .shift])
-                    .disabled(state.tabs.count < 2)
                 Divider()
                 Button("Rendered") { state.setReadingMode(.rendered) }
                     .keyboardShortcut("1", modifiers: .command)
-                    .disabled(state.textDocument?.isMarkdown != true)
                 Button("Source") { state.setReadingMode(.source) }
                     .keyboardShortcut("2", modifiers: .command)
-                    .disabled(state.textDocument?.isMarkdown != true)
                 Divider()
                 Button("Next File") { state.selectAdjacentFile(offset: 1) }
                     .keyboardShortcut("]", modifiers: .command)
-                    .disabled(state.files.count < 2)
                 Button("Previous File") { state.selectAdjacentFile(offset: -1) }
                     .keyboardShortcut("[", modifiers: .command)
-                    .disabled(state.files.count < 2)
                 Divider()
                 Button(state.wrapLines ? "Scroll Long Lines" : "Wrap Long Lines") {
                     state.wrapLines.toggle()
@@ -99,6 +92,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // `build.sh --set-default` runs the app with this flag: Launch Services'
         // modern API only works from inside a registered app bundle, so the install
         // step borrows the app for a moment and then quits.
+        if MenuDiagnostics.runIfRequested() { return }
+
         guard CommandLine.arguments.contains(FileAssociation.setDefaultFlag) else { return }
         FileAssociation.setAsDefaultHandler(logging: true) { succeeded in
             exit(succeeded ? 0 : 1)

@@ -45,6 +45,8 @@ final class AppState {
     var isFindPresented = false
     var searchQuery = ""
     var searchCaseSensitive = false
+    /// Bumped by ⌘F so the find field takes focus even when the bar is already showing.
+    private(set) var findFocusRequest = 0
 
     /// Used only when nothing is open, so views never deal with an optional renderer.
     @ObservationIgnored private let fallbackRenderer = LineRenderer()
@@ -272,7 +274,7 @@ final class AppState {
     }
 
     func presentBaseFolderPanel() {
-        guard let tab = active else { return }
+        guard let tab = active, tab.content == .diff else { return }
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
@@ -376,6 +378,36 @@ final class AppState {
     }
 
     // MARK: - Search
+
+    /// Whether there is anything for ⌘F to search.
+    ///
+    /// Deliberately a question about what is *open*, not about what has finished
+    /// loading. Asking `loadedFile` — which only ever holds a diff — disabled ⌘F for
+    /// every Markdown document, and asking about load state would disable it for the
+    /// seconds a large diff takes to prepare.
+    var canFind: Bool {
+        guard let tab = active else { return false }
+        return tab.content != .none
+    }
+
+    /// Whether ⌘G has somewhere to go. The rendered page counts its own matches in
+    /// JavaScript, so `matches` stays empty there.
+    var canStepMatches: Bool {
+        !matches.isEmpty || renderedMatchCount > 0
+    }
+
+    /// Shows the find bar and puts the caret in it, whether or not it was already open.
+    func presentFind() {
+        guard canFind else { return }
+        isFindPresented = true
+        findFocusRequest += 1
+    }
+
+    func dismissFind() {
+        isFindPresented = false
+        searchQuery = ""
+        recomputeMatches()
+    }
 
     /// True when ⌘F should be handled by JavaScript inside the rendered page.
     var searchesRenderedPage: Bool {

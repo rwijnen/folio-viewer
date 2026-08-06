@@ -163,12 +163,12 @@ struct ContentView: View {
             }
 
             Button {
-                state.isFindPresented.toggle()
+                if state.isFindPresented { state.dismissFind() } else { state.presentFind() }
             } label: {
                 Image(systemName: "magnifyingglass")
             }
-            .help("Find in file (⌘F)")
-            .disabled(state.loadedFile == nil && state.textDocument == nil)
+            .help("Find in this document (⌘F)")
+            .disabled(!state.canFind)
         }
     }
 

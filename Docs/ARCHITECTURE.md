@@ -33,7 +33,7 @@ flowchart TD
 ```
 
 Everything above the view layer is a pure function of its inputs, which is why nearly all
-of the 118 tests live there and none of them need a window.
+of the 129 tests live there and none of them need a window.
 
 ## Decisions worth knowing about
 

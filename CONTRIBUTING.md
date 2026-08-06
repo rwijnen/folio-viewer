@@ -36,7 +36,7 @@ in the project and adding a second needs a good argument.
 git clone https://github.com/rwijnen/folio-viewer.git
 cd folio-viewer
 swift build          # compile
-swift test           # 118 tests, ~5 seconds
+swift test           # 129 tests, ~5 seconds
 ./build.sh           # assemble build/Folio.app
 open -a build/Folio.app Samples/example.md
 ```
@@ -127,6 +127,16 @@ permission and captures fully rendered JavaScript, diagrams included. Grow the w
 to `document.body.scrollHeight` first to capture the whole page, and pump
 `RunLoop.current.run(mode:before:)` rather than blocking on a semaphore, because WebKit's
 callbacks arrive on the main queue.
+
+**Menus** — `Folio --dump-menu path/to/file.md` prints every menu item with its key
+equivalent and whether it is enabled. Menus are worth checking explicitly, because a
+disabled item silently swallows its keyboard shortcut: that is how ⌘F went missing for
+Markdown. Note the app needs a moment to activate first — dumping too early reports
+everything as disabled, which is a property of the diagnostic, not of the app.
+
+There is deliberately **no `.disabled(...)` in the `commands` block**. Those predicates
+were measured not to re-evaluate reliably, leaving shortcuts permanently dead; each menu
+action guards itself instead.
 
 `CGWindowListCopyWindowInfo` needs no permission either and is enough to check that a
 window exists with the right title and size. It reports more than one entry per window, so
