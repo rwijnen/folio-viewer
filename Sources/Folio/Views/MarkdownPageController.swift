@@ -12,7 +12,7 @@ import WebKit
 @MainActor
 final class MarkdownPageController: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
 
-    let webView: WKWebView
+    let webView: FolioWebView
     private weak var tab: DocumentTab?
     private weak var state: AppState?
 
@@ -31,7 +31,7 @@ final class MarkdownPageController: NSObject, WKNavigationDelegate, WKScriptMess
 
         let configuration = WKWebViewConfiguration()
         configuration.defaultWebpagePreferences.allowsContentJavaScript = true
-        webView = WKWebView(frame: .zero, configuration: configuration)
+        webView = FolioWebView(frame: .zero, configuration: configuration)
         super.init()
 
         configuration.userContentController.add(self, name: "folio")
@@ -39,10 +39,17 @@ final class MarkdownPageController: NSObject, WKNavigationDelegate, WKScriptMess
         webView.setValue(false, forKey: "drawsBackground")
         webView.allowsMagnification = true
         webView.allowsBackForwardNavigationGestures = false
+        // Right-clicking the page offers Folio's reload, which re-reads the file, rather
+        // than WebKit's, which would re-render the same HTML string.
+        webView.onReloadFromDisk = { [weak self] in
+            guard let self, let tab = self.tab else { return }
+            self.state?.reloadTextDocument(for: tab.id)
+        }
     }
 
     /// Breaks the web view ↔ handler retain cycle before the controller is dropped.
     func teardown() {
+        webView.onReloadFromDisk = nil
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "folio")
         webView.navigationDelegate = nil
         webView.removeFromSuperview()

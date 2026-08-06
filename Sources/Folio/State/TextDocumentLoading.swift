@@ -81,9 +81,11 @@ extension AppState {
         return tab
     }
 
-    /// Re-reads the active document from disk, keeping its place in the tab bar.
-    func reloadTextDocument() {
-        guard let tab = active, let document = tab.textDocument else { return }
+    /// Re-reads a document from disk, keeping its place in the tab bar and its scroll
+    /// position. Defaults to the visible document.
+    func reloadTextDocument(for tabID: UUID? = nil) {
+        let target = tabID.flatMap { id in tabs.first { $0.id == id } } ?? active
+        guard let tab = target, let document = tab.textDocument else { return }
         do {
             let fresh = try Self.makeTextTab(at: document.url, asMarkdown: document.isMarkdown)
             tab.textDocument = fresh.textDocument

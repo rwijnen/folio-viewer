@@ -96,7 +96,7 @@ expand a collapsed fold to reveal a hit.
 | ⌘W | Close tab | ⌘] / ⌘[ | Next / previous file in a diff |
 | ⌃⇥ / ⌃⇧⇥ | Next / previous tab | ⇧⌘B | Choose a diff's base folder |
 | ⌘1 / ⌘2 | Rendered / source | ⇧⌘L | Wrap or scroll long lines |
-| ⌘R | Reload from disk | ⇧⌘E / ⇧⌘K | Expand / collapse all context |
+| ⌘R | Reload from disk (right-click also offers it) | ⇧⌘E / ⇧⌘K | Expand / collapse all context |
 
 ## Why it is safe to point at a file someone sent you
 
@@ -139,7 +139,7 @@ renderer supports.
 
 No package manager, no framework, one vendored dependency. `swift build` and a shell
 script that assembles the bundle and draws the icon with Core Graphics — the whole thing
-compiles with the Command Line Tools alone. 109 tests run in about five seconds.
+compiles with the Command Line Tools alone. 118 tests run in about five seconds.
 
 Contributions are welcome; please read [CONTRIBUTING.md](CONTRIBUTING.md) first, since
 Folio's read-only, offline, non-executing constraints are deliberate.

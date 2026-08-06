@@ -6,7 +6,17 @@ All notable changes to Folio are recorded here. The format follows
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+
+- Right-clicking a rendered Markdown document and choosing **Reload** did nothing
+  visible. The page is an HTML string Folio hands to WebKit, so WebKit's own Reload
+  re-rendered the same bytes rather than re-reading the file. The context menu now offers
+  **Reload from Disk**, and any reload asked of the web view is redirected to re-read the
+  file — including the reload WebKit itself might still put there on a future macOS.
+  Reloading keeps the reader's scroll position.
+- The rendered page's context menu no longer offers Back, Forward, or any of WebKit's
+  download items. There is nothing to navigate, and a viewer that never writes to disk
+  should not offer to download.
 
 ## [1.0.0] — 2026-08-05
 
