@@ -32,7 +32,7 @@ merged:
 3. **It does not execute what it renders.** Markdown is escaped except for a whitelist of
    attribute-free formatting tags, and the rendered page runs under a strict CSP.
 
-Beyond that: it favours being *correct about diffs* over being feature-rich, and it
+Beyond that: it favours being *correct about diffs* over being feature-rich, and itÓ
 prefers native Swift over adding dependencies. There is exactly one third-party component
 in the project and adding a second needs a good argument.
 

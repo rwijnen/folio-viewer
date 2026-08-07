@@ -6,6 +6,21 @@ All notable changes to Folio are recorded here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- **The git pill now says whether the file needs committing.** A small coloured dot told
+  you something was different without saying what, so you had to open the menu to find
+  out. It now reads `main · +12 −3` for a file edited since the last commit, `unsaved`
+  for edits still in the editor, `new file`, or `conflict`, and takes a colour to match.
+  A file with nothing outstanding stays quiet.
+
+- **Commit is no longer offered when there is nothing to commit.** The menu item was
+  always live, the sheet opened on a clean file, and its Commit button would run a commit
+  that git then rejected. Three places decided availability for themselves and disagreed;
+  they now share one answer. ⌥⌘C, which cannot be disabled without losing its shortcut,
+  says why instead of opening a sheet that could only fail. Push does the same when the
+  branch has nothing to send.
+
 ### Added
 
 - **A document's history, in the split diff view.** The sidebar switches between Outline

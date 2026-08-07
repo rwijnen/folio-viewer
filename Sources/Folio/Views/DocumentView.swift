@@ -114,9 +114,10 @@ struct DocumentView: View {
                 }
                 if tab.git != nil {
                     Button("Commit…") { appState.presentCommitSheet() }
+                        .disabled(!appState.canCommit(tab))
                     if let upstream = tab.git?.upstream {
                         Button("Push to \(upstream)") { appState.pushActiveDocument() }
-                            .disabled(!appState.canPushActiveDocument)
+                            .disabled(!appState.canPush(tab))
                     }
                     Divider()
                 }

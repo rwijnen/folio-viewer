@@ -27,6 +27,10 @@ struct GitSnapshot: Equatable, Sendable {
     /// Commits we have that the upstream does not — what a push would send.
     var ahead = 0
     var fileState: FileState = .committed
+    /// Lines this file has gained and lost against `HEAD`. Both zero unless the file is
+    /// modified — a count is the clearest way to say "there is something here to commit".
+    var addedLines = 0
+    var removedLines = 0
     /// Whether `user.name` and `user.email` are both set. Git will invent an identity
     /// from the hostname rather than refuse, and a commit authored by
     /// `robin@Robins-MacBook.local` is a nuisance to fix afterwards.
@@ -68,6 +72,31 @@ struct GitSnapshot: Equatable, Sendable {
         if ahead > 0 { text += " ↑\(ahead)" }
         if behind > 0 { text += " ↓\(behind)" }
         return text
+    }
+
+    /// What this file needs, in as few characters as will still be unambiguous. nil when
+    /// it needs nothing, so a document with no work outstanding shows a quiet pill.
+    ///
+    /// A dot alone was not enough: it says *something* is different without saying what,
+    /// and the reader still had to open the menu to find out whether there was anything
+    /// to commit.
+    var changeLabel: String? {
+        switch fileState {
+        case .committed:
+            return nil
+        case .modified:
+            guard addedLines > 0 || removedLines > 0 else { return "changed" }
+            var parts: [String] = []
+            if addedLines > 0 { parts.append("+\(addedLines)") }
+            if removedLines > 0 { parts.append("−\(removedLines)") }
+            return parts.joined(separator: " ")
+        case .untracked:
+            return "new file"
+        case .ignored:
+            return "ignored"
+        case .conflicted:
+            return "conflict"
+        }
     }
 }
 
@@ -117,6 +146,9 @@ enum GitRepository {
         }
 
         snapshot.fileState = await fileState(of: fileURL, using: git)
+        if snapshot.fileState == .modified {
+            (snapshot.addedLines, snapshot.removedLines) = await lineCounts(of: fileURL, using: git)
+        }
         snapshot.hasIdentity = await hasIdentity(using: git)
         return snapshot
     }
@@ -139,6 +171,19 @@ enum GitRepository {
         // Either side being `U`, or both sides being the same letter, is a conflict.
         if code.contains("U") || code == "AA" || code == "DD" { return .conflicted }
         return .modified
+    }
+
+    /// How many lines the file has gained and lost against `HEAD`.
+    ///
+    /// Against `HEAD` rather than the index, so it counts everything a commit would
+    /// record whether or not the reader has staged some of it in a terminal.
+    static func lineCounts(of fileURL: URL, using git: Git) async -> (added: Int, removed: Int) {
+        let result = await git.run(["diff", "--numstat", "HEAD", "--", fileURL.path])
+        guard result.succeeded else { return (0, 0) }
+        // `added<TAB>removed<TAB>path`, with `-` for both on a binary file.
+        let fields = result.trimmed.split(separator: "\t")
+        guard fields.count >= 2 else { return (0, 0) }
+        return (Int(fields[0]) ?? 0, Int(fields[1]) ?? 0)
     }
 
     /// Whether git has a name and an address to sign a commit with.
