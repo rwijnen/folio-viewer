@@ -218,6 +218,30 @@ Two details:
 A commit is shown in place of the document rather than in a new tab, so the list stays
 beside it and stepping back through a file's past is one click per step.
 
+### The repository-wide view reads its left side from git
+
+Folio's diff pipeline reads the "original" from a file on disk. For a diff of the working
+tree that is exactly backwards: on disk is the *changed* version. The existing fallback
+would still get there — it reverses the patch to recover the original — but it would label
+every file "reconstructed", which is true of a patch someone emailed you and misleading
+here, where the committed text is a `git show` away.
+
+So `FileEntry` grew an optional `committedOriginal`, and when it is set the left side is
+read from the repository instead. That also let the whole path collapse onto the one
+history already uses: a diff plus the content it was made against is `GitHistory.Change`,
+which `DiffPreparation` already knows how to prepare.
+
+Two details about collecting the diff. `git diff HEAD` covers staged and unstaged work
+together, which is right because a commit would record both — but it says nothing about a
+file git has never seen, and a new file is exactly what an assistant run leaves behind.
+Those are diffed individually with `--no-index` against `/dev/null`, which produces a
+proper "new file" diff without `git add -N`; the intent-to-add would write to the index,
+and this view reads. `--untracked-files=all` matters too: without it git reports a new
+folder as one entry, which cannot be diffed.
+
+The tab holds no document — its `url` is the repository root — so it is marked ephemeral
+and left out of the saved session, since there would be nothing to reopen it from.
+
 ### The outline is a tree, inferred not declared
 
 `OutlineLayout` nests headings by their level *relative to their neighbours*, not by the

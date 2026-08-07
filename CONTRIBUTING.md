@@ -42,7 +42,7 @@ in the project and adding a second needs a good argument.
 git clone https://github.com/rwijnen/folio-viewer.git
 cd folio-viewer
 swift build          # compile
-swift test           # 307 tests, ~15 seconds
+swift test           # 319 tests, ~15 seconds
 ./build.sh           # assemble build/Folio.app
 open -a build/Folio.app Samples/example.md
 ```
@@ -66,6 +66,7 @@ Sources/Folio/
     Git                     runs `git` as a subprocess: environment, pipes, timeouts
     GitRepository           the handful of git commands Folio needs, as typed calls
     GitHistory              reading the log, and one commit's change to one file
+    GitWorkingTree          everything uncommitted in a repository, as one diff
     LineDiff                the only diff Folio computes rather than reads
     FileWatcher             tells you when something else writes an open file
     PathResolver            works out which folder a diff's paths belong to

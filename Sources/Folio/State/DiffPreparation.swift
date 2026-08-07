@@ -102,6 +102,19 @@ enum DiffPreparation {
     }
 
     static func prepare(entry: FileEntry) async -> FileLoadState {
+        // A diff of the working tree against a commit: the committed side comes from git,
+        // so none of the reconstruction below is needed. It is the same shape as a commit
+        // out of the history, and goes through the same path.
+        if let source = entry.committedOriginal {
+            let committed = await source.git.run(
+                ["show", "\(source.revision):\(source.path)"])
+            let isNew = !committed.succeeded || entry.diff.kind == .added
+            return await prepare(change: GitHistory.Change(
+                diff: entry.diff,
+                parentLines: isNew ? [] : TextNormalizer.splitLines(committed.output),
+                isNew: isNew))
+        }
+
         let file = entry.diff
         let path = file.displayPath
         let spec = LanguageCatalog.spec(forPath: path)

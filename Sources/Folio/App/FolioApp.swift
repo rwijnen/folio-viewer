@@ -59,6 +59,8 @@ struct FolioApp: App {
             CommandMenu("Repository") {
                 Button("Uncommitted Changes…") { state.showWorkingChanges() }
                     .keyboardShortcut("d", modifiers: [.command, .option])
+                Button("All Uncommitted Changes…") { state.showRepositoryChanges() }
+                    .keyboardShortcut("u", modifiers: [.command, .option])
                 Divider()
                 Button("Commit…") { state.presentCommitSheet() }
                     .keyboardShortcut("c", modifiers: [.command, .option])

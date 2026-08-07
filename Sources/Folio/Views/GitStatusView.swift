@@ -15,6 +15,7 @@ struct GitStatusPill: View {
             Menu {
                 Button("Uncommitted Changes…") { state.showWorkingChanges(for: tab) }
                     .disabled(!state.hasWorkingChanges(tab))
+                Button("All Uncommitted Changes…") { state.showRepositoryChanges() }
                 Divider()
                 Button("Commit…") { state.presentCommitSheet() }
                     .disabled(!state.canCommit(tab))

@@ -23,6 +23,13 @@ All notable changes to Folio are recorded here. The format follows
 
 ### Added
 
+- **See a whole repository's uncommitted changes at once.** ⌥⌘U, or *All Uncommitted
+  Changes…*, opens everything not yet committed as an ordinary diff tab: every changed
+  file in the sidebar, each one side by side against the last commit. Staged and unstaged
+  work are both included, because a commit would record both, and files git has never seen
+  appear as wholly added — without being staged, since this view only reads. Ignored files
+  are left out, and asking again refreshes the tab rather than opening another.
+
 - **See what is not yet committed.** ⌥⌘D, or *Uncommitted Changes…* in the Repository
   menu, puts the last commit on the left and what you have now on the right, in the same
   split view. Unsaved edits are included and the header says so, because committing saves
@@ -36,8 +43,6 @@ All notable changes to Folio are recorded here. The format follows
   side. Folio's own saves do not trip it, and neither does `touch` or a tool rewriting
   identical bytes — the text is compared, not the timestamp. Automatic reloading can be
   turned off under Document.
-
-### Added
 
 - **The history list says who wrote each commit.** A commit carrying a `Co-Authored-By`
   trailer — the one Claude Code and similar tools add — is badged with the co-author's
