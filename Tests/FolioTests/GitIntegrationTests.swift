@@ -180,6 +180,40 @@ struct GitIntegrationTests {
         #expect(workspace.state.commitMessage == "Update note.md")
     }
 
+    /// The reported bug: the sheet opened, and its Commit button was live, on a file
+    /// with nothing to commit — so pressing it produced an error from git.
+    @Test func theCommitSheetWillNotOpenWithNothingToCommit() async throws {
+        let workspace = try Workspace()
+        try await workspace.initialise()
+        let file = try workspace.write("note.md", "# One\n")
+        try await workspace.commitAll("First")
+
+        let tab = try await workspace.open(file)
+        #expect(!workspace.state.canCommit(tab))
+
+        workspace.state.presentCommitSheet()
+        #expect(!workspace.state.isCommitSheetPresented)
+        #expect(workspace.state.statusMessage == "No changes to commit.")
+
+        // And once there is something, it opens.
+        workspace.state.updateDraft("# Edited\n", for: tab)
+        workspace.state.presentCommitSheet()
+        #expect(workspace.state.isCommitSheetPresented)
+    }
+
+    @Test func pushingWithNothingToSendSaysSoRatherThanRunningGit() async throws {
+        let workspace = try Workspace()
+        try await workspace.initialise()
+        let file = try workspace.write("note.md", "# One\n")
+        try await workspace.commitAll("First")
+
+        let tab = try await workspace.open(file)
+        #expect(!workspace.state.canPush(tab))
+        workspace.state.pushActiveDocument()
+        #expect(workspace.state.statusMessage?.contains("no remote") == true)
+        #expect(workspace.state.errorMessage == nil)
+    }
+
     @Test func theSuggestedMessageMatchesWhatWillHappen() async throws {
         let workspace = try Workspace()
         try await workspace.initialise()
@@ -253,19 +287,51 @@ struct GitCommitFromAppTests {
         #expect(tab.isDirty)
     }
 
-    @Test func aFailedCommitIsReportedAndChangesNothing() async throws {
+    /// Refused before git is asked, because Folio can tell this cannot work.
+    @Test func aCommitWithNoIdentityIsRefusedWithoutRunningGit() async throws {
         let workspace = try Workspace()
         try await workspace.initialise(identity: false)
-        try await workspace.git.require(["config", "user.useConfigOnly", "true"])
         let file = try workspace.write("note.md", "# One\n")
 
         let tab = try await workspace.open(file)
+        #expect(!workspace.state.canCommit(tab))
         let committed = await workspace.state.commit(tab, message: "No identity",
                                                      thenPush: false, confirmingOverwrite: never)
         #expect(!committed)
-        #expect(workspace.state.errorMessage?.contains("note.md") == true)
+        // `log` cannot be asked on a branch with no commits, so count instead.
+        #expect(try await workspace.git.require(["rev-list", "--count", "--all"]) == "0")
         #expect(tab.gitActivity == nil)
     }
+
+    /// And when git refuses for a reason Folio could not have predicted — here a
+    /// `pre-commit` hook — what git said is what the reader is shown.
+    @Test func aFailureGitOnlyFindsAtCommitTimeIsReported() async throws {
+        let workspace = try Workspace()
+        try await workspace.initialise()
+        let file = try workspace.write("note.md", "# One\n")
+        try await workspace.commitAll("First")
+
+        let hook = workspace.folder.appendingPathComponent(".git/hooks/pre-commit")
+        try "#!/bin/sh\necho 'the hook says no' >&2\nexit 1\n"
+            .write(to: hook, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755],
+                                              ofItemAtPath: hook.path)
+
+        // Opened after the hook is in place, and waited for, so git status is known.
+        let tab = try await workspace.open(file)
+        workspace.state.updateDraft("# Edited\n", for: tab)
+        #expect(workspace.state.canCommit(tab))
+
+        let committed = await workspace.state.commit(tab, message: "Blocked by a hook",
+                                                     thenPush: false, confirmingOverwrite: never)
+        #expect(!committed)
+        let reported = try #require(workspace.state.errorMessage)
+        #expect(reported.contains("note.md"))
+        #expect(reported.contains("the hook says no"))
+        #expect(try await workspace.log() == ["First"])
+        #expect(tab.gitActivity == nil)
+    }
+
 
     @Test func committingLeavesOtherWorkAlone() async throws {
         let workspace = try Workspace()

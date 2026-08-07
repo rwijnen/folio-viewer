@@ -99,9 +99,11 @@ someone else's work. **Diffs and other text files stay read-only.**
 
 ### Git
 
-A Markdown document that lives in a git repository gets a pill in the header: the branch,
-`↑`/`↓` for commits to push and pull, and a coloured dot when the file has changes. Behind
-it are the only two things Folio will do to your repository.
+A Markdown document that lives in a git repository gets a pill in the header. When there
+is nothing to do it is quiet — just `main`, and `↑`/`↓` for commits to push and pull. When
+there is, it says so in words and takes a colour: `main · +12 −3` for a file edited since
+the last commit, `unsaved` for edits still in the editor, `new file`, or `conflict`.
+Behind it are the only two things Folio will do to your repository.
 
 **Commit** opens a sheet with a message field. Unsaved edits are saved first — git records
 what is on disk, so committing without saving would quietly store the wrong version — and
@@ -199,7 +201,7 @@ renderer supports.
 
 No package manager, no framework, one vendored dependency. `swift build` and a shell
 script that assembles the bundle and draws the icon with Core Graphics — the whole thing
-compiles with the Command Line Tools alone. 231 tests run in about fifteen seconds.
+compiles with the Command Line Tools alone. 238 tests run in about fifteen seconds.
 
 Contributions are welcome; please read [CONTRIBUTING.md](CONTRIBUTING.md) first, since
 Folio's narrow-writing, offline, non-executing constraints are deliberate.
@@ -216,7 +218,7 @@ what was wrong with it. Every commit carries a `Co-Authored-By: Claude` trailer,
 This is stated plainly because you should know what you are reading before you trust it.
 It does not lower the bar the code has to clear:
 
-- The 231 tests are real tests over real fixtures, and CI runs them on every push.
+- The 238 tests are real tests over real fixtures, and CI runs them on every push.
 - The three rules above — writes only where you ask, online only on Push, never executes
   what it renders — are the ones under test, not just claims in a README. The git tests
   build throwaway repositories and push between them on disk, so the narrowness is
