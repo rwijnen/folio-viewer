@@ -229,6 +229,48 @@ struct GitSnapshotTests {
         #expect(snapshot.blockedReason == nil)
     }
 
+    @Test func aModifiedFileReportsHowMuchChanged() async throws {
+        let sandbox = try Sandbox()
+        let repo = try await sandbox.repository("work")
+        let file = try repo.write("note.md", "one\ntwo\nthree\nfour\n")
+        try await repo.commitAll("First")
+        // Two lines gone, three arrived.
+        try repo.write("note.md", "one\nalpha\nbeta\ngamma\n")
+
+        let snapshot = try #require(await GitRepository.snapshot(for: file, using: repo.git))
+        #expect(snapshot.fileState == .modified)
+        #expect(snapshot.addedLines == 3)
+        #expect(snapshot.removedLines == 3)
+        #expect(snapshot.changeLabel == "+3 −3")
+    }
+
+    @Test func countsCoverWhatIsStagedAsWellAsWhatIsNot() async throws {
+        let sandbox = try Sandbox()
+        let repo = try await sandbox.repository("work")
+        let file = try repo.write("note.md", "one\n")
+        try await repo.commitAll("First")
+        try repo.write("note.md", "one\ntwo\n")
+        try await repo.git.require(["add", "--", "note.md"])
+        try repo.write("note.md", "one\ntwo\nthree\n")
+
+        // A commit would record both lines, so the pill has to count both.
+        let snapshot = try #require(await GitRepository.snapshot(for: file, using: repo.git))
+        #expect(snapshot.addedLines == 2)
+        #expect(snapshot.removedLines == 0)
+    }
+
+    @Test func aCleanFileHasNothingToReport() async throws {
+        let sandbox = try Sandbox()
+        let repo = try await sandbox.repository("work")
+        let file = try repo.write("note.md", "one\n")
+        try await repo.commitAll("First")
+
+        let snapshot = try #require(await GitRepository.snapshot(for: file, using: repo.git))
+        #expect(snapshot.addedLines == 0)
+        #expect(snapshot.removedLines == 0)
+        #expect(snapshot.changeLabel == nil)
+    }
+
     @Test func aNewFileIsUntrackedAndStillCommittable() async throws {
         let sandbox = try Sandbox()
         let repo = try await sandbox.repository("work")
@@ -558,20 +600,43 @@ struct GitStatusLabelTests {
 
     private func snapshot(_ state: GitSnapshot.FileState,
                           branch: String? = "main",
-                          ahead: Int = 0, behind: Int = 0) -> GitSnapshot {
+                          ahead: Int = 0, behind: Int = 0,
+                          added: Int = 0, removed: Int = 0) -> GitSnapshot {
         GitSnapshot(root: URL(fileURLWithPath: "/tmp/notes", isDirectory: true),
                     branch: branch, upstream: "origin/main", behind: behind, ahead: ahead,
-                    fileState: state, hasIdentity: true)
+                    fileState: state, addedLines: added, removedLines: removed,
+                    hasIdentity: true)
     }
 
-    /// A header with nothing to say should say nothing: the dot is the signal that
-    /// something needs doing, so a committed file must not have one.
-    @Test func onlyAFileNeedingAttentionGetsADot() {
-        #expect(GitStatusLabel.stateColour(.committed) == nil)
-        #expect(GitStatusLabel.stateColour(.modified) != nil)
-        #expect(GitStatusLabel.stateColour(.untracked) != nil)
-        #expect(GitStatusLabel.stateColour(.ignored) != nil)
-        #expect(GitStatusLabel.stateColour(.conflicted) != nil)
+    /// A header with nothing to say should say nothing, and a header with something to
+    /// say should say it in words — a coloured dot alone left the reader opening the
+    /// menu to find out whether there was anything to commit.
+    @Test func thePillSaysWhatTheFileNeeds() {
+        #expect(GitStatusLabel.label(for: snapshot(.committed), hasUnsavedEdits: false) == nil)
+        #expect(GitStatusLabel.tint(for: snapshot(.committed), hasUnsavedEdits: false) == nil)
+
+        #expect(GitStatusLabel.label(for: snapshot(.modified, added: 12, removed: 3),
+                                     hasUnsavedEdits: false) == "+12 −3")
+        #expect(GitStatusLabel.label(for: snapshot(.modified, added: 4),
+                                     hasUnsavedEdits: false) == "+4")
+        #expect(GitStatusLabel.label(for: snapshot(.modified, removed: 7),
+                                     hasUnsavedEdits: false) == "−7")
+        // Counts can be unavailable; the file is still visibly changed.
+        #expect(GitStatusLabel.label(for: snapshot(.modified), hasUnsavedEdits: false) == "changed")
+
+        #expect(GitStatusLabel.label(for: snapshot(.untracked), hasUnsavedEdits: false) == "new file")
+        #expect(GitStatusLabel.label(for: snapshot(.conflicted), hasUnsavedEdits: false) == "conflict")
+        #expect(GitStatusLabel.label(for: snapshot(.ignored), hasUnsavedEdits: false) == "ignored")
+    }
+
+    /// Git cannot see what is still in the editor, so the pill has to.
+    @Test func unsavedEditsAreNeverReportedAsNoChanges() {
+        #expect(GitStatusLabel.label(for: snapshot(.committed), hasUnsavedEdits: true) == "unsaved")
+        #expect(GitStatusLabel.tint(for: snapshot(.committed), hasUnsavedEdits: true) != nil)
+        #expect(GitStatusLabel.label(for: snapshot(.modified, added: 2), hasUnsavedEdits: true)
+                == "+2, unsaved")
+        // A conflict is the more urgent thing to say, whatever is in the editor.
+        #expect(GitStatusLabel.tint(for: snapshot(.conflicted), hasUnsavedEdits: true) == .red)
     }
 
     @Test func theSummaryShowsOnlyTheDriftThatExists() {

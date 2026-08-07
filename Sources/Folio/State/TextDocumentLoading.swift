@@ -42,6 +42,7 @@ extension AppState {
         do {
             let tab = try Self.makeTextTab(at: url, asMarkdown: asMarkdown)
             adopt(tab)
+            startWatching(tab)
             if !searchQuery.isEmpty { recomputeMatches() }
         } catch {
             errorMessage = "Could not read \(url.lastPathComponent): \(error.localizedDescription)"
@@ -119,6 +120,8 @@ extension AppState {
             tab.renderedMatchIndex = -1
             tab.draftText = nil
             tab.editorVersion += 1
+            // Whatever the file said a moment ago, this tab now holds what it says.
+            tab.externalChange = nil
             if !searchQuery.isEmpty { recomputeMatches() }
             refreshGitStatus(for: tab)
             statusMessage = "Reloaded \(document.name)."

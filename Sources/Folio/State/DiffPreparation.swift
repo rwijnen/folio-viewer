@@ -6,6 +6,46 @@ import Foundation
 /// expensive part of opening a diff.
 enum DiffPreparation {
 
+    /// Two versions of a text Folio is holding itself, rather than a diff it was given.
+    ///
+    /// This is the only path that has to *compute* the difference, because neither side
+    /// came from a patch: `mine` is what the tab is showing and `theirs` is what is on
+    /// disk. Everything after the comparison is the ordinary pipeline.
+    struct Comparison {
+        var state: FileLoadState
+        /// The synthesised entry the split view puts in its header.
+        var diff: FileDiff
+    }
+
+    static func prepare(comparing mine: [String], with theirs: [String],
+                        named name: String) async -> Comparison {
+        let spec = LanguageCatalog.spec(forPath: name)
+        return await Task.detached(priority: .userInitiated) { () -> Comparison in
+            let result = LineDiff.compare(original: mine, updated: theirs)
+            let diff = FileDiff(rawOldPath: name, rawNewPath: name,
+                                kind: .modified, hunks: result.applied.map(\.hunk))
+            let document = SideBySideBuilder.build(applied: result.applied,
+                                                   originalRaw: mine,
+                                                   patchedRaw: theirs,
+                                                   warnings: [])
+            let loaded = LoadedFile(
+                document: document,
+                leftSpans: SyntaxHighlighter.highlight(lines: document.leftLines, spec: spec),
+                rightSpans: SyntaxHighlighter.highlight(lines: document.rightLines, spec: spec),
+                languageName: spec.name,
+                originalURL: nil,
+                degradedReason: nil,
+                notice: result.isCoarse
+                    // Said rather than hidden: at this size the alignment is coarse, and
+                    // a reader comparing two versions should know the pairing is not
+                    // line by line.
+                    ? "The two versions are too different to line up, so the whole file "
+                      + "is shown as replaced."
+                    : nil)
+            return Comparison(state: .loaded(loaded), diff: diff)
+        }.value
+    }
+
     /// The same work for a commit out of a file's history.
     ///
     /// Shorter than the path above because git removes every reason it is long: the

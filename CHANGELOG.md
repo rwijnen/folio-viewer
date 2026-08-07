@@ -6,6 +6,37 @@ All notable changes to Folio are recorded here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- **The git pill now says whether the file needs committing.** A small coloured dot told
+  you something was different without saying what, so you had to open the menu to find
+  out. It now reads `main · +12 −3` for a file edited since the last commit, `unsaved`
+  for edits still in the editor, `new file`, or `conflict`, and takes a colour to match.
+  A file with nothing outstanding stays quiet.
+
+- **Commit is no longer offered when there is nothing to commit.** The menu item was
+  always live, the sheet opened on a clean file, and its Commit button would run a commit
+  that git then rejected. Three places decided availability for themselves and disagreed;
+  they now share one answer. ⌥⌘C, which cannot be disabled without losing its shortcut,
+  says why instead of opening a sheet that could only fail. Push does the same when the
+  branch has nothing to send.
+
+### Added
+
+- **See what is not yet committed.** ⌥⌘D, or *Uncommitted Changes…* in the Repository
+  menu, puts the last commit on the left and what you have now on the right, in the same
+  split view. Unsaved edits are included and the header says so, because committing saves
+  first — what you see is what the commit would record. An untracked file, or one in a
+  repository with no commits yet, shows as wholly new.
+
+- **Folio notices when something else writes a file you have open.** A model, a script or
+  another editor changing a document no longer leaves you reading stale text. With no
+  unsaved edits of your own it reloads and keeps your place; with unsaved edits it touches
+  nothing and offers **See What Changed**, putting your version and the file's side by
+  side. Folio's own saves do not trip it, and neither does `touch` or a tool rewriting
+  identical bytes — the text is compared, not the timestamp. Automatic reloading can be
+  turned off under Document.
+
 ### Added
 
 - **The history list says who wrote each commit.** A commit carrying a `Co-Authored-By`

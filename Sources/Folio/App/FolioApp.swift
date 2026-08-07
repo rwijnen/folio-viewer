@@ -57,6 +57,9 @@ struct FolioApp: App {
                     .keyboardShortcut(.escape, modifiers: [])
             }
             CommandMenu("Repository") {
+                Button("Uncommitted Changes…") { state.showWorkingChanges() }
+                    .keyboardShortcut("d", modifiers: [.command, .option])
+                Divider()
                 Button("Commit…") { state.presentCommitSheet() }
                     .keyboardShortcut("c", modifiers: [.command, .option])
                 Button("Push") { state.pushActiveDocument() }
@@ -86,6 +89,12 @@ struct FolioApp: App {
                     .keyboardShortcut("]", modifiers: .command)
                 Button("Previous File") { state.selectAdjacentFile(offset: -1) }
                     .keyboardShortcut("[", modifiers: .command)
+                Divider()
+                Button(state.reloadsChangedFilesAutomatically
+                       ? "Ask Before Reloading Changed Files"
+                       : "Reload Changed Files Automatically") {
+                    state.reloadsChangedFilesAutomatically.toggle()
+                }
                 Divider()
                 Button(state.wrapLines ? "Scroll Long Lines" : "Wrap Long Lines") {
                     state.wrapLines.toggle()

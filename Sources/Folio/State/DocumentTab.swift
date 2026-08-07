@@ -51,6 +51,26 @@ enum DocumentContent: Equatable {
     case source
 }
 
+/// What the detail pane is showing for a document.
+enum PaneContent: Equatable {
+    /// The document itself — rendered, source, or the editor.
+    case document
+    /// One commit out of its history, side by side.
+    case commit(GitCommitSummary)
+    /// What something else wrote to the file, against what this tab holds.
+    case externalChange
+    /// Everything not yet committed: the last commit against what you have now.
+    case workingChanges
+}
+
+/// Something else changed the file while it was open here.
+enum ExternalChange: Equatable {
+    /// The text now on disk, which differs from what this tab was built from.
+    case changed(String)
+    /// The file is no longer there.
+    case removed
+}
+
 /// What the document sidebar is listing.
 enum SidebarMode: String, CaseIterable, Identifiable {
     case outline
@@ -201,9 +221,19 @@ final class DocumentTab: Identifiable {
     /// The commits the list is actually showing.
     var visibleHistory: [GitCommitSummary] { history.filter(historyFilter.includes) }
     var historyState: HistoryState = .idle
-    /// The commit shown in place of the document, if any. Reading the past replaces the
-    /// pane rather than opening a tab, so the list stays beside it to move through.
-    var viewingCommit: GitCommitSummary?
+    /// What the detail pane is showing. A comparison replaces the document rather than
+    /// opening a tab, so the sidebar stays beside it to move through.
+    var pane: PaneContent = .document
+    /// The commit being shown, for the many places that only care about that case.
+    var viewingCommit: GitCommitSummary? {
+        if case let .commit(commit) = pane { return commit }
+        return nil
+    }
+    var isShowingComparison: Bool { pane != .document }
+
+    /// Set when something else wrote the file while this tab had it open.
+    var externalChange: ExternalChange?
+    @ObservationIgnored var watcher: FileWatcher?
     @ObservationIgnored var historyTask: Task<Void, Never>?
     @ObservationIgnored var commitTask: Task<Void, Never>?
 

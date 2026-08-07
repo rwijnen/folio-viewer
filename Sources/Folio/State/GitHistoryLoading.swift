@@ -59,7 +59,7 @@ extension AppState {
     func showCommit(_ commit: GitCommitSummary, for requested: DocumentTab? = nil) {
         guard let tab = requested ?? active else { return }
         tab.commitTask?.cancel()
-        tab.viewingCommit = commit
+        tab.pane = .commit(commit)
         tab.loadState = .loading
         // The diff pipeline finds its file through `files`/`selectedFileID`, the same way
         // an opened patch does; while a commit is showing, that is what the tab holds.
@@ -94,9 +94,9 @@ extension AppState {
 
     /// Back to the document itself.
     func closeCommit(for requested: DocumentTab? = nil) {
-        guard let tab = requested ?? active, tab.viewingCommit != nil else { return }
+        guard let tab = requested ?? active, tab.isShowingComparison else { return }
         tab.commitTask?.cancel()
-        tab.viewingCommit = nil
+        tab.pane = .document
         tab.loadState = .empty
         tab.files = []
         tab.selectedFileID = nil
@@ -124,5 +124,62 @@ extension AppState {
     func setHistoryFilter(_ filter: HistoryFilter, for requested: DocumentTab? = nil) {
         guard let tab = requested ?? active else { return }
         tab.historyFilter = filter
+    }
+}
+
+/// Seeing what is not yet committed.
+///
+/// The history browser answers "how did this file get here"; this answers the question
+/// immediately before a commit — "what am I about to record". The pill counts the lines,
+/// and until now there was nowhere to go and look at them.
+extension AppState {
+
+    /// Whether there is anything uncommitted worth showing.
+    ///
+    /// Unsaved edits count, because the comparison includes them: committing saves first,
+    /// so what this shows is exactly what a commit would record.
+    func hasWorkingChanges(_ tab: DocumentTab) -> Bool {
+        guard supportsVersionControl(tab), let snapshot = tab.git else { return false }
+        if tab.isDirty { return true }
+        return snapshot.fileState == .modified || snapshot.fileState == .untracked
+    }
+
+    /// Puts the last commit and the current text side by side.
+    func showWorkingChanges(for requested: DocumentTab? = nil) {
+        guard let tab = requested ?? active, tab.git != nil else { return }
+        guard hasWorkingChanges(tab) else {
+            statusMessage = "\(tab.name) has no uncommitted changes."
+            return
+        }
+
+        tab.commitTask?.cancel()
+        tab.pane = .workingChanges
+        tab.loadState = .loading
+        tab.files = []
+        tab.selectedFileID = nil
+        tab.expandedFolds = []
+        tab.matches = []
+        tab.currentMatchIndex = 0
+
+        // The draft, not the file: a commit saves first, so this is what would be
+        // recorded. An untracked file has no committed side at all.
+        let mine = TextNormalizer.splitLines(tab.currentText)
+        let url = tab.url
+        let name = tab.name
+        let git = Git(workingDirectory: url.deletingLastPathComponent(),
+                      environment: gitEnvironment)
+        let query = searchQuery
+
+        tab.commitTask = Task { [weak self, weak tab] in
+            let committed = await GitHistory.contentsAtHead(of: url, using: git)
+            let head = committed.map(TextNormalizer.splitLines) ?? []
+            let prepared = await DiffPreparation.prepare(comparing: head, with: mine, named: name)
+            guard !Task.isCancelled, let tab, tab.pane == .workingChanges else { return }
+            let entry = FileEntry(diff: prepared.diff, resolvedOriginal: nil)
+            tab.files = [entry]
+            tab.selectedFileID = entry.id
+            tab.loadState = prepared.state
+            if !query.isEmpty { self?.recomputeMatches() }
+        }
     }
 }

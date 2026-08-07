@@ -44,22 +44,24 @@ extension AppState {
 
     // MARK: - What the interface may offer
 
-    var canCommitActiveDocument: Bool {
-        guard let tab = active, supportsVersionControl(tab), tab.gitActivity == nil else {
-            return false
-        }
-        guard let snapshot = tab.git else { return false }
+    /// Whether Commit… should be offered for a document. Asked per tab rather than only
+    /// of the active one, so every menu and button in the interface answers it the same
+    /// way — three of them used to decide for themselves, and disagreed.
+    func canCommit(_ tab: DocumentTab) -> Bool {
+        guard supportsVersionControl(tab), tab.gitActivity == nil,
+              let snapshot = tab.git else { return false }
         // An unsaved edit is a change to commit even when the file on disk matches HEAD;
         // saving happens first and turns it into one.
         return snapshot.canCommit || (tab.isDirty && snapshot.commitIsPossible)
     }
 
-    var canPushActiveDocument: Bool {
-        guard let tab = active, supportsVersionControl(tab), tab.gitActivity == nil else {
-            return false
-        }
+    func canPush(_ tab: DocumentTab) -> Bool {
+        guard supportsVersionControl(tab), tab.gitActivity == nil else { return false }
         return tab.git?.canPush == true
     }
+
+    var canCommitActiveDocument: Bool { active.map(canCommit) ?? false }
+    var canPushActiveDocument: Bool { active.map(canPush) ?? false }
 
     // MARK: - The commit sheet
 
@@ -70,7 +72,15 @@ extension AppState {
     }
 
     func presentCommitSheet() {
-        guard let tab = active, supportsVersionControl(tab), tab.git != nil else { return }
+        guard let tab = active, supportsVersionControl(tab), let snapshot = tab.git else { return }
+        // The menu items are disabled in this state, but ⌥⌘C still fires — menu-bar
+        // shortcuts are deliberately never disabled here, because a disabled item
+        // swallows its key equivalent. So the action says why instead of opening a sheet
+        // whose only button would fail.
+        guard canCommit(tab) else {
+            statusMessage = snapshot.blockedReason ?? "Nothing to commit in \(tab.name)."
+            return
+        }
         refreshGitStatus(for: tab)
         if commitMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             commitMessage = suggestedCommitMessage(for: tab)
@@ -99,7 +109,7 @@ extension AppState {
                 thenPush: Bool,
                 confirmingOverwrite: @MainActor (String) -> Bool = AppState.askToOverwrite) async
         -> Bool {
-        guard supportsVersionControl(tab), tab.gitActivity == nil else { return false }
+        guard canCommit(tab) else { return false }
 
         // Git commits what is on disk. Committing while the editor holds newer text
         // would quietly record the wrong version, so the save comes first — and if the
@@ -146,7 +156,15 @@ extension AppState {
     // MARK: - Pushing
 
     func pushActiveDocument() {
-        guard let tab = active, let upstream = tab.git?.upstream else { return }
+        guard let tab = active, let snapshot = tab.git else { return }
+        guard let upstream = snapshot.upstream else {
+            statusMessage = "This branch tracks no remote, so there is nothing to push to."
+            return
+        }
+        guard canPush(tab) else {
+            statusMessage = "\(upstream) already has everything on this branch."
+            return
+        }
         Task { _ = await push(tab, upstream: upstream, after: nil) }
     }
 
