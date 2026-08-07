@@ -8,6 +8,10 @@ struct SplitDiffView: View {
     let tab: DocumentTab
     let entry: FileEntry
     let file: LoadedFile
+    /// Overridable because the two sides are not always a patch's before and after —
+    /// a comparison against the copy on disk wants saying so.
+    var leftTitle = "Original"
+    var rightTitle = "Modified"
 
     var body: some View {
         VStack(spacing: 0) {
@@ -95,8 +99,8 @@ struct SplitDiffView: View {
         // inside the HStack is vertically flexible, which makes the whole header band
         // stretch and eat the space meant for the rows.
         HStack(alignment: .top, spacing: 0) {
-            columnTitle("Original", detail: originalDetail)
-            columnTitle("Modified", detail: modifiedDetail)
+            columnTitle(leftTitle, detail: originalDetail)
+            columnTitle(rightTitle, detail: modifiedDetail)
         }
         .overlay(alignment: .center) {
             Rectangle().fill(Theme.border).frame(width: 1)

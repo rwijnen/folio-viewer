@@ -23,6 +23,16 @@ All notable changes to Folio are recorded here. The format follows
 
 ### Added
 
+- **Folio notices when something else writes a file you have open.** A model, a script or
+  another editor changing a document no longer leaves you reading stale text. With no
+  unsaved edits of your own it reloads and keeps your place; with unsaved edits it touches
+  nothing and offers **See What Changed**, putting your version and the file's side by
+  side. Folio's own saves do not trip it, and neither does `touch` or a tool rewriting
+  identical bytes — the text is compared, not the timestamp. Automatic reloading can be
+  turned off under Document.
+
+### Added
+
 - **A document's history, in the split diff view.** The sidebar switches between Outline
   and History; History lists every commit that touched the open file, newest first, and
   clicking one shows that commit's change side by side — left is the file going in, right

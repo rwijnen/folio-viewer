@@ -42,7 +42,7 @@ in the project and adding a second needs a good argument.
 git clone https://github.com/rwijnen/folio-viewer.git
 cd folio-viewer
 swift build          # compile
-swift test           # 256 tests, ~15 seconds
+swift test           # 286 tests, ~15 seconds
 ./build.sh           # assemble build/Folio.app
 open -a build/Folio.app Samples/example.md
 ```
@@ -66,6 +66,8 @@ Sources/Folio/
     Git                     runs `git` as a subprocess: environment, pipes, timeouts
     GitRepository           the handful of git commands Folio needs, as typed calls
     GitHistory              reading the log, and one commit's change to one file
+    LineDiff                the only diff Folio computes rather than reads
+    FileWatcher             tells you when something else writes an open file
     PathResolver            works out which folder a diff's paths belong to
     TextNormalizer          line splitting, tab expansion, encoding tolerance
   State/
@@ -76,6 +78,7 @@ Sources/Folio/
     Editing                 drafts, saving, the prompts before anything is lost
     GitIntegration          status refresh, commit, push, and what the buttons may offer
     GitHistoryLoading       the history list and showing one commit in the pane
+    ExternalChanges         what to do when a file changes underneath a tab
   Views/
     ContentView             tab bar + sidebar + detail
     TabBar                  the strip of open documents
@@ -85,6 +88,7 @@ Sources/Folio/
     DocumentView            Markdown/source pane, mode switch, outline sidebar
     GitStatusView           the branch pill in the header and the commit sheet
     HistorySidebar          the Outline/History switch, the commit list, the commit pane
+    ExternalChangeView      the "changed on disk" bar and its side-by-side view
     MarkdownWebView         container for the rendered page
     MarkdownPageController  owns one document's live WKWebView
     HTMLPage                the page template: CSS, CSP, find and diagram scripts

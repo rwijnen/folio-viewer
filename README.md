@@ -97,6 +97,22 @@ someone else's work. **Diffs and other text files stay read-only.**
 | **Editing** | Source mode is a real editor — undo, find, line numbers, live syntax colouring — and ⌘S writes the file. Nothing is ever auto-saved |
 | **Git** | The header shows the branch, how far it has drifted, and whether this file has changes. ⌥⌘C commits it; ⌥⌘P pushes. One file per commit |
 | **History** | The sidebar switches from Outline to History: every commit that touched this file, each one opening in the split diff view. Follows renames |
+| **Watches the file** | If something else writes a document you have open, Folio reloads it, or — if you were editing — offers the two versions side by side |
+
+### When something else writes the file
+
+Folio watches every open document. If a model, a script or another editor writes the file
+while you have it open:
+
+- **No unsaved edits of yours** — it reloads, keeps your scroll position, and says so in
+  the status line. A stale document that looks current is the worse failure. Turn this off
+  under Document ▸ *Ask Before Reloading Changed Files* if you would rather be asked.
+- **Unsaved edits of yours** — it touches nothing. A bar offers **See What Changed**,
+  which puts your version and the file's side by side, so the choice between them is an
+  informed one rather than a guess.
+
+Folio's own saves do not trip it, and neither does `touch` or a tool that rewrites
+identical bytes: the text is compared, not the timestamp.
 
 ### Git
 
@@ -218,7 +234,7 @@ renderer supports.
 
 No package manager, no framework, one vendored dependency. `swift build` and a shell
 script that assembles the bundle and draws the icon with Core Graphics — the whole thing
-compiles with the Command Line Tools alone. 256 tests run in about fifteen seconds.
+compiles with the Command Line Tools alone. 286 tests run in about fifteen seconds.
 
 Contributions are welcome; please read [CONTRIBUTING.md](CONTRIBUTING.md) first, since
 Folio's narrow-writing, offline, non-executing constraints are deliberate.
@@ -235,7 +251,7 @@ what was wrong with it. Every commit carries a `Co-Authored-By: Claude` trailer,
 This is stated plainly because you should know what you are reading before you trust it.
 It does not lower the bar the code has to clear:
 
-- The 256 tests are real tests over real fixtures, and CI runs them on every push.
+- The 286 tests are real tests over real fixtures, and CI runs them on every push.
 - The three rules above — writes only where you ask, online only on Push, never executes
   what it renders — are the ones under test, not just claims in a README. The git tests
   build throwaway repositories and push between them on disk, so the narrowness is
