@@ -185,6 +185,30 @@ struct HistoryInAppTests {
         #expect(tab.history.first?.subject == "Fourth change")
     }
 
+    @Test func filteringHidesCommitsWithoutLosingThem() async throws {
+        let workspace = try Workspace()
+        try await workspace.start()
+        let file = try await workspace.commit("note.md", "a\n", message: "By hand")
+        try await workspace.commit("note.md", "b\n",
+                                   message: "By the model\n\n"
+                                       + "Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>")
+
+        let tab = try await workspace.open(file)
+        workspace.state.setSidebarMode(.history, for: tab)
+        await workspace.waitFor("the log") { tab.historyState == .loaded }
+        #expect(tab.visibleHistory.count == 2)
+
+        workspace.state.setHistoryFilter(.coAuthored, for: tab)
+        #expect(tab.visibleHistory.map(\.subject) == ["By the model"])
+        workspace.state.setHistoryFilter(.solo, for: tab)
+        #expect(tab.visibleHistory.map(\.subject) == ["By hand"])
+
+        // Filtering is a view of the log, not a reload of it.
+        #expect(tab.history.count == 2)
+        workspace.state.setHistoryFilter(.all, for: tab)
+        #expect(tab.visibleHistory.count == 2)
+    }
+
     @Test func reloadingFromDiskPutsThePaneBackOnTheDocument() async throws {
         let (workspace, tab) = try await loaded()
         workspace.state.showCommit(tab.history[0], for: tab)

@@ -97,6 +97,7 @@ someone else's work. **Diffs and other text files stay read-only.**
 | **Editing** | Source mode is a real editor — undo, find, line numbers, live syntax colouring — and ⌘S writes the file. Nothing is ever auto-saved |
 | **Git** | The header shows the branch, how far it has drifted, and whether this file has changes. ⌥⌘C commits it; ⌥⌘P pushes. One file per commit |
 | **History** | The sidebar switches from Outline to History: every commit that touched this file, each one opening in the split diff view. Follows renames |
+| **Who wrote it** | Commits with a `Co-Authored-By` trailer are badged, and the list filters to co-authored or not |
 
 ### Git
 
@@ -128,6 +129,12 @@ commit without going back to the list, and **Back to the Document** returns.
 
 The log follows renames, so a file that started life as `draft.md` still shows the work
 you did under that name. Right-click a commit to copy its hash.
+
+**Who wrote it.** A commit carrying a `Co-Authored-By` trailer — the one Claude Code and
+similar tools add — is badged with the co-author's name, and the filter at the foot of the
+list narrows to *co-authored only* or *without a co-author*. Folio makes no guess about
+which co-authors are people and which are models: git does not record that, and a list of
+vendor addresses would be wrong within the year. It reports what the commit says.
 
 Folio shells out to the `git` on your machine rather than linking a library, so your
 `~/.gitconfig`, credential helper, SSH agent, hooks and signing key all apply. A commit
@@ -216,7 +223,7 @@ renderer supports.
 
 No package manager, no framework, one vendored dependency. `swift build` and a shell
 script that assembles the bundle and draws the icon with Core Graphics — the whole thing
-compiles with the Command Line Tools alone. 256 tests run in about fifteen seconds.
+compiles with the Command Line Tools alone. 260 tests run in about fifteen seconds.
 
 Contributions are welcome; please read [CONTRIBUTING.md](CONTRIBUTING.md) first, since
 Folio's narrow-writing, offline, non-executing constraints are deliberate.
@@ -233,7 +240,7 @@ what was wrong with it. Every commit carries a `Co-Authored-By: Claude` trailer,
 This is stated plainly because you should know what you are reading before you trust it.
 It does not lower the bar the code has to clear:
 
-- The 256 tests are real tests over real fixtures, and CI runs them on every push.
+- The 260 tests are real tests over real fixtures, and CI runs them on every push.
 - The three rules above — writes only where you ask, online only on Push, never executes
   what it renders — are the ones under test, not just claims in a README. The git tests
   build throwaway repositories and push between them on disk, so the narrowness is

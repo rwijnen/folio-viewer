@@ -118,3 +118,11 @@ extension AppState {
     /// Whether the pane is showing the past rather than the document.
     var isViewingCommit: Bool { active?.viewingCommit != nil }
 }
+
+extension AppState {
+
+    func setHistoryFilter(_ filter: HistoryFilter, for requested: DocumentTab? = nil) {
+        guard let tab = requested ?? active else { return }
+        tab.historyFilter = filter
+    }
+}
