@@ -13,6 +13,8 @@ struct GitStatusPill: View {
     var body: some View {
         if let snapshot = tab.git {
             Menu {
+                Button("All Uncommitted Changes…") { state.showRepositoryChanges() }
+                Divider()
                 Button("Commit…") { state.presentCommitSheet() }
                 if let upstream = snapshot.upstream {
                     Button("Push to \(upstream)") { state.pushActiveDocument() }

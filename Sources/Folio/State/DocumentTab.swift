@@ -8,8 +8,20 @@ struct FileEntry: Identifiable {
     var resolvedOriginal: URL?
     /// Set by the user through "Locate Original…" and preferred over path resolution.
     var manualOriginal: URL?
+    /// When set, the left-hand side is read from the repository rather than from a file
+    /// on disk. The repository-wide view needs it: there the file on disk is already the
+    /// *changed* version, and the original is the committed one.
+    var committedOriginal: CommittedOriginal?
 
     var originalURL: URL? { manualOriginal ?? resolvedOriginal }
+}
+
+/// A version of a file held in git rather than in the working tree.
+struct CommittedOriginal {
+    var git: Git
+    var revision: String
+    /// Repository-relative, as the diff spells it.
+    var path: String
 }
 
 /// Fully prepared content for the currently selected file of a diff.
@@ -229,7 +241,14 @@ final class DocumentTab: Identifiable {
 
     // MARK: - Identity
 
-    var name: String { textDocument?.name ?? url.lastPathComponent }
+    /// Overrides the name in the tab bar for a tab that is not one file — the
+    /// repository-wide view, whose `url` is a folder.
+    var displayName: String?
+    /// True for a tab built in memory rather than opened from a file. Left out of the
+    /// saved session, since there is nothing to reopen it from.
+    var isEphemeral = false
+
+    var name: String { displayName ?? textDocument?.name ?? url.lastPathComponent }
 
     var symbol: String {
         switch content {

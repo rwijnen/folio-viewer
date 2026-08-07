@@ -83,6 +83,8 @@ extension AppState {
     var session: Session {
         var result = Session()
         for tab in tabs {
+            // A tab built in memory has no file to reopen it from.
+            if tab.isEphemeral { continue }
             if let pending = tab.pendingRestore {
                 result.entries.append(pending)
                 continue

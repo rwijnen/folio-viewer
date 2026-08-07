@@ -8,6 +8,15 @@ All notable changes to Folio are recorded here. The format follows
 
 ### Added
 
+- **See a whole repository's uncommitted changes at once.** ⌥⌘U, or *All Uncommitted
+  Changes…*, opens everything not yet committed as an ordinary diff tab: every changed
+  file in the sidebar, each one side by side against the last commit. Staged and unstaged
+  work are both included, because a commit would record both, and files git has never seen
+  appear as wholly added — without being staged, since this view only reads. Ignored files
+  are left out, and asking again refreshes the tab rather than opening another.
+
+### Added
+
 - **A document's history, in the split diff view.** The sidebar switches between Outline
   and History; History lists every commit that touched the open file, newest first, and
   clicking one shows that commit's change side by side — left is the file going in, right

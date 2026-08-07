@@ -118,3 +118,89 @@ extension AppState {
     /// Whether the pane is showing the past rather than the document.
     var isViewingCommit: Bool { active?.viewingCommit != nil }
 }
+
+/// The whole repository's uncommitted state, in one tab.
+///
+/// A tab rather than the document pane, because this is many files and the file sidebar
+/// is how Folio has always shown many files. The tab holds no document of its own — its
+/// `url` is the repository root — so it is left out of the saved session.
+extension AppState {
+
+    /// Opens, or refreshes, the repository-wide view for the active document's repository.
+    func showRepositoryChanges() {
+        guard let root = repositoryToShow() else {
+            statusMessage = "This document is not in a git repository."
+            return
+        }
+        let git = Git(workingDirectory: root, environment: gitEnvironment)
+
+        // Reuse the tab if this repository already has one, so pressing the shortcut
+        // twice refreshes rather than stacking up copies.
+        let existing = tabs.first { $0.isEphemeral && $0.url.path == root.path }
+        let tab = existing ?? DocumentTab(url: root, content: .diff)
+        tab.isEphemeral = true
+        tab.displayName = "\(root.lastPathComponent) — uncommitted"
+        tab.loadTask?.cancel()
+        tab.loadState = .loading
+        if existing == nil {
+            adopt(tab)
+        } else {
+            activate(tab.id)
+        }
+
+        tab.loadTask = Task { [weak self, weak tab] in
+            do {
+                let changes = try await GitWorkingTree.uncommittedChanges(in: root, using: git)
+                guard !Task.isCancelled, let self, let tab else { return }
+                self.applyRepositoryChanges(changes, to: tab, using: git)
+            } catch {
+                guard !Task.isCancelled, let tab else { return }
+                tab.files = []
+                tab.loadState = .failed(error.localizedDescription)
+            }
+        }
+    }
+
+    /// Which repository the view should show.
+    ///
+    /// Usually the active document's. But once this view is open it becomes the active
+    /// tab, and it holds no document of its own — so asking again would find no
+    /// repository and report that the document is not in one, when what the reader
+    /// wanted was a refresh of the view in front of them.
+    private func repositoryToShow() -> URL? {
+        guard let tab = active else { return nil }
+        if tab.isEphemeral, tab.content == .diff { return tab.url }
+        return tab.git?.root
+    }
+
+    private func applyRepositoryChanges(_ changes: GitWorkingTree.Changes,
+                                        to tab: DocumentTab,
+                                        using git: Git) {
+        let parsed = DiffParser.parse(text: changes.diffText)
+        tab.preamble = parsed.preamble
+        tab.baseFolder = changes.root
+        tab.files = parsed.files.map { diff in
+            // The left side comes from the last commit, not from the file on disk — on
+            // disk is already the changed version.
+            FileEntry(diff: diff,
+                      resolvedOriginal: nil,
+                      committedOriginal: CommittedOriginal(
+                        git: git,
+                        revision: "HEAD",
+                        path: PathResolver.stripVCSPrefix(diff.rawOldPath ?? diff.rawNewPath ?? "")))
+        }
+        tab.selectedFileID = tab.files.first?.id
+
+        if tab.files.isEmpty {
+            tab.loadState = .empty
+            statusMessage = "\(changes.root.lastPathComponent) has no uncommitted changes."
+            return
+        }
+        // Never quietly show less than there is.
+        if changes.omittedUntracked > 0 {
+            statusMessage = "\(changes.omittedUntracked) further untracked file"
+                + "\(changes.omittedUntracked == 1 ? " is" : "s are") not shown."
+        }
+        reloadSelectedFile(for: tab)
+    }
+}
