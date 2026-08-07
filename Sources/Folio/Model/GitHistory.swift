@@ -106,6 +106,17 @@ enum GitHistory {
         return Change(diff: file, parentLines: TextNormalizer.splitLines(parent.output), isNew: false)
     }
 
+    /// The file as the last commit on this branch left it, or nil when the commit does
+    /// not have it — an untracked file, or a branch with no commits at all.
+    ///
+    /// `HEAD:./name` rather than a repository-relative path: the `./` form resolves
+    /// against the working directory, which is the folder the document is in, so nothing
+    /// has to work out where the repository root is or how the two paths relate.
+    static func contentsAtHead(of fileURL: URL, using git: Git) async -> String? {
+        let result = await git.run(["show", "HEAD:./\(fileURL.lastPathComponent)"])
+        return result.succeeded ? result.output : nil
+    }
+
     /// The file exactly as it stood at a commit, for reading rather than comparing.
     static func contents(of commit: GitCommitSummary, using git: Git) async throws -> String {
         try await git.require(["show", "\(commit.hash):\(commit.path)"])

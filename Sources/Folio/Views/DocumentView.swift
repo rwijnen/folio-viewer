@@ -116,6 +116,8 @@ struct DocumentView: View {
                     Divider()
                 }
                 if tab.git != nil {
+                    Button("Uncommitted Changes…") { appState.showWorkingChanges(for: tab) }
+                        .disabled(!appState.hasWorkingChanges(tab))
                     Button("Commit…") { appState.presentCommitSheet() }
                         .disabled(!appState.canCommit(tab))
                     if let upstream = tab.git?.upstream {
@@ -158,6 +160,8 @@ struct DocumentView: View {
             HistoricalCommitView(tab: tab, commit: commit)
         } else if tab.pane == .externalChange {
             ExternalChangeView(tab: tab)
+        } else if tab.pane == .workingChanges {
+            WorkingChangesView(tab: tab)
         } else if document.isMarkdown, appState.readingMode == .source, tab.isEditable {
             MarkdownEditorView(tab: tab, version: tab.editorVersion)
                 .background(Theme.rowBackground)

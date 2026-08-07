@@ -234,69 +234,35 @@ struct HistoricalCommitView: View {
     let commit: GitCommitSummary
 
     var body: some View {
-        VStack(spacing: 0) {
-            banner
-            Divider()
-            switch tab.loadState {
-            case .empty, .loading:
-                VStack(spacing: 10) {
-                    ProgressView()
-                    Text("Reading \(commit.shortHash)…")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
+        ComparisonPane(tab: tab,
+                       leftTitle: "Before this commit",
+                       rightTitle: "After this commit",
+                       loadingMessage: "Reading \(commit.shortHash)…",
+                       failureTitle: "Nothing to show for \(commit.shortHash)") {
+            HStack(spacing: 8) {
+                ComparisonTitle(
+                    title: commit.subject,
+                    detail: "\(commit.shortHash) · \(commit.author) · "
+                        + CommitDate.exact(commit.date),
+                    symbol: "clock.arrow.circlepath")
+                Spacer()
+
+                Button { state.stepThroughHistory(by: -1) } label: {
+                    Image(systemName: "chevron.up")
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Theme.rowBackground)
-            case let .failed(message):
-                MessageView(title: "Nothing to show for \(commit.shortHash)",
-                            message: message, systemImage: "clock.badge.questionmark")
-            case let .loaded(file):
-                if let entry = tab.selectedEntry {
-                    SplitDiffView(tab: tab, entry: entry, file: file)
+                .help("Newer commit")
+                .disabled(!canStep(-1))
+
+                Button { state.stepThroughHistory(by: 1) } label: {
+                    Image(systemName: "chevron.down")
                 }
+                .help("Older commit")
+                .disabled(!canStep(1))
+
+                Button("Back to the Document") { state.closeCommit(for: tab) }
+                    .controlSize(.small)
             }
         }
-    }
-
-    /// Says plainly that this is not the document, since the split view below looks
-    /// exactly like an opened patch.
-    private var banner: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "clock.arrow.circlepath")
-                .foregroundStyle(.secondary)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(commit.subject)
-                    .font(.system(size: 12, weight: .semibold))
-                    .lineLimit(1)
-                Text("\(commit.shortHash) · \(commit.author) · \(CommitDate.exact(commit.date))")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-            Spacer()
-
-            Button {
-                state.stepThroughHistory(by: -1)
-            } label: {
-                Image(systemName: "chevron.up")
-            }
-            .help("Newer commit")
-            .disabled(!canStep(-1))
-
-            Button {
-                state.stepThroughHistory(by: 1)
-            } label: {
-                Image(systemName: "chevron.down")
-            }
-            .help("Older commit")
-            .disabled(!canStep(1))
-
-            Button("Back to the Document") { state.closeCommit(for: tab) }
-                .controlSize(.small)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(Color.accentColor.opacity(0.08))
     }
 
     private func canStep(_ offset: Int) -> Bool {

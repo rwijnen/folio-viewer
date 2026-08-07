@@ -97,6 +97,7 @@ someone else's work. **Diffs and other text files stay read-only.**
 | **Editing** | Source mode is a real editor — undo, find, line numbers, live syntax colouring — and ⌘S writes the file. Nothing is ever auto-saved |
 | **Git** | The header shows the branch, how far it has drifted, and whether this file has changes. ⌥⌘C commits it; ⌥⌘P pushes. One file per commit |
 | **History** | The sidebar switches from Outline to History: every commit that touched this file, each one opening in the split diff view. Follows renames |
+| **Uncommitted changes** | ⌥⌘D shows the last commit against what you have now, unsaved edits included — what a commit would record |
 | **Watches the file** | If something else writes a document you have open, Folio reloads it, or — if you were editing — offers the two versions side by side |
 
 ### When something else writes the file
@@ -131,6 +132,16 @@ staged in a terminal stays staged and uncommitted.
 `--set-upstream`, and no pull, rebase or merge. If the push is rejected because someone
 else got there first, Folio says so and stops; the commit is already safely made, and
 resolving it is a terminal job.
+
+### What is not yet committed
+
+**Uncommitted Changes…** (⌥⌘D) puts the last commit on the left and what you have now on
+the right, in the same split view. It is the view for the moment before you commit — what
+am I about to record.
+
+It includes unsaved edits, and says so, because committing saves first: what you see is
+exactly what the commit would contain. An untracked file shows as wholly new, and so does
+one in a repository with no commits yet.
 
 ### History
 
@@ -185,7 +196,7 @@ expand a collapsed fold to reveal a hit.
 | ⌘1 / ⌘2 | Rendered / source | ⇧⌘L | Wrap or scroll long lines |
 | ⌘R | Reload from disk (right-click also offers it) | ⇧⌘E / ⇧⌘K | Expand / collapse all context |
 | ⌘S / ⌥⌘S | Save · save all | ⌥⌘C / ⌥⌘P | Commit this file · push the branch |
-| ⌥⌘↑ / ⌥⌘↓ | Newer / older commit in history | | |
+| ⌥⌘↑ / ⌥⌘↓ | Newer / older commit in history | ⌥⌘D | What is not yet committed |
 
 ## Why it is safe to point at a file someone sent you
 
@@ -234,7 +245,7 @@ renderer supports.
 
 No package manager, no framework, one vendored dependency. `swift build` and a shell
 script that assembles the bundle and draws the icon with Core Graphics — the whole thing
-compiles with the Command Line Tools alone. 286 tests run in about fifteen seconds.
+compiles with the Command Line Tools alone. 296 tests run in about fifteen seconds.
 
 Contributions are welcome; please read [CONTRIBUTING.md](CONTRIBUTING.md) first, since
 Folio's narrow-writing, offline, non-executing constraints are deliberate.
@@ -251,7 +262,7 @@ what was wrong with it. Every commit carries a `Co-Authored-By: Claude` trailer,
 This is stated plainly because you should know what you are reading before you trust it.
 It does not lower the bar the code has to clear:
 
-- The 286 tests are real tests over real fixtures, and CI runs them on every push.
+- The 296 tests are real tests over real fixtures, and CI runs them on every push.
 - The three rules above — writes only where you ask, online only on Push, never executes
   what it renders — are the ones under test, not just claims in a README. The git tests
   build throwaway repositories and push between them on disk, so the narrowness is

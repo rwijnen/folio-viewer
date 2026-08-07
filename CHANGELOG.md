@@ -23,6 +23,12 @@ All notable changes to Folio are recorded here. The format follows
 
 ### Added
 
+- **See what is not yet committed.** ⌥⌘D, or *Uncommitted Changes…* in the Repository
+  menu, puts the last commit on the left and what you have now on the right, in the same
+  split view. Unsaved edits are included and the header says so, because committing saves
+  first — what you see is what the commit would record. An untracked file, or one in a
+  repository with no commits yet, shows as wholly new.
+
 - **Folio notices when something else writes a file you have open.** A model, a script or
   another editor changing a document no longer leaves you reading stale text. With no
   unsaved edits of your own it reloads and keeps your place; with unsaved edits it touches
