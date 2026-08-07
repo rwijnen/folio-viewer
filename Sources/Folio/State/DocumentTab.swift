@@ -147,6 +147,16 @@ final class DocumentTab: Identifiable {
     /// What the editor should show, and what a save would write.
     var currentText: String { draftText ?? textDocument?.rawText ?? "" }
 
+    // MARK: Version control
+
+    /// What git said about this document at the last refresh. nil when it is not in a
+    /// repository, or has not been looked at yet.
+    var git: GitSnapshot?
+    /// What git is doing right now — "Committing…" — or nil when it is doing nothing.
+    var gitActivity: String?
+    /// Bumped on every refresh so a slow answer cannot overwrite a newer one.
+    @ObservationIgnored var gitRefreshToken = 0
+
     // MARK: Search, per document
 
     var matches: [SearchMatch] = []

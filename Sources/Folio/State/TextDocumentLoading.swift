@@ -118,6 +118,7 @@ extension AppState {
             tab.draftText = nil
             tab.editorVersion += 1
             if !searchQuery.isEmpty { recomputeMatches() }
+            refreshGitStatus(for: tab)
             statusMessage = "Reloaded \(document.name)."
         } catch {
             errorMessage = "Could not reload \(document.name): \(error.localizedDescription)"

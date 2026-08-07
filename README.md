@@ -4,8 +4,8 @@
 
 **A native macOS viewer for diffs and Markdown, with a Markdown editor when you want one.**
 Patches side by side with the original, Markdown rendered with its mermaid diagrams drawn,
-and a source editor that saves when you tell it to — one window, with tabs, and never a
-byte over the network.
+and a source editor that saves when you tell it to — one window, with tabs, and offline
+unless you press Push.
 
 [![CI](https://github.com/rwijnen/folio-viewer/actions/workflows/ci.yml/badge.svg)](https://github.com/rwijnen/folio-viewer/actions/workflows/ci.yml)
 [![Licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
@@ -95,6 +95,29 @@ someone else's work. **Diffs and other text files stay read-only.**
 | Images | Local ones inlined as `data:` URIs; remote ones reported, never fetched |
 | Follows links | Sibling `.md` / `.diff` files open in Folio; http(s) goes to your browser |
 | **Editing** | Source mode is a real editor — undo, find, line numbers, live syntax colouring — and ⌘S writes the file. Nothing is ever auto-saved |
+| **Git** | The header shows the branch, how far it has drifted, and whether this file has changes. ⌥⌘C commits it; ⌥⌘P pushes. One file per commit |
+
+### Git
+
+A Markdown document that lives in a git repository gets a pill in the header: the branch,
+`↑`/`↓` for commits to push and pull, and a coloured dot when the file has changes. Behind
+it are the only two things Folio will do to your repository.
+
+**Commit** opens a sheet with a message field. Unsaved edits are saved first — git records
+what is on disk, so committing without saving would quietly store the wrong version — and
+then exactly one file is committed: the one you are looking at. Anything else you have
+staged in a terminal stays staged and uncommitted.
+
+**Push** sends the current branch to the upstream it already tracks. There is no force, no
+`--set-upstream`, and no pull, rebase or merge. If the push is rejected because someone
+else got there first, Folio says so and stops; the commit is already safely made, and
+resolving it is a terminal job.
+
+Folio shells out to the `git` on your machine rather than linking a library, so your
+`~/.gitconfig`, credential helper, SSH agent, hooks and signing key all apply. A commit
+Folio makes is indistinguishable from one you made yourself. It will not commit when
+`user.name` and `user.email` are unset, when `HEAD` is detached, when the file is ignored,
+or when a merge is unresolved — the menu says which.
 
 ## Tabs
 
@@ -127,7 +150,7 @@ expand a collapsed fold to reveal a hit.
 | ⌃⇥ / ⌃⇧⇥ | Next / previous tab | ⇧⌘B | Choose a diff's base folder |
 | ⌘1 / ⌘2 | Rendered / source | ⇧⌘L | Wrap or scroll long lines |
 | ⌘R | Reload from disk (right-click also offers it) | ⇧⌘E / ⇧⌘K | Expand / collapse all context |
-| ⌘S / ⌥⌘S | Save · save all | | |
+| ⌘S / ⌥⌘S | Save · save all | ⌥⌘C / ⌥⌘P | Commit this file · push the branch |
 
 ## Why it is safe to point at a file someone sent you
 
@@ -136,9 +159,13 @@ Folio is built on three rules, and they are tested:
 1. **It writes only what you ask it to, and only where it came from.** Diffs are never
    written: the patch is applied in memory to produce the right-hand panel, and there is
    no save path for them at all. Markdown you have opened can be edited and saved to that
-   same file with ⌘S — explicitly, never automatically, never anywhere else.
-2. **It never uses the network.** Not at build time, not at run time. mermaid is vendored
-   so diagrams work offline.
+   same file with ⌘S — explicitly, never automatically, never anywhere else. A commit
+   records that one file and nothing else.
+2. **It goes online only when you press Push.** Nothing else in Folio opens a connection:
+   no telemetry, no update check, no remote images, no fonts, nothing at build time.
+   mermaid is vendored so diagrams work offline. Push is the single exception, it is
+   always a button you pressed, and it sends your branch to the remote your repository
+   already points at.
 3. **It does not execute what it renders.** Raw HTML in Markdown is escaped except a
    whitelist of attribute-free formatting tags, `javascript:` URLs are stripped, and the
    rendered page runs under `default-src 'none'; connect-src 'none'` with a per-load nonce
@@ -172,7 +199,7 @@ renderer supports.
 
 No package manager, no framework, one vendored dependency. `swift build` and a shell
 script that assembles the bundle and draws the icon with Core Graphics — the whole thing
-compiles with the Command Line Tools alone. 183 tests run in about five seconds.
+compiles with the Command Line Tools alone. 231 tests run in about fifteen seconds.
 
 Contributions are welcome; please read [CONTRIBUTING.md](CONTRIBUTING.md) first, since
 Folio's narrow-writing, offline, non-executing constraints are deliberate.
@@ -189,9 +216,12 @@ what was wrong with it. Every commit carries a `Co-Authored-By: Claude` trailer,
 This is stated plainly because you should know what you are reading before you trust it.
 It does not lower the bar the code has to clear:
 
-- The 183 tests are real tests over real fixtures, and CI runs them on every push.
-- The three rules above — writes only where you ask, never networks, never executes what
-  it renders — are the ones under test, not just claims in a README.
+- The 231 tests are real tests over real fixtures, and CI runs them on every push.
+- The three rules above — writes only where you ask, online only on Push, never executes
+  what it renders — are the ones under test, not just claims in a README. The git tests
+  build throwaway repositories and push between them on disk, so the narrowness is
+  measured rather than asserted: one of them stages a second file by hand and checks the
+  commit left it alone.
 - Several of them were tightened only after a test or a measurement contradicted the first
   attempt: a search that counted 131 CSS rules as document matches, a menu whose disabled
   items silently swallowed their keyboard shortcuts, a session restore that cost a second

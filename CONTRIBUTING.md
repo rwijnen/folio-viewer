@@ -22,9 +22,13 @@ merged:
 1. **Reading is the default; writing is narrow and explicit.** Diffs are read-only and
    always will be — the patch is applied in memory. Markdown gained an editor, and it may
    write to exactly one file: the one open in that tab, when the reader asks. No
-   auto-save, no writing anywhere else.
-2. **It never uses the network.** Not at build time, not at run time. mermaid is vendored
-   for exactly this reason.
+   auto-save, no writing anywhere else. Committing follows the same rule — one file per
+   commit, named in the pathspec, leaving anything else the reader has staged alone.
+2. **It goes online only when the reader presses Push.** Nothing at build time, and
+   nothing else at run time: no telemetry, no update check, no remote images or fonts.
+   mermaid is vendored for exactly this reason. Push is the single exception and must
+   stay a deliberate, visible action; a feature that opens a connection on its own will
+   not be merged.
 3. **It does not execute what it renders.** Markdown is escaped except for a whitelist of
    attribute-free formatting tags, and the rendered page runs under a strict CSP.
 
@@ -38,7 +42,7 @@ in the project and adding a second needs a good argument.
 git clone https://github.com/rwijnen/folio-viewer.git
 cd folio-viewer
 swift build          # compile
-swift test           # 166 tests, ~5 seconds
+swift test           # 231 tests, ~15 seconds
 ./build.sh           # assemble build/Folio.app
 open -a build/Folio.app Samples/example.md
 ```
@@ -59,6 +63,8 @@ Sources/Folio/
     LanguageSpec            the ~30 language definitions and the fence-info mapping
     MarkdownConverter       Markdown → HTML, outline, diagram detection
     MarkdownSyntax          Markdown highlighting for source mode
+    Git                     runs `git` as a subprocess: environment, pipes, timeouts
+    GitRepository           the handful of git commands Folio needs, as typed calls
     PathResolver            works out which folder a diff's paths belong to
     TextNormalizer          line splitting, tab expansion, encoding tolerance
   State/
@@ -66,6 +72,8 @@ Sources/Folio/
     AppState                the open tabs, shared find bar, window preferences
     DiffPreparation         reads the original, applies the patch, builds the document
     TextDocumentLoading     opening Markdown/source, page callbacks, reading modes
+    Editing                 drafts, saving, the prompts before anything is lost
+    GitIntegration          status refresh, commit, push, and what the buttons may offer
   Views/
     ContentView             tab bar + sidebar + detail
     TabBar                  the strip of open documents
@@ -73,6 +81,7 @@ Sources/Folio/
     DiffRowView             one aligned row
     SourceListingView       single-column source with line numbers
     DocumentView            Markdown/source pane, mode switch, outline sidebar
+    GitStatusView           the branch pill in the header and the commit sheet
     MarkdownWebView         container for the rendered page
     MarkdownPageController  owns one document's live WKWebView
     HTMLPage                the page template: CSS, CSP, find and diagram scripts
@@ -100,6 +109,12 @@ swift test --filter rendersPipeTables        # one test
 Tests use [Swift Testing](https://developer.apple.com/documentation/testing) (`@Test`,
 `#expect`, `#require`), not XCTest — deliberately, since XCTest is unavailable without
 Xcode.
+
+The git suites build throwaway repositories under the temporary directory and run the
+real `git` against them, including pushes between two local repositories — no network is
+involved. They set `GIT_CONFIG_GLOBAL=/dev/null` so your own `~/.gitconfig` cannot decide
+whether they pass; keep that up if you add one. They skip themselves if `/usr/bin/git` is
+missing.
 
 Two suites drive AppKit and WebKit directly (`ScrollOffsetKeeperTests`,
 `ScrollMemoryTests`). If you are on a machine or CI runner without a GUI session, skip
@@ -202,6 +217,12 @@ both a light and a dark value.
 **Touch the icon.** `Tools/make-icon.swift`, pure Core Graphics. Palette constants are at
 the top. Always check the 16 and 32 pixel variants: the drawing takes a different, much
 simpler path below 32 pixels, because detail turns to mush there.
+
+**Add a git command.** Think hard first — the charter above is the reason there are only
+two write paths. Reading is fine. If you do add one, it goes in `GitRepository` as a typed
+call, never as a string a caller assembles, and it takes no argument that could widen what
+it touches. Add a test that arranges the repository state and asserts on what git did
+afterwards, not on what Folio said.
 
 **Change how a default handler is claimed.** `FileAssociation` in `App/FolioApp.swift`,
 with `Sources/Register/main.swift` as the fallback. Both verify by probing Launch Services
