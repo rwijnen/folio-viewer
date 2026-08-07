@@ -16,6 +16,12 @@ extension AppState {
 
     func setSidebarMode(_ mode: SidebarMode, for requested: DocumentTab? = nil) {
         guard let tab = requested ?? active, tab.sidebarMode != mode else { return }
+        // A diff's sidebar lists the files inside the patch, so there is nowhere to put
+        // a history. Committing and the rest work; this one does not.
+        guard tab.content != .diff else {
+            statusMessage = "History is shown beside a document, not beside a diff."
+            return
+        }
         tab.sidebarMode = mode
         if mode == .history { loadHistory(for: tab) }
     }
@@ -247,9 +253,10 @@ extension AppState {
         tab.matches = []
         tab.currentMatchIndex = 0
 
-        // The draft, not the file: a commit saves first, so this is what would be
-        // recorded. An untracked file has no committed side at all.
-        let mine = TextNormalizer.splitLines(tab.currentText)
+        // The draft when there is one, since a commit saves first and this is meant to
+        // show what would be recorded. A diff or a source file is not held as editable
+        // text at all, so for those the file itself is read below.
+        let draft = tab.textDocument != nil ? tab.currentText : nil
         let url = tab.url
         let name = tab.name
         let git = Git(workingDirectory: url.deletingLastPathComponent(),
@@ -259,6 +266,8 @@ extension AppState {
         tab.commitTask = Task { [weak self, weak tab] in
             let committed = await GitHistory.contentsAtHead(of: url, using: git)
             let head = committed.map(TextNormalizer.splitLines) ?? []
+            let mine = TextNormalizer.splitLines(
+                draft ?? (try? TextNormalizer.read(at: url).text) ?? "")
             let prepared = await DiffPreparation.prepare(comparing: head, with: mine, named: name)
             guard !Task.isCancelled, let tab, tab.pane == .workingChanges else { return }
             let entry = FileEntry(diff: prepared.diff, resolvedOriginal: nil)

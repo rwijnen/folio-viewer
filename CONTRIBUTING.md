@@ -22,7 +22,8 @@ merged:
 1. **Reading is the default; writing is narrow and explicit.** Diffs are read-only and
    always will be — the patch is applied in memory. Markdown gained an editor, and it may
    write to exactly one file: the one open in that tab, when the reader asks. No
-   auto-save, no writing anywhere else. Committing follows the same rule — one file per
+   auto-save, no writing anywhere else. Committing is offered for *any* file the reader
+   has open, not only the ones Folio can edit — but it follows the same rule: one file per
    commit, named in the pathspec, leaving anything else the reader has staged alone.
 2. **It goes online only when the reader presses Push.** Nothing at build time, and
    nothing else at run time: no telemetry, no update check, no remote images or fonts.
@@ -42,7 +43,7 @@ in the project and adding a second needs a good argument.
 git clone https://github.com/rwijnen/folio-viewer.git
 cd folio-viewer
 swift build          # compile
-swift test           # 319 tests, ~15 seconds
+swift test           # 327 tests, ~15 seconds
 ./build.sh           # assemble build/Folio.app
 open -a build/Folio.app Samples/example.md
 ```

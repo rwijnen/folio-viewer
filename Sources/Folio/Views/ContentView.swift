@@ -103,7 +103,7 @@ struct ContentView: View {
             MessageView(title: "Nothing to compare", message: message, systemImage: "doc.questionmark")
         case let .loaded(file):
             if let tab = state.active, let entry = tab.selectedEntry {
-                SplitDiffView(tab: tab, entry: entry, file: file)
+                SplitDiffView(tab: tab, entry: entry, file: file, showsGitStatus: true)
             } else {
                 WelcomeView()
             }

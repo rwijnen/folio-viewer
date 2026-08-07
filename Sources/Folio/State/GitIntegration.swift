@@ -10,10 +10,17 @@ import Foundation
 /// doing and undo it.
 extension AppState {
 
-    /// Git is offered for Markdown only, because Markdown is the only thing Folio can
-    /// edit. A Commit button on a file the app will never change would be offering to
-    /// commit someone else's work.
-    func supportsVersionControl(_ tab: DocumentTab) -> Bool { tab.isEditable }
+    /// Git is offered for any document opened from a file.
+    ///
+    /// It was Markdown only to begin with, on the reasoning that offering to commit a
+    /// file Folio cannot edit is offering to commit someone else's work. That was wrong:
+    /// it is the reader's repository, the click is theirs, and a diff or a source file
+    /// they have just been handed is exactly the sort of thing they want to record. The
+    /// repository-wide view is excluded because it is not a file — it is a tab built in
+    /// memory, and there is nothing at its path to commit.
+    func supportsVersionControl(_ tab: DocumentTab) -> Bool {
+        !tab.isEphemeral && tab.content != .none
+    }
 
     var gitSnapshot: GitSnapshot? { active?.git }
     var gitActivity: String? { active?.gitActivity }

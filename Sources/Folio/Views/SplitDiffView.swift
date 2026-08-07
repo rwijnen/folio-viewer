@@ -12,6 +12,9 @@ struct SplitDiffView: View {
     /// a comparison against the copy on disk wants saying so.
     var leftTitle = "Original"
     var rightTitle = "Modified"
+    /// Only the tab that *is* a diff file shows it. The comparison panes embed this view
+    /// too, and they sit under a header that already carries the pill.
+    var showsGitStatus = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -70,6 +73,11 @@ struct SplitDiffView: View {
                 .padding(.vertical, 2)
                 .background(Theme.gutterBackground, in: Capsule())
             ChangeCounts(additions: entry.diff.additions, deletions: entry.diff.deletions)
+            // After the counts, beside the other controls — the same place it sits in a
+            // document's header.
+            if showsGitStatus {
+                GitStatusPill(tab: tab)
+            }
             Menu {
                 Button("Copy Original File") { copy(file.document.leftLines) }
                     .disabled(file.document.leftLines.isEmpty)
