@@ -6,6 +6,61 @@ import Foundation
 /// expensive part of opening a diff.
 enum DiffPreparation {
 
+    /// The same work for a commit out of a file's history.
+    ///
+    /// Shorter than the path above because git removes every reason it is long: the
+    /// content going in comes from the repository rather than from a file on disk that
+    /// might be the wrong revision, so there is no reconstruction, no reversing, and no
+    /// guessing at which side of the change the disk holds.
+    static func prepare(change: GitHistory.Change) async -> FileLoadState {
+        let file = change.diff
+        let spec = LanguageCatalog.spec(forPath: file.displayPath)
+
+        if file.isBinary {
+            return .failed("\(file.displayName) is a binary file at this commit.")
+        }
+        if file.hunks.isEmpty, !change.isNew {
+            return .failed(file.renameDescription ?? "This commit changed no lines in the file.")
+        }
+
+        return await Task.detached(priority: .userInitiated) { () -> FileLoadState in
+            var document: SideBySideDocument
+            var notice: String?
+
+            if change.isNew {
+                document = SideBySideBuilder.wholeFile(lines: file.hunks.flatMap { $0.newLines },
+                                                       added: true)
+                notice = "This commit added the file."
+            } else if file.kind == .deleted {
+                document = SideBySideBuilder.wholeFile(lines: change.parentLines, added: false)
+                notice = "This commit deleted the file."
+            } else if let forward = try? PatchApplier.apply(hunks: file.hunks,
+                                                            to: change.parentLines) {
+                document = SideBySideBuilder.build(applied: forward.applied,
+                                                   originalRaw: change.parentLines,
+                                                   patchedRaw: forward.newLines,
+                                                   warnings: forward.warnings)
+            } else {
+                // Should not happen — these hunks came from git, applied to the content
+                // git says they were made against. Reported as a notice rather than the
+                // degraded banner, because that one offers "Locate Original…" and there
+                // is no original on disk to locate.
+                document = SideBySideBuilder.buildDiffOnly(file: file, warnings: [])
+                notice = "The recorded change could not be replayed, so only the diff is shown."
+            }
+
+            return .loaded(LoadedFile(document: document,
+                                      leftSpans: SyntaxHighlighter.highlight(
+                                        lines: document.leftLines, spec: spec),
+                                      rightSpans: SyntaxHighlighter.highlight(
+                                        lines: document.rightLines, spec: spec),
+                                      languageName: spec.name,
+                                      originalURL: nil,
+                                      degradedReason: nil,
+                                      notice: notice))
+        }.value
+    }
+
     static func prepare(entry: FileEntry) async -> FileLoadState {
         let file = entry.diff
         let path = file.displayPath

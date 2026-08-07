@@ -104,6 +104,8 @@ extension AppState {
         guard let tab = target, let document = tab.textDocument else { return }
         // Re-reading throws away unsaved edits, so say so first.
         if tab.isDirty, !confirmingDiscard(tab.name) { return }
+        // Re-reading is about the document, so put the pane back on it.
+        closeCommit(for: tab)
         do {
             let fresh = try Self.makeTextTab(at: document.url, asMarkdown: document.isMarkdown)
             tab.textDocument = fresh.textDocument

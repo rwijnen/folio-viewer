@@ -124,6 +124,9 @@ extension AppState {
         // message, which would be wrong for a different change and easy not to notice.
         commitMessage = ""
 
+        // The log gained an entry, so a list already on screen is now out of date.
+        if tab.historyState == .loaded { loadHistory(for: tab, force: true) }
+
         // Re-read before pushing: the commit just changed how far ahead we are, and the
         // upstream may have been configured since the sheet opened.
         let snapshot = await GitRepository.snapshot(for: tab.url, using: git)

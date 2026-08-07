@@ -62,6 +62,13 @@ struct FolioApp: App {
                 Button("Push") { state.pushActiveDocument() }
                     .keyboardShortcut("p", modifiers: [.command, .option])
                 Divider()
+                Button("Show History") { state.setSidebarMode(.history) }
+                Button("Newer Commit") { state.stepThroughHistory(by: -1) }
+                    .keyboardShortcut(.upArrow, modifiers: [.command, .option])
+                Button("Older Commit") { state.stepThroughHistory(by: 1) }
+                    .keyboardShortcut(.downArrow, modifiers: [.command, .option])
+                Button("Back to the Document") { state.closeCommit() }
+                Divider()
                 Button("Refresh Status") { state.refreshGitStatus() }
             }
             CommandMenu("Document") {
