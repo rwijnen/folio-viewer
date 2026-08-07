@@ -81,6 +81,34 @@ enum SidebarMode: String, CaseIterable, Identifiable {
     var symbol: String { self == .outline ? "list.bullet.indent" : "clock.arrow.circlepath" }
 }
 
+/// Which commits the history list shows.
+///
+/// Useful because of how the two tools divide the work: a commit an assistant made
+/// carries a `Co-Authored-By` trailer, and one you made by hand does not.
+enum HistoryFilter: String, CaseIterable, Identifiable {
+    case all
+    case coAuthored
+    case solo
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .all: return "All commits"
+        case .coAuthored: return "Co-authored only"
+        case .solo: return "Without a co-author"
+        }
+    }
+
+    func includes(_ commit: GitCommitSummary) -> Bool {
+        switch self {
+        case .all: return true
+        case .coAuthored: return commit.isCoAuthored
+        case .solo: return !commit.isCoAuthored
+        }
+    }
+}
+
 enum HistoryState: Equatable {
     case idle
     case loading
@@ -189,6 +217,9 @@ final class DocumentTab: Identifiable {
     /// Which list the document sidebar is showing.
     var sidebarMode: SidebarMode = .outline
     var history: [GitCommitSummary] = []
+    var historyFilter: HistoryFilter = .all
+    /// The commits the list is actually showing.
+    var visibleHistory: [GitCommitSummary] { history.filter(historyFilter.includes) }
     var historyState: HistoryState = .idle
     /// What the detail pane is showing. A comparison replaces the document rather than
     /// opening a tab, so the sidebar stays beside it to move through.

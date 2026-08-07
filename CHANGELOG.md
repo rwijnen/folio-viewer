@@ -39,6 +39,13 @@ All notable changes to Folio are recorded here. The format follows
 
 ### Added
 
+- **The history list says who wrote each commit.** A commit carrying a `Co-Authored-By`
+  trailer — the one Claude Code and similar tools add — is badged with the co-author's
+  name, with the full trailer in its tooltip, and the filter at the foot of the list
+  narrows to co-authored only or to commits without one. Folio makes no guess about which
+  co-authors are people and which are models; it reports what the commit records. The
+  count says `3 of 12` when a filter is hiding the rest.
+
 - **A document's history, in the split diff view.** The sidebar switches between Outline
   and History; History lists every commit that touched the open file, newest first, and
   clicking one shows that commit's change side by side — left is the file going in, right

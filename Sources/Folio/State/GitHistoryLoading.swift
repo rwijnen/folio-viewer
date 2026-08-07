@@ -119,6 +119,14 @@ extension AppState {
     var isViewingCommit: Bool { active?.viewingCommit != nil }
 }
 
+extension AppState {
+
+    func setHistoryFilter(_ filter: HistoryFilter, for requested: DocumentTab? = nil) {
+        guard let tab = requested ?? active else { return }
+        tab.historyFilter = filter
+    }
+}
+
 /// Seeing what is not yet committed.
 ///
 /// The history browser answers "how did this file get here"; this answers the question
