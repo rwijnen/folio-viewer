@@ -18,6 +18,9 @@ struct DocumentView: View {
                        : "Some mermaid diagrams could not be drawn; their source is shown in place.",
                        systemImage: "exclamationmark.triangle.fill", tint: .orange) { EmptyView() }
             }
+            if let change = tab.externalChange {
+                ExternalChangeBanner(tab: tab, change: change)
+            }
             if appState.isFindPresented {
                 FindBar()
             }
@@ -153,6 +156,8 @@ struct DocumentView: View {
     private var content: some View {
         if let commit = tab.viewingCommit {
             HistoricalCommitView(tab: tab, commit: commit)
+        } else if tab.pane == .externalChange {
+            ExternalChangeView(tab: tab)
         } else if document.isMarkdown, appState.readingMode == .source, tab.isEditable {
             MarkdownEditorView(tab: tab, version: tab.editorVersion)
                 .background(Theme.rowBackground)

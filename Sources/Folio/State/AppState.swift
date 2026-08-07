@@ -30,6 +30,18 @@ final class AppState {
     var errorMessage: String?
     /// Line wrapping is a window-wide preference, not a per-document one.
     var wrapLines = true
+    /// Whether a document with no unsaved edits is brought up to date on its own when
+    /// something else writes the file. On by default: a stale document that looks
+    /// current is the worse of the two failures.
+    ///
+    /// Starts from the stored preference and is written back only by the real app —
+    /// the same guard the session uses, so a test run cannot disturb real settings.
+    var reloadsChangedFilesAutomatically = Preferences.automaticReload {
+        didSet {
+            guard sessionRestoreEnabled else { return }
+            Preferences.automaticReload = reloadsChangedFilesAutomatically
+        }
+    }
     var showOutline = true
     /// Mirrors the window's appearance so rendered pages can match it.
     var isDarkAppearance = false {
@@ -248,6 +260,7 @@ final class AppState {
         guard let index = tabs.firstIndex(where: { $0.id == id }) else { return }
         tabs[index].loadTask?.cancel()
         tabs[index].releasePage()
+        stopWatching(tabs[index])
         let wasActive = activeTabID == id
         tabs.remove(at: index)
         guard wasActive else { return }
@@ -271,6 +284,7 @@ final class AppState {
         for tab in tabs where tab.id != activeTabID {
             tab.loadTask?.cancel()
             tab.releasePage()
+            stopWatching(tab)
         }
         tabs = tabs.filter { $0.id == activeTabID }
         saveSession()
@@ -287,6 +301,7 @@ final class AppState {
         for tab in tabs {
             tab.loadTask?.cancel()
             tab.releasePage()
+            stopWatching(tab)
         }
         tabs = []
         setActive(nil)
@@ -478,15 +493,15 @@ final class AppState {
 
     /// True when ⌘F should be handled by JavaScript inside the rendered page.
     var searchesRenderedPage: Bool {
-        guard let tab = active, tab.viewingCommit == nil else { return false }
+        guard let tab = active, !tab.isShowingComparison else { return false }
         return tab.content == .markdown && tab.readingMode == .rendered
     }
 
     func recomputeMatches() {
         guard let tab = active else { return }
         if searchesRenderedPage { return }
-        // A document showing one of its past commits is a diff for search's purposes.
-        if tab.viewingCommit == nil, tab.content == .markdown || tab.content == .source {
+        // A document showing a comparison is a diff for search's purposes.
+        if !tab.isShowingComparison, tab.content == .markdown || tab.content == .source {
             recomputeTextMatches()
             return
         }
@@ -565,6 +580,17 @@ final class AppState {
 enum Preferences {
 
     private static let baseFolderKey = "baseFolders"
+    private static let automaticReloadKey = "reloadChangedFilesAutomatically"
+
+    /// Whether a document with no unsaved edits is brought up to date on its own when
+    /// something else writes the file. Defaults to on — a stale document that looks
+    /// current is the worse of the two failures.
+    static var automaticReload: Bool {
+        get {
+            UserDefaults.standard.object(forKey: automaticReloadKey) as? Bool ?? true
+        }
+        set { UserDefaults.standard.set(newValue, forKey: automaticReloadKey) }
+    }
 
     static func baseFolder(forDiffAt url: URL) -> URL? {
         let map = UserDefaults.standard.dictionary(forKey: baseFolderKey) as? [String: String] ?? [:]

@@ -59,7 +59,7 @@ extension AppState {
     func showCommit(_ commit: GitCommitSummary, for requested: DocumentTab? = nil) {
         guard let tab = requested ?? active else { return }
         tab.commitTask?.cancel()
-        tab.viewingCommit = commit
+        tab.pane = .commit(commit)
         tab.loadState = .loading
         // The diff pipeline finds its file through `files`/`selectedFileID`, the same way
         // an opened patch does; while a commit is showing, that is what the tab holds.
@@ -94,9 +94,9 @@ extension AppState {
 
     /// Back to the document itself.
     func closeCommit(for requested: DocumentTab? = nil) {
-        guard let tab = requested ?? active, tab.viewingCommit != nil else { return }
+        guard let tab = requested ?? active, tab.isShowingComparison else { return }
         tab.commitTask?.cancel()
-        tab.viewingCommit = nil
+        tab.pane = .document
         tab.loadState = .empty
         tab.files = []
         tab.selectedFileID = nil
