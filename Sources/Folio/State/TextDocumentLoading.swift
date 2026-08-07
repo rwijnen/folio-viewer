@@ -61,22 +61,13 @@ extension AppState {
     /// The reading and converting on its own.
     static func makeTextDocument(at url: URL, asMarkdown: Bool) throws -> TextDocument {
         let (raw, encoding) = try TextNormalizer.read(at: url)
-        return makeTextDocument(from: raw, at: url, asMarkdown: asMarkdown, encoding: encoding,
-                                modificationDate: modificationDate(of: url))
-    }
-
-    /// Deliberately FileManager rather than `URL.resourceValues`: a URL caches the
-    /// values it has already been asked for, so it keeps reporting the date the file had
-    /// when it was opened, and nothing would ever look changed.
-    static func modificationDate(of url: URL) -> Date? {
-        (try? FileManager.default.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date
+        return makeTextDocument(from: raw, at: url, asMarkdown: asMarkdown, encoding: encoding)
     }
 
     /// Builds a document from text in hand, which is also how an edited buffer is
     /// re-parsed for the preview and the outline without touching the disk.
     static func makeTextDocument(from raw: String, at url: URL, asMarkdown: Bool,
-                                 encoding: String.Encoding = .utf8,
-                                 modificationDate: Date? = nil) -> TextDocument {
+                                 encoding: String.Encoding = .utf8) -> TextDocument {
         let sourceLines = TextNormalizer.splitLines(raw)
         let displayLines = TextNormalizer.expandTabs(sourceLines)
         let spec = asMarkdown ? LanguageSpec.plain : LanguageCatalog.spec(forPath: url.lastPathComponent)
@@ -85,7 +76,6 @@ extension AppState {
             url: url,
             rawText: raw,
             encoding: encoding,
-            modificationDate: modificationDate,
             lines: displayLines,
             spans: asMarkdown
                 ? MarkdownSyntax.spans(for: displayLines)
