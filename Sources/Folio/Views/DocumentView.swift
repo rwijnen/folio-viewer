@@ -150,7 +150,9 @@ struct DocumentView: View {
 
     @ViewBuilder
     private var content: some View {
-        if document.isMarkdown, appState.readingMode == .source, tab.isEditable {
+        if let commit = tab.viewingCommit {
+            HistoricalCommitView(tab: tab, commit: commit)
+        } else if document.isMarkdown, appState.readingMode == .source, tab.isEditable {
             MarkdownEditorView(tab: tab, version: tab.editorVersion)
                 .background(Theme.rowBackground)
         } else if document.isMarkdown, appState.readingMode == .rendered,

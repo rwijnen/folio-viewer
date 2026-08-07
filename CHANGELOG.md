@@ -8,6 +8,15 @@ All notable changes to Folio are recorded here. The format follows
 
 ### Added
 
+- **A document's history, in the split diff view.** The sidebar switches between Outline
+  and History; History lists every commit that touched the open file, newest first, and
+  clicking one shows that commit's change side by side — left is the file going in, right
+  is the file coming out. It is the same view an opened patch gets, so word-level
+  highlighting, collapsible context, ⌘F and scroll memory all come with it. ⌥⌘↑ and ⌥⌘↓
+  step between commits without returning to the list. The log follows renames, so work
+  done under a previous filename is still there, and the commit that added the file shows
+  the whole thing as new. Right-click a commit to copy its hash.
+
 - **Commit and push Markdown from inside Folio.** A document in a git repository gets a
   pill in the header showing the branch, `↑`/`↓` for commits to push and pull, and a
   coloured dot when the file has changes. ⌥⌘C opens a commit sheet; ⌥⌘P pushes. Unsaved

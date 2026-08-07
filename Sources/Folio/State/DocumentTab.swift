@@ -51,6 +51,23 @@ enum DocumentContent: Equatable {
     case source
 }
 
+/// What the document sidebar is listing.
+enum SidebarMode: String, CaseIterable, Identifiable {
+    case outline
+    case history
+
+    var id: String { rawValue }
+    var label: String { self == .outline ? "Outline" : "History" }
+    var symbol: String { self == .outline ? "list.bullet.indent" : "clock.arrow.circlepath" }
+}
+
+enum HistoryState: Equatable {
+    case idle
+    case loading
+    case loaded
+    case failed(String)
+}
+
 /// Rendered or raw, for Markdown documents.
 enum ReadingMode: String, CaseIterable, Identifiable {
     case rendered
@@ -146,6 +163,18 @@ final class DocumentTab: Identifiable {
     var isEditable: Bool { content == .markdown }
     /// What the editor should show, and what a save would write.
     var currentText: String { draftText ?? textDocument?.rawText ?? "" }
+
+    // MARK: History
+
+    /// Which list the document sidebar is showing.
+    var sidebarMode: SidebarMode = .outline
+    var history: [GitCommitSummary] = []
+    var historyState: HistoryState = .idle
+    /// The commit shown in place of the document, if any. Reading the past replaces the
+    /// pane rather than opening a tab, so the list stays beside it to move through.
+    var viewingCommit: GitCommitSummary?
+    @ObservationIgnored var historyTask: Task<Void, Never>?
+    @ObservationIgnored var commitTask: Task<Void, Never>?
 
     // MARK: Version control
 

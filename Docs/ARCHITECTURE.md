@@ -152,6 +152,34 @@ anything and needs to know that before they start fixing it.
 
 This is the one place Folio uses the network, and it is always a button someone pressed.
 
+### History reuses the diff pipeline rather than describing it again
+
+A commit's change to a file is a unified diff plus the content it was made against. That
+is exactly the pair `DiffPreparation` already takes, so showing a commit needed no new
+view, no new row model, no new alignment, and no new highlighting — git supplies the two
+inputs and the existing pipeline does the rest. Word diffing, collapsible context, ⌘F and
+scroll memory came along without being asked for.
+
+`DiffPreparation.prepare(change:)` is markedly shorter than its sibling that reads a patch
+file, and the reason is instructive: git removes every ambiguity that makes the other one
+long. The content going in comes from the repository rather than from a file on disk that
+might be the original, might be the patched version, or might be some third revision — so
+there is no reconstruction, no reversing the patch to recover the original, and no
+guessing.
+
+Two details:
+
+- **The path travels with the commit.** `git log --follow` crosses renames, which prose
+  files collect, and `git show` needs the name the file had *then*, not now. Each entry in
+  the list therefore carries its own path.
+- **`rawOldPath` is not a path.** It still has git's `a/` prefix, which belongs to the
+  diff's grammar rather than to the repository. Asking for `a/note.md` finds nothing, and
+  because a missing parent is how the commit that *added* a file is detected, the mistake
+  does not error — it silently reports every commit as the file's first. A test caught it.
+
+A commit is shown in place of the document rather than in a new tab, so the list stays
+beside it and stepping back through a file's past is one click per step.
+
 ### The outline is a tree, inferred not declared
 
 `OutlineLayout` nests headings by their level *relative to their neighbours*, not by the
