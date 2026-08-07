@@ -95,7 +95,7 @@ someone else's work. **Diffs and other text files stay read-only.**
 | Images | Local ones inlined as `data:` URIs; remote ones reported, never fetched |
 | Follows links | Sibling `.md` / `.diff` files open in Folio; http(s) goes to your browser |
 | **Editing** | Source mode is a real editor — undo, find, line numbers, live syntax colouring — and ⌘S writes the file. Nothing is ever auto-saved |
-| **Git** | The header shows the branch, how far it has drifted, and whether this file has changes. ⌥⌘C commits it; ⌥⌘P pushes. One file per commit |
+| **Git** | The header shows the branch, how far it has drifted, and whether this file has changes. ⌥⌘C commits it; ⌥⌘P pushes. Any file you have open, one file per commit |
 | **History** | The sidebar switches from Outline to History: every commit that touched this file, each one opening in the split diff view. Follows renames |
 | **Who wrote it** | Commits with a `Co-Authored-By` trailer are badged, and the list filters to co-authored or not |
 | **Uncommitted changes** | ⌥⌘D shows the last commit against what you have now, unsaved edits included — what a commit would record |
@@ -119,11 +119,14 @@ identical bytes: the text is compared, not the timestamp.
 
 ### Git
 
-A Markdown document that lives in a git repository gets a pill in the header. When there
+Any document that lives in a git repository gets a pill in the header — Markdown, a diff,
+a source file, whatever you have open. When there
 is nothing to do it is quiet — just `main`, and `↑`/`↓` for commits to push and pull. When
 there is, it says so in words and takes a colour: `main · +12 −3` for a file edited since
 the last commit, `unsaved` for edits still in the editor, `new file`, or `conflict`.
-Behind it are the only two things Folio will do to your repository.
+Behind it are the only two things Folio will do to your repository. Editing is still
+Markdown-only; committing is not, because a patch or a script someone has just handed you
+is exactly the sort of thing you want to record.
 
 **Commit** opens a sheet with a message field. Unsaved edits are saved first — git records
 what is on disk, so committing without saving would quietly store the wrong version — and
@@ -168,8 +171,10 @@ opened patch gets, so the word-level highlighting, collapsible context, ⌘F and
 memory all work exactly as they do elsewhere. ⌥⌘↑ and ⌥⌘↓ step to the newer or older
 commit without going back to the list, and **Back to the Document** returns.
 
-The log follows renames, so a file that started life as `draft.md` still shows the work
-you did under that name. Right-click a commit to copy its hash.
+History lives in the document sidebar, so it is there for Markdown and source files but
+not for a diff, whose sidebar lists the files inside the patch instead. The log follows
+renames, so a file that started life as `draft.md` still shows the work you did under that
+name. Right-click a commit to copy its hash.
 
 **Who wrote it.** A commit carrying a `Co-Authored-By` trailer — the one Claude Code and
 similar tools add — is badged with the co-author's name, and the filter at the foot of the
@@ -265,7 +270,7 @@ renderer supports.
 
 No package manager, no framework, one vendored dependency. `swift build` and a shell
 script that assembles the bundle and draws the icon with Core Graphics — the whole thing
-compiles with the Command Line Tools alone. 319 tests run in about fifteen seconds.
+compiles with the Command Line Tools alone. 327 tests run in about fifteen seconds.
 
 Contributions are welcome; please read [CONTRIBUTING.md](CONTRIBUTING.md) first, since
 Folio's narrow-writing, offline, non-executing constraints are deliberate.
@@ -282,7 +287,7 @@ what was wrong with it. Every commit carries a `Co-Authored-By: Claude` trailer,
 This is stated plainly because you should know what you are reading before you trust it.
 It does not lower the bar the code has to clear:
 
-- The 319 tests are real tests over real fixtures, and CI runs them on every push.
+- The 327 tests are real tests over real fixtures, and CI runs them on every push.
 - The three rules above — writes only where you ask, online only on Push, never executes
   what it renders — are the ones under test, not just claims in a README. The git tests
   build throwaway repositories and push between them on disk, so the narrowness is

@@ -8,6 +8,14 @@ All notable changes to Folio are recorded here. The format follows
 
 ### Fixed
 
+- **Any file you have open can now be committed, not just Markdown.** A new `.diff`, a
+  script, a note in a format Folio does not render — none of them offered git at all,
+  because the feature was gated on whether Folio could *edit* the file. Editing is still
+  Markdown-only; committing, pushing, the status pill and ⌥⌘D are not. History stays in
+  the document sidebar, so it is there for Markdown and source files but not for a diff,
+  whose sidebar lists the files inside the patch — asking for it now says so rather than
+  doing nothing.
+
 - **The git pill now says whether the file needs committing.** A small coloured dot told
   you something was different without saying what, so you had to open the menu to find
   out. It now reads `main · +12 −3` for a file edited since the last commit, `unsaved`
