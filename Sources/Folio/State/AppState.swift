@@ -478,14 +478,15 @@ final class AppState {
 
     /// True when ⌘F should be handled by JavaScript inside the rendered page.
     var searchesRenderedPage: Bool {
-        guard let tab = active else { return false }
+        guard let tab = active, tab.viewingCommit == nil else { return false }
         return tab.content == .markdown && tab.readingMode == .rendered
     }
 
     func recomputeMatches() {
         guard let tab = active else { return }
         if searchesRenderedPage { return }
-        if tab.content == .markdown || tab.content == .source {
+        // A document showing one of its past commits is a diff for search's purposes.
+        if tab.viewingCommit == nil, tab.content == .markdown || tab.content == .source {
             recomputeTextMatches()
             return
         }

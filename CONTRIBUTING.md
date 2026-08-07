@@ -32,7 +32,7 @@ merged:
 3. **It does not execute what it renders.** Markdown is escaped except for a whitelist of
    attribute-free formatting tags, and the rendered page runs under a strict CSP.
 
-Beyond that: it favours being *correct about diffs* over being feature-rich, and it
+Beyond that: it favours being *correct about diffs* over being feature-rich, and itÓ
 prefers native Swift over adding dependencies. There is exactly one third-party component
 in the project and adding a second needs a good argument.
 
@@ -42,7 +42,7 @@ in the project and adding a second needs a good argument.
 git clone https://github.com/rwijnen/folio-viewer.git
 cd folio-viewer
 swift build          # compile
-swift test           # 238 tests, ~15 seconds
+swift test           # 256 tests, ~15 seconds
 ./build.sh           # assemble build/Folio.app
 open -a build/Folio.app Samples/example.md
 ```
@@ -65,6 +65,7 @@ Sources/Folio/
     MarkdownSyntax          Markdown highlighting for source mode
     Git                     runs `git` as a subprocess: environment, pipes, timeouts
     GitRepository           the handful of git commands Folio needs, as typed calls
+    GitHistory              reading the log, and one commit's change to one file
     PathResolver            works out which folder a diff's paths belong to
     TextNormalizer          line splitting, tab expansion, encoding tolerance
   State/
@@ -74,6 +75,7 @@ Sources/Folio/
     TextDocumentLoading     opening Markdown/source, page callbacks, reading modes
     Editing                 drafts, saving, the prompts before anything is lost
     GitIntegration          status refresh, commit, push, and what the buttons may offer
+    GitHistoryLoading       the history list and showing one commit in the pane
   Views/
     ContentView             tab bar + sidebar + detail
     TabBar                  the strip of open documents
@@ -82,6 +84,7 @@ Sources/Folio/
     SourceListingView       single-column source with line numbers
     DocumentView            Markdown/source pane, mode switch, outline sidebar
     GitStatusView           the branch pill in the header and the commit sheet
+    HistorySidebar          the Outline/History switch, the commit list, the commit pane
     MarkdownWebView         container for the rendered page
     MarkdownPageController  owns one document's live WKWebView
     HTMLPage                the page template: CSS, CSP, find and diagram scripts
