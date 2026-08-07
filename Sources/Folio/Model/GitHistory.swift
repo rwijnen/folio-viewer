@@ -10,8 +10,24 @@ struct GitCommitSummary: Identifiable, Equatable, Sendable {
     /// What the file was called at this commit. Differs from today's name across a
     /// rename, and `git show` needs the contemporary one.
     var path: String
+    /// `Co-Authored-By` trailers, verbatim — `Claude Opus 5 <noreply@anthropic.com>`.
+    ///
+    /// Folio does not try to work out which of them are people and which are models;
+    /// git does not record that, and a list of vendor addresses would be wrong within
+    /// the year. It reports who the commit says helped and lets the reader judge.
+    var coAuthors: [String] = []
 
     var id: String { hash }
+
+    var isCoAuthored: Bool { !coAuthors.isEmpty }
+
+    /// The first co-author's name without the address, for a badge.
+    var coAuthorName: String? {
+        guard let first = coAuthors.first else { return nil }
+        guard let bracket = first.firstIndex(of: "<") else { return first }
+        let name = first[..<bracket].trimmingCharacters(in: .whitespaces)
+        return name.isEmpty ? first : name
+    }
 }
 
 /// Reading a file's past. Nothing here writes.
@@ -35,7 +51,10 @@ enum GitHistory {
                         using git: Git) async throws -> [GitCommitSummary] {
         // Record and field separators rather than newlines and spaces: a commit subject
         // can contain anything, including both.
+        // Co-author values are separated by \u{2} inside their own field, since a
+        // name can contain anything a field separator might otherwise be mistaken for.
         let format = "%x1e%H%x1f%h%x1f%an%x1f%aI%x1f%s%x1f"
+            + "%(trailers:key=Co-Authored-By,valueonly,separator=%x02)%x1f"
         let output = try await git.require([
             "log", "--follow", "--max-count=\(limit)", "--name-only",
             "--pretty=format:\(format)", "--", fileURL.path,
@@ -50,18 +69,23 @@ enum GitHistory {
 
         for record in output.split(separator: "\u{1e}", omittingEmptySubsequences: true) {
             let fields = record.split(separator: "\u{1f}", omittingEmptySubsequences: false)
-            guard fields.count >= 5 else { continue }
+            guard fields.count >= 6 else { continue }
             // `--name-only` writes the path after the format, so it trails the last field.
-            let trailing = fields.count > 5 ? fields[5] : ""
+            let trailing = fields.count > 6 ? fields[6] : ""
             let path = trailing.split(separator: "\n")
                 .map { $0.trimmingCharacters(in: .whitespaces) }
                 .first { !$0.isEmpty } ?? ""
+            let coAuthors = fields[5]
+                .split(separator: "\u{2}")
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
             commits.append(GitCommitSummary(hash: String(fields[0]),
                                             shortHash: String(fields[1]),
                                             author: String(fields[2]),
                                             date: dates.date(from: String(fields[3])) ?? Date(),
                                             subject: String(fields[4]),
-                                            path: path))
+                                            path: path,
+                                            coAuthors: coAuthors))
         }
         return commits
     }
@@ -104,6 +128,17 @@ enum GitHistory {
             return Change(diff: file, parentLines: [], isNew: true)
         }
         return Change(diff: file, parentLines: TextNormalizer.splitLines(parent.output), isNew: false)
+    }
+
+    /// The file as the last commit on this branch left it, or nil when the commit does
+    /// not have it — an untracked file, or a branch with no commits at all.
+    ///
+    /// `HEAD:./name` rather than a repository-relative path: the `./` form resolves
+    /// against the working directory, which is the folder the document is in, so nothing
+    /// has to work out where the repository root is or how the two paths relate.
+    static func contentsAtHead(of fileURL: URL, using git: Git) async -> String? {
+        let result = await git.run(["show", "HEAD:./\(fileURL.lastPathComponent)"])
+        return result.succeeded ? result.output : nil
     }
 
     /// The file exactly as it stood at a commit, for reading rather than comparing.

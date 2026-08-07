@@ -297,3 +297,59 @@ struct CommitDateTests {
         #expect(CommitDate.when(justOutside, now: now) == CommitDate.exact(justOutside))
     }
 }
+
+// MARK: - Who wrote it
+
+@Suite("Co-authored commits", .enabled(if: gitIsInstalled))
+struct CoAuthoredCommitTests {
+
+    /// The distinction that matters in an assistant workflow: a commit the model made
+    /// carries the trailer, and one made by hand does not.
+    @Test func trailersAreReadOffTheLog() async throws {
+        let repo = try HistoryRepo()
+        try await repo.start()
+        let file = try await repo.commit("note.md", "a\n", message: "Mine, by hand")
+        try await repo.commit("note.md", "b\n",
+                              message: "By the model\n\n"
+                                  + "Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>")
+        try await repo.commit("note.md", "c\n",
+                              message: "Two helpers\n\n"
+                                  + "Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>\n"
+                                  + "Co-Authored-By: Someone Else <else@example.com>")
+
+        let commits = try await GitHistory.commits(for: file, using: repo.git)
+        #expect(commits.map(\.subject) == ["Two helpers", "By the model", "Mine, by hand"])
+        #expect(commits[0].coAuthors.count == 2)
+        #expect(commits[1].coAuthors == ["Claude Opus 5 <noreply@anthropic.com>"])
+        #expect(commits[2].coAuthors.isEmpty)
+        #expect(commits[2].isCoAuthored == false)
+        // Everything else still parses with the extra field in the format.
+        #expect(commits.allSatisfy { $0.path == "note.md" })
+        #expect(commits.allSatisfy { $0.hash.count == 40 })
+    }
+
+    @Test func theBadgeShowsTheNameWithoutTheAddress() {
+        func summary(_ coAuthors: [String]) -> GitCommitSummary {
+            GitCommitSummary(hash: "h", shortHash: "h", author: "a", date: Date(),
+                             subject: "s", path: "p", coAuthors: coAuthors)
+        }
+        #expect(summary(["Claude Opus 5 <noreply@anthropic.com>"]).coAuthorName
+                == "Claude Opus 5")
+        // A trailer with no address, and one with no name, both still say something.
+        #expect(summary(["Someone"]).coAuthorName == "Someone")
+        #expect(summary(["<only@example.com>"]).coAuthorName == "<only@example.com>")
+        #expect(summary([]).coAuthorName == nil)
+    }
+
+    @Test func theFilterSplitsTheLogInTwo() {
+        func summary(_ subject: String, _ coAuthors: [String]) -> GitCommitSummary {
+            GitCommitSummary(hash: subject, shortHash: "h", author: "a", date: Date(),
+                             subject: subject, path: "p", coAuthors: coAuthors)
+        }
+        let log = [summary("assisted", ["Claude <c@example.com>"]), summary("by hand", [])]
+
+        #expect(log.filter(HistoryFilter.all.includes).count == 2)
+        #expect(log.filter(HistoryFilter.coAuthored.includes).map(\.subject) == ["assisted"])
+        #expect(log.filter(HistoryFilter.solo.includes).map(\.subject) == ["by hand"])
+    }
+}

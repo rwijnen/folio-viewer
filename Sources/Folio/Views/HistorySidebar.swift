@@ -71,6 +71,20 @@ struct HistorySidebar: View {
                 .padding(.horizontal, 12)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
+            case .loaded where !tab.history.isEmpty && tab.visibleHistory.isEmpty:
+                VStack(spacing: 6) {
+                    Image(systemName: "line.3.horizontal.decrease.circle")
+                        .font(.system(size: 18, weight: .thin))
+                        .foregroundStyle(.tertiary)
+                    Text("No commits match this filter")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                    Button("Show All") { state.setHistoryFilter(.all, for: tab) }
+                        .buttonStyle(.link)
+                        .font(.system(size: 11))
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
             case .loaded where tab.history.isEmpty:
                 VStack(spacing: 6) {
                     Image(systemName: "clock")
@@ -84,7 +98,7 @@ struct HistorySidebar: View {
 
             case .loaded:
                 List {
-                    ForEach(tab.history) { commit in
+                    ForEach(tab.visibleHistory) { commit in
                         CommitRow(commit: commit,
                                   isCurrent: tab.viewingCommit?.hash == commit.hash,
                                   isFirst: commit.hash == tab.history.first?.hash)
@@ -114,18 +128,47 @@ struct HistorySidebar: View {
                     .font(.system(size: 10))
             } else if case .loaded = tab.historyState, !tab.history.isEmpty {
                 Image(systemName: "clock.arrow.circlepath").font(.system(size: 9))
-                Text(tab.history.count >= GitHistory.defaultLimit
-                     // Said out loud rather than silently truncating a list that looks
-                     // complete.
-                     ? "Most recent \(tab.history.count) commits"
-                     : "\(tab.history.count) commit\(tab.history.count == 1 ? "" : "s")")
+                Text(countLabel)
                     .font(.system(size: 10))
             }
             Spacer(minLength: 0)
+
+            if case .loaded = tab.historyState, !tab.history.isEmpty {
+                Menu {
+                    ForEach(HistoryFilter.allCases) { filter in
+                        Button {
+                            state.setHistoryFilter(filter, for: tab)
+                        } label: {
+                            // A tick rather than a disabled row, so which one is on is
+                            // readable without opening anything else.
+                            Text(tab.historyFilter == filter ? "✓ \(filter.label)" : filter.label)
+                        }
+                    }
+                } label: {
+                    Image(systemName: tab.historyFilter == .all
+                          ? "line.3.horizontal.decrease.circle"
+                          : "line.3.horizontal.decrease.circle.fill")
+                        .font(.system(size: 10))
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .help("Which commits to list")
+            }
         }
         .foregroundStyle(.secondary)
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
+    }
+
+    /// Never claims to be showing more than it is: a filter that hides half the log
+    /// says so, and so does the cap on how much was read.
+    private var countLabel: String {
+        let shown = tab.visibleHistory.count
+        let total = tab.history.count
+        if shown != total { return "\(shown) of \(total)" }
+        if total >= GitHistory.defaultLimit { return "Most recent \(total) commits" }
+        return "\(total) commit\(total == 1 ? "" : "s")"
     }
 
     private func copy(_ text: String) {
@@ -166,6 +209,15 @@ struct CommitRow: View {
                     if isFirst {
                         Text("· latest")
                     }
+                    if let helper = commit.coAuthorName {
+                        Text(helper)
+                            .font(.system(size: 8, weight: .medium))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(Theme.gutterBackground, in: Capsule())
+                            .lineLimit(1)
+                    }
                 }
                 .font(.system(size: 9))
                 .foregroundStyle(.tertiary)
@@ -179,7 +231,15 @@ struct CommitRow: View {
             RoundedRectangle(cornerRadius: 4, style: .continuous)
                 .fill(isCurrent ? Theme.foldBackground : .clear)
         }
-        .help("\(commit.subject)\n\(commit.author) · \(CommitDate.exact(commit.date))")
+        .help(tooltip)
+    }
+
+    private var tooltip: String {
+        var lines = [commit.subject,
+                     "\(commit.author) · \(CommitDate.exact(commit.date))"]
+        // The full trailer, address and all, since the badge only has room for a name.
+        lines.append(contentsOf: commit.coAuthors.map { "Co-authored by \($0)" })
+        return lines.joined(separator: "\n")
     }
 
     /// A dot for this commit and a thread down to the next, so the list reads as a
@@ -234,69 +294,35 @@ struct HistoricalCommitView: View {
     let commit: GitCommitSummary
 
     var body: some View {
-        VStack(spacing: 0) {
-            banner
-            Divider()
-            switch tab.loadState {
-            case .empty, .loading:
-                VStack(spacing: 10) {
-                    ProgressView()
-                    Text("Reading \(commit.shortHash)…")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
+        ComparisonPane(tab: tab,
+                       leftTitle: "Before this commit",
+                       rightTitle: "After this commit",
+                       loadingMessage: "Reading \(commit.shortHash)…",
+                       failureTitle: "Nothing to show for \(commit.shortHash)") {
+            HStack(spacing: 8) {
+                ComparisonTitle(
+                    title: commit.subject,
+                    detail: "\(commit.shortHash) · \(commit.author) · "
+                        + CommitDate.exact(commit.date),
+                    symbol: "clock.arrow.circlepath")
+                Spacer()
+
+                Button { state.stepThroughHistory(by: -1) } label: {
+                    Image(systemName: "chevron.up")
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Theme.rowBackground)
-            case let .failed(message):
-                MessageView(title: "Nothing to show for \(commit.shortHash)",
-                            message: message, systemImage: "clock.badge.questionmark")
-            case let .loaded(file):
-                if let entry = tab.selectedEntry {
-                    SplitDiffView(tab: tab, entry: entry, file: file)
+                .help("Newer commit")
+                .disabled(!canStep(-1))
+
+                Button { state.stepThroughHistory(by: 1) } label: {
+                    Image(systemName: "chevron.down")
                 }
+                .help("Older commit")
+                .disabled(!canStep(1))
+
+                Button("Back to the Document") { state.closeCommit(for: tab) }
+                    .controlSize(.small)
             }
         }
-    }
-
-    /// Says plainly that this is not the document, since the split view below looks
-    /// exactly like an opened patch.
-    private var banner: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "clock.arrow.circlepath")
-                .foregroundStyle(.secondary)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(commit.subject)
-                    .font(.system(size: 12, weight: .semibold))
-                    .lineLimit(1)
-                Text("\(commit.shortHash) · \(commit.author) · \(CommitDate.exact(commit.date))")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-            Spacer()
-
-            Button {
-                state.stepThroughHistory(by: -1)
-            } label: {
-                Image(systemName: "chevron.up")
-            }
-            .help("Newer commit")
-            .disabled(!canStep(-1))
-
-            Button {
-                state.stepThroughHistory(by: 1)
-            } label: {
-                Image(systemName: "chevron.down")
-            }
-            .help("Older commit")
-            .disabled(!canStep(1))
-
-            Button("Back to the Document") { state.closeCommit(for: tab) }
-                .controlSize(.small)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(Color.accentColor.opacity(0.08))
     }
 
     private func canStep(_ offset: Int) -> Bool {

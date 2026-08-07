@@ -146,8 +146,14 @@ extension AppState {
 
     /// Reads a restored tab's document the first time it is needed.
     func prepareIfNeeded(_ tab: DocumentTab) {
-        guard let entry = tab.pendingRestore else { return }
+        guard let entry = tab.pendingRestore else {
+            // Already read; make sure it is being watched, which a restored tab is not
+            // until it has been.
+            if tab.textDocument != nil { startWatching(tab) }
+            return
+        }
         tab.pendingRestore = nil
+        defer { startWatching(tab) }
         do {
             switch Self.inferredContent(for: tab.url) {
             case .diff:

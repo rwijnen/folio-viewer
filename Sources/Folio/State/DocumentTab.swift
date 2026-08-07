@@ -63,6 +63,26 @@ enum DocumentContent: Equatable {
     case source
 }
 
+/// What the detail pane is showing for a document.
+enum PaneContent: Equatable {
+    /// The document itself — rendered, source, or the editor.
+    case document
+    /// One commit out of its history, side by side.
+    case commit(GitCommitSummary)
+    /// What something else wrote to the file, against what this tab holds.
+    case externalChange
+    /// Everything not yet committed: the last commit against what you have now.
+    case workingChanges
+}
+
+/// Something else changed the file while it was open here.
+enum ExternalChange: Equatable {
+    /// The text now on disk, which differs from what this tab was built from.
+    case changed(String)
+    /// The file is no longer there.
+    case removed
+}
+
 /// What the document sidebar is listing.
 enum SidebarMode: String, CaseIterable, Identifiable {
     case outline
@@ -71,6 +91,34 @@ enum SidebarMode: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var label: String { self == .outline ? "Outline" : "History" }
     var symbol: String { self == .outline ? "list.bullet.indent" : "clock.arrow.circlepath" }
+}
+
+/// Which commits the history list shows.
+///
+/// Useful because of how the two tools divide the work: a commit an assistant made
+/// carries a `Co-Authored-By` trailer, and one you made by hand does not.
+enum HistoryFilter: String, CaseIterable, Identifiable {
+    case all
+    case coAuthored
+    case solo
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .all: return "All commits"
+        case .coAuthored: return "Co-authored only"
+        case .solo: return "Without a co-author"
+        }
+    }
+
+    func includes(_ commit: GitCommitSummary) -> Bool {
+        switch self {
+        case .all: return true
+        case .coAuthored: return commit.isCoAuthored
+        case .solo: return !commit.isCoAuthored
+        }
+    }
 }
 
 enum HistoryState: Equatable {
@@ -181,10 +229,23 @@ final class DocumentTab: Identifiable {
     /// Which list the document sidebar is showing.
     var sidebarMode: SidebarMode = .outline
     var history: [GitCommitSummary] = []
+    var historyFilter: HistoryFilter = .all
+    /// The commits the list is actually showing.
+    var visibleHistory: [GitCommitSummary] { history.filter(historyFilter.includes) }
     var historyState: HistoryState = .idle
-    /// The commit shown in place of the document, if any. Reading the past replaces the
-    /// pane rather than opening a tab, so the list stays beside it to move through.
-    var viewingCommit: GitCommitSummary?
+    /// What the detail pane is showing. A comparison replaces the document rather than
+    /// opening a tab, so the sidebar stays beside it to move through.
+    var pane: PaneContent = .document
+    /// The commit being shown, for the many places that only care about that case.
+    var viewingCommit: GitCommitSummary? {
+        if case let .commit(commit) = pane { return commit }
+        return nil
+    }
+    var isShowingComparison: Bool { pane != .document }
+
+    /// Set when something else wrote the file while this tab had it open.
+    var externalChange: ExternalChange?
+    @ObservationIgnored var watcher: FileWatcher?
     @ObservationIgnored var historyTask: Task<Void, Never>?
     @ObservationIgnored var commitTask: Task<Void, Never>?
 

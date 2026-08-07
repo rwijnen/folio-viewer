@@ -152,6 +152,44 @@ anything and needs to know that before they start fixing it.
 
 This is the one place Folio uses the network, and it is always a button someone pressed.
 
+### Watching a file means re-opening it, not holding it
+
+A `DispatchSource` file-system watcher holds a file descriptor. That works for a program
+writing *into* a file, and not at all for the way almost everything actually writes one:
+a temporary file alongside, renamed over the top. After the rename the descriptor refers
+to an unlinked inode that will never change again, so the watcher goes quiet and stays
+quiet. Folio's own saves work this way, which makes it easy to test and easy to miss —
+the first change is reported, and every one after it is lost.
+
+`FileWatcher` therefore treats `.delete`, `.rename` and `.revoke` as instructions to tear
+down and re-open the path, with a few short retries to cover the gap. A test replaces the
+file three times and requires all three to arrive; with the re-arming removed it fails on
+the second, which is how the behaviour was confirmed rather than assumed.
+
+Two smaller decisions. Events are coalesced over 120 ms, because one logical write is
+rarely one syscall. And the watcher reports only that *something* happened — whether
+anything differs is decided by reading the file and comparing the text, the same test
+that guards an overwrite, which is what stops `touch` and Folio's own saves from
+announcing themselves.
+
+### The one diff Folio computes
+
+Everywhere else, a diff arrives: from a patch file, or from git. Comparing a buffer in
+memory against the file on disk has no such source, so `LineDiff` works it out.
+
+It trims the common prefix and suffix first, then runs an LCS over what is left. The
+trimming is not only an optimisation — a rewritten paragraph in a four-thousand-line note
+leaves a middle of a few lines, which is the difference between a table worth building and
+one that is not. Past a ceiling on the remaining product, the differing region is reported
+as wholly replaced and the view says so, rather than spending seconds proving it.
+
+The trimmed ends go back on as unchanged operations before the hunks are grouped. Leaving
+them off looks right and is not: the lines immediately around a change are its context,
+and a hunk without them has nothing to anchor to. Both bugs — the missing context and the
+resulting misplacement — were caught by a test that applies the computed hunks back to the
+original and requires the updated file out, which is the only definition of correct that
+matters here.
+
 ### History reuses the diff pipeline rather than describing it again
 
 A commit's change to a file is a unified diff plus the content it was made against. That

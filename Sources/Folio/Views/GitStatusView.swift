@@ -13,11 +13,15 @@ struct GitStatusPill: View {
     var body: some View {
         if let snapshot = tab.git {
             Menu {
+                Button("Uncommitted Changes…") { state.showWorkingChanges(for: tab) }
+                    .disabled(!state.hasWorkingChanges(tab))
                 Button("All Uncommitted Changes…") { state.showRepositoryChanges() }
                 Divider()
                 Button("Commit…") { state.presentCommitSheet() }
+                    .disabled(!state.canCommit(tab))
                 if let upstream = snapshot.upstream {
                     Button("Push to \(upstream)") { state.pushActiveDocument() }
+                        .disabled(!state.canPush(tab))
                 }
                 Divider()
                 Button("Refresh Status") { state.refreshGitStatus(for: tab) }
@@ -28,7 +32,9 @@ struct GitStatusPill: View {
                     Text(reason)
                 }
             } label: {
-                GitStatusLabel(snapshot: snapshot, isBusy: tab.gitActivity != nil)
+                GitStatusLabel(snapshot: snapshot,
+                               isBusy: tab.gitActivity != nil,
+                               hasUnsavedEdits: tab.isDirty)
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
@@ -70,6 +76,9 @@ struct GitStatusLabel: View {
 
     let snapshot: GitSnapshot
     var isBusy = false
+    /// Edits still in the editor. They are not in the file yet, so git cannot see them,
+    /// but they are the commonest reason a reader is looking at this pill at all.
+    var hasUnsavedEdits = false
 
     var body: some View {
         HStack(spacing: 4) {
@@ -85,22 +94,48 @@ struct GitStatusLabel: View {
             Text(snapshot.summary)
                 .font(.system(size: 10, weight: .medium))
                 .lineLimit(1)
-            if let colour = Self.stateColour(snapshot.fileState) {
-                Circle()
-                    .fill(colour)
-                    .frame(width: 5, height: 5)
+
+            // The whole point of the pill: whether this file needs committing, in words.
+            if let label = Self.label(for: snapshot, hasUnsavedEdits: hasUnsavedEdits) {
+                Text("·")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary)
+                Text(label)
+                    .font(.system(size: 10, weight: .semibold))
+                    .lineLimit(1)
+                    .foregroundStyle(Self.tint(for: snapshot, hasUnsavedEdits: hasUnsavedEdits)
+                                     ?? .secondary)
             }
         }
         .foregroundStyle(.secondary)
         .padding(.horizontal, 6)
         .padding(.vertical, 2)
-        .background(Theme.gutterBackground, in: Capsule())
+        .background {
+            let tint = Self.tint(for: snapshot, hasUnsavedEdits: hasUnsavedEdits)
+            Capsule()
+                .fill(tint?.opacity(0.14) ?? Theme.gutterBackground)
+                .overlay { Capsule().strokeBorder((tint ?? .clear).opacity(0.35)) }
+        }
     }
 
-    /// No dot for a file that matches the last commit — a quiet header means nothing
-    /// needs doing, which is the state a reader is in most of the time.
-    static func stateColour(_ fileState: GitSnapshot.FileState) -> Color? {
-        switch fileState {
+    /// What the file needs, or nil when it needs nothing.
+    ///
+    /// Unsaved edits win over what git sees. They are about to become a change, and
+    /// saying "no changes" while the reader is mid-sentence is simply wrong.
+    static func label(for snapshot: GitSnapshot, hasUnsavedEdits: Bool) -> String? {
+        if hasUnsavedEdits, snapshot.fileState == .committed { return "unsaved" }
+        if hasUnsavedEdits, snapshot.fileState == .modified {
+            return snapshot.changeLabel.map { "\($0), unsaved" } ?? "unsaved"
+        }
+        return snapshot.changeLabel
+    }
+
+    /// A quiet pill means nothing needs doing, which is the state a reader is in most of
+    /// the time; anything else is coloured by how much it wants attention.
+    static func tint(for snapshot: GitSnapshot, hasUnsavedEdits: Bool) -> Color? {
+        if snapshot.fileState == .conflicted { return .red }
+        if hasUnsavedEdits { return .orange }
+        switch snapshot.fileState {
         case .committed: return nil
         case .modified: return .orange
         case .untracked: return .blue
@@ -212,7 +247,7 @@ struct CommitSheet: View {
             // ⌘↩ rather than ↩: Return belongs to the message field, where a commit
             // message's second paragraph starts.
             .keyboardShortcut(.return, modifiers: .command)
-            .disabled(isBusy || !hasMessage)
+            .disabled(isBusy || !hasMessage || !appState.canCommit(tab))
         }
     }
 
