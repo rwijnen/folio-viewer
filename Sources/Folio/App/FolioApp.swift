@@ -56,6 +56,14 @@ struct FolioApp: App {
                 Button("Hide Find Bar") { state.dismissFind() }
                     .keyboardShortcut(.escape, modifiers: [])
             }
+            CommandMenu("Repository") {
+                Button("Commit…") { state.presentCommitSheet() }
+                    .keyboardShortcut("c", modifiers: [.command, .option])
+                Button("Push") { state.pushActiveDocument() }
+                    .keyboardShortcut("p", modifiers: [.command, .option])
+                Divider()
+                Button("Refresh Status") { state.refreshGitStatus() }
+            }
             CommandMenu("Document") {
                 Button("Next Tab") { state.selectAdjacentTab(offset: 1) }
                     .keyboardShortcut("\t", modifiers: .control)

@@ -110,6 +110,48 @@ read *plus* a pass over the data — 19 µs against 14 µs at 16 KB, 376 µs aga
 1 MB — and the text to compare against is already in memory for the dirty check. Hashing
 earns its keep when the baseline is *not* held, such as watching many files at once.
 
+### Git is a subprocess, not a library
+
+Folio runs the `git` already on the machine rather than linking libgit2. The reason is not
+effort saved: it is that the reader's `~/.gitconfig`, credential helper, SSH agent,
+`pre-commit` hook and signing key all come along, so a commit Folio makes is
+indistinguishable from one they made in a terminal. A linked library would reimplement
+each of those, badly, and would be this project's second dependency.
+
+Three details that a subprocess forces you to get right:
+
+- **`GIT_TERMINAL_PROMPT=0`.** A push whose stored credentials have expired would otherwise
+  wait for ever at a terminal that does not exist. With prompting off it fails at once and
+  the failure can be shown.
+- **Both pipes are drained while the child writes.** A pipe buffer is 64 KB; waiting on
+  stdout while stderr fills deadlocks the child, and `git push --verbose` writes that much.
+  The draining uses `readabilityHandler` rather than a blocking read per pipe, because the
+  blocking version ties up three threads per command — dropping a couple of dozen
+  documents onto Folio at once was enough to threaten GCD's pool.
+- **`PATH` is extended.** An app launched from Finder inherits launchd's short `PATH`, so
+  a credential helper installed by Homebrew is not on it and the same push that works in
+  Terminal fails here.
+
+### Only two things are written to a repository
+
+`GitRepository` exposes exactly two write paths, and neither takes an argument that could
+widen it: commit one named file, and push the current branch to the upstream it already
+tracks.
+
+The commit is narrowed by a pathspec — `git commit -- <path>` — so whatever else the
+reader has staged stays staged. `git add` runs first only because a file git has never
+seen cannot be named in a commit pathspec. The save runs before the commit, since git
+records what is on disk and committing an unsaved buffer would store the wrong version;
+if the reader cancels at the overwrite prompt, the commit is cancelled with it.
+
+The push is spelled `HEAD:refs/heads/<name>` rather than a bare `git push`, so it does not
+depend on the reader's `push.default` and cannot be redirected by it. Nothing forces,
+pulls, merges, rebases, resets or checks out. A rejected push is reported as it stands —
+the commit is already made, which the message says, because the reader has not lost
+anything and needs to know that before they start fixing it.
+
+This is the one place Folio uses the network, and it is always a button someone pressed.
+
 ### The outline is a tree, inferred not declared
 
 `OutlineLayout` nests headings by their level *relative to their neighbours*, not by the

@@ -109,6 +109,8 @@ extension AppState {
         tab.renderer.reset()
         tab.collapsedOutline.formIntersection(Set(saved.outline.map(\.id)))
         statusMessage = "Saved \(tab.name)."
+        // The file just became something git has an opinion about.
+        refreshGitStatus(for: tab)
         return true
     }
 

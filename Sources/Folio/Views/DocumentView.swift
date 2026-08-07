@@ -27,6 +27,10 @@ struct DocumentView: View {
         .background(Theme.rowBackground)
         .onAppear { appState.isDarkAppearance = colorScheme == .dark }
         .onChange(of: colorScheme) { appState.isDarkAppearance = colorScheme == .dark }
+        .sheet(isPresented: Bindable(appState).isCommitSheetPresented) {
+            CommitSheet(tab: tab)
+                .environment(appState)
+        }
     }
 
     // MARK: - Header
@@ -72,6 +76,8 @@ struct DocumentView: View {
                     .background(Color.orange.opacity(0.15), in: Capsule())
             }
 
+            GitStatusPill(tab: tab)
+
             if document.isMarkdown {
                 Picker("", selection: Binding(get: { appState.readingMode },
                                               set: { appState.setReadingMode($0) })) {
@@ -104,6 +110,14 @@ struct DocumentView: View {
                         .disabled(!tab.isDirty)
                     Button("Revert to Saved") { appState.revertDraft(for: tab) }
                         .disabled(!tab.isDirty)
+                    Divider()
+                }
+                if tab.git != nil {
+                    Button("Commit…") { appState.presentCommitSheet() }
+                    if let upstream = tab.git?.upstream {
+                        Button("Push to \(upstream)") { appState.pushActiveDocument() }
+                            .disabled(!appState.canPushActiveDocument)
+                    }
                     Divider()
                 }
                 Button("Reload from Disk") { appState.reloadTextDocument() }

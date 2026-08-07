@@ -40,6 +40,17 @@ final class AppState {
         }
     }
 
+    // MARK: - Version control (the sheet is window-wide; status lives per document)
+
+    /// Layered onto every git command Folio runs. Empty in the app; the tests use it to
+    /// seal git off from the developer's own configuration, so a global hook or a signing
+    /// key cannot change what a test sees.
+    @ObservationIgnored var gitEnvironment: [String: String] = [:]
+
+    var isCommitSheetPresented = false
+    var commitMessage = ""
+    var commitShouldPush = false
+
     // MARK: - Find (one bar, shared; results live per document)
 
     var isFindPresented = false
@@ -180,6 +191,9 @@ final class AppState {
         activeTabID = id
         guard let id, let tab = tabs.first(where: { $0.id == id }) else { return }
         prepareIfNeeded(tab)
+        // Here rather than in `activate`, so a tab arriving from a restored session or
+        // from a neighbour closing gets its status too.
+        refreshGitStatus(for: tab)
     }
 
     /// Moves a tab to a new position, for dragging in the tab bar.

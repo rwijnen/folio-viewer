@@ -8,6 +8,17 @@ All notable changes to Folio are recorded here. The format follows
 
 ### Added
 
+- **Commit and push Markdown from inside Folio.** A document in a git repository gets a
+  pill in the header showing the branch, `↑`/`↓` for commits to push and pull, and a
+  coloured dot when the file has changes. ⌥⌘C opens a commit sheet; ⌥⌘P pushes. Unsaved
+  edits are saved first, because git records what is on disk. Exactly one file is
+  committed — anything else you have staged in a terminal stays staged. Push goes only to
+  the upstream the branch already tracks: no force, no `--set-upstream`, and no pull,
+  rebase or merge. A rejected push is reported with the commit intact. Folio shells out to
+  the `git` on your machine, so your config, credential helper, SSH agent, hooks and
+  signing key all apply, and it declines to commit with no `user.name`/`user.email`, on a
+  detached `HEAD`, on an ignored file, or during an unresolved merge.
+
 - **Markdown can be edited and saved.** Source mode is now a real editor — undo, find,
   line numbers, live syntax colouring — with a Save button and ⌘S. Nothing is auto-saved.
   The tab shows a dot and the header shows *Edited* while there is unsaved work; the
