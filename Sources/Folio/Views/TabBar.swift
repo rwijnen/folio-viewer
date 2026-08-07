@@ -37,7 +37,7 @@ struct TabBar: View {
                                                       state: state,
                                                       draggingID: $draggingID))
                     .contextMenu {
-                        Button("Close Tab") { state.closeTab(tab.id) }
+                        Button("Close Tab") { state.closeTabAskingToSave(tab.id) }
                         Button("Close Other Tabs") {
                             state.activate(tab.id)
                             state.closeOtherTabs()
@@ -119,11 +119,18 @@ private struct TabChip: View {
                 .lineLimit(1)
                 .truncationMode(.middle)
 
+            if tab.isDirty {
+                Circle()
+                    .fill(Color.orange)
+                    .frame(width: 5, height: 5)
+                    .help("Unsaved changes")
+            }
+
             // The close button only appears on hover or on the active tab, so a row of
             // tabs stays quiet to look at.
             if isHovered || isActive {
                 Button {
-                    state.closeTab(tab.id)
+                    state.closeTabAskingToSave(tab.id)
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 8, weight: .bold))

@@ -63,6 +63,15 @@ struct DocumentView: View {
                 .font(.system(size: 10))
                 .foregroundStyle(.secondary)
 
+            if tab.isDirty {
+                Text("Edited")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(.orange)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 2)
+                    .background(Color.orange.opacity(0.15), in: Capsule())
+            }
+
             if document.isMarkdown {
                 Picker("", selection: Binding(get: { appState.readingMode },
                                               set: { appState.setReadingMode($0) })) {
@@ -76,7 +85,27 @@ struct DocumentView: View {
                 .help("⌘1 rendered · ⌘2 source")
             }
 
+            if tab.isEditable {
+                Button {
+                    appState.saveActiveDocument()
+                } label: {
+                    Label("Save", systemImage: "arrow.down.doc")
+                        .font(.system(size: 11))
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .disabled(!tab.isDirty)
+                .help("Save to disk (⌘S)")
+            }
+
             Menu {
+                if tab.isEditable {
+                    Button("Save") { appState.saveActiveDocument() }
+                        .disabled(!tab.isDirty)
+                    Button("Revert to Saved") { appState.revertDraft(for: tab) }
+                        .disabled(!tab.isDirty)
+                    Divider()
+                }
                 Button("Reload from Disk") { appState.reloadTextDocument() }
                     .keyboardShortcut("r", modifiers: .command)
                 Divider()
@@ -107,7 +136,11 @@ struct DocumentView: View {
 
     @ViewBuilder
     private var content: some View {
-        if document.isMarkdown, appState.readingMode == .rendered, let html = appState.renderedPage {
+        if document.isMarkdown, appState.readingMode == .source, tab.isEditable {
+            MarkdownEditorView(tab: tab, version: tab.editorVersion)
+                .background(Theme.rowBackground)
+        } else if document.isMarkdown, appState.readingMode == .rendered,
+                  let html = appState.renderedPage {
             MarkdownWebView(tab: tab,
                             html: html,
                             token: appState.renderedPageToken,

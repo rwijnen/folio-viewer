@@ -8,6 +8,14 @@ All notable changes to Folio are recorded here. The format follows
 
 ### Added
 
+- **Markdown can be edited and saved.** Source mode is now a real editor — undo, find,
+  line numbers, live syntax colouring — with a Save button and ⌘S. Nothing is auto-saved.
+  The tab shows a dot and the header shows *Edited* while there is unsaved work; the
+  preview and outline catch up when you switch to the preview or save; closing, quitting
+  and reloading all ask before losing anything; and if the file changed on disk since you
+  opened it, saving asks before overwriting. Saves are atomic and keep the file's original
+  text encoding. Diffs and other text files remain read-only.
+
 - **The outline folds.** Headings nest into a tree, and each section with anything under
   it gets a disclosure triangle: collapse an `H1` and its `H2`s and `H3`s fold away with
   it. The menu at the top of the sidebar folds the whole document to one, two or three

@@ -21,10 +21,16 @@ struct FolioApp: App {
             CommandGroup(replacing: .newItem) {
                 Button("Open…") { state.presentOpenPanel() }
                     .keyboardShortcut("o", modifiers: .command)
+                Button("Save") { state.saveActiveDocument() }
+                    .keyboardShortcut("s", modifiers: .command)
+                Button("Save All") { state.saveAllDocuments() }
+                    .keyboardShortcut("s", modifiers: [.command, .option])
+                Button("Revert to Saved") { state.revertDraft() }
+                Divider()
                 Button("Reload from Disk") { state.reloadTextDocument() }
                     .keyboardShortcut("r", modifiers: .command)
                 Divider()
-                Button("Close Tab") { state.closeActiveTab() }
+                Button("Close Tab") { state.closeActiveTabAskingToSave() }
                     .keyboardShortcut("w", modifiers: .command)
                 Button("Close Other Tabs") { state.closeOtherTabs() }
             }
@@ -105,6 +111,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // this and simply joins the restored tabs, or brings its own forward.
         AppState.shared.sessionRestoreEnabled = true
         AppState.shared.restoreSession()
+    }
+
+    /// Quitting with unsaved edits asks rather than losing them.
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        AppState.shared.confirmQuitWithUnsavedChanges()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
