@@ -19,8 +19,10 @@ contributions are small, verified and easy to review.
 Three constraints shape every decision, and a change that breaks one of them will not be
 merged:
 
-1. **It is read-only.** Folio never writes to the files it opens. Patches are applied in
-   memory. There is no save path and no editing.
+1. **Reading is the default; writing is narrow and explicit.** Diffs are read-only and
+   always will be — the patch is applied in memory. Markdown gained an editor, and it may
+   write to exactly one file: the one open in that tab, when the reader asks. No
+   auto-save, no writing anywhere else.
 2. **It never uses the network.** Not at build time, not at run time. mermaid is vendored
    for exactly this reason.
 3. **It does not execute what it renders.** Markdown is escaped except for a whitelist of

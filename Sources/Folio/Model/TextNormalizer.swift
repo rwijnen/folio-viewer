@@ -51,13 +51,27 @@ enum TextNormalizer {
 
     /// Reads a text file, tolerating non-UTF8 encodings.
     static func readText(at url: URL) throws -> String {
+        try read(at: url).text
+    }
+
+    /// The text plus the encoding it was read with, so an edited file can be written
+    /// back the way it arrived rather than silently converted to UTF-8.
+    static func read(at url: URL) throws -> (text: String, encoding: String.Encoding) {
         let data = try Data(contentsOf: url)
         if looksBinary(data) {
             throw ReadError.binary
         }
-        if let text = String(data: data, encoding: .utf8) { return text }
-        if let text = String(data: data, encoding: .isoLatin1) { return text }
+        if let text = String(data: data, encoding: .utf8) { return (text, .utf8) }
+        if let text = String(data: data, encoding: .isoLatin1) { return (text, .isoLatin1) }
         throw ReadError.unknownEncoding
+    }
+
+    /// Writes through a temporary file, so an interrupted save cannot leave a
+    /// half-written document behind.
+    static func write(_ text: String, to url: URL, encoding: String.Encoding) throws {
+        guard let data = text.data(using: encoding)
+                ?? text.data(using: .utf8) else { throw ReadError.unknownEncoding }
+        try data.write(to: url, options: .atomic)
     }
 
     enum ReadError: LocalizedError {

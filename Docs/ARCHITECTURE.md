@@ -33,7 +33,7 @@ flowchart TD
 ```
 
 Everything above the view layer is a pure function of its inputs, which is why nearly all
-of the 166 tests live there and none of them need a window.
+of the 183 tests live there and none of them need a window.
 
 ## Decisions worth knowing about
 
@@ -84,6 +84,22 @@ most five stay loaded; the least recently shown are torn down. Nothing is lost w
 are: the page reports its scroll offset as the reader scrolls, so a reloaded page is put
 back in place — re-applied once mermaid reports in, because diagrams change the page
 height.
+
+### Editing is a draft beside the document
+
+A tab holds the parsed `TextDocument` — lines, spans, outline, converted HTML — and,
+once you type, a `draftText` beside it. Dirty is simply "draft differs from the text the
+document was parsed from", so reverting is dropping the draft and saving is promoting it.
+
+The parse is deliberately *not* redone on every keystroke: the editor only updates the
+draft, and the document is rebuilt when the preview is asked for, or on save. Colouring
+the text view is separate and debounced by 180 ms.
+
+Two details that protect the file. Writing goes through `Data.write(options: .atomic)`,
+so an interrupted save cannot leave a half-written document. And the modification date
+recorded at read time is compared before overwriting — using `FileManager`, not
+`URL.resourceValues`, because a `URL` caches the values it has already been asked for and
+would happily report the date the file had when it was opened, making the check useless.
 
 ### The outline is a tree, inferred not declared
 

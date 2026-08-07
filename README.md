@@ -2,9 +2,10 @@
 
 # Folio
 
-**A native macOS viewer for diffs and Markdown.** Patches side by side with the original,
-Markdown rendered with its mermaid diagrams drawn — in one window, with tabs, without ever
-writing to your files or touching the network.
+**A native macOS viewer for diffs and Markdown, with a Markdown editor when you want one.**
+Patches side by side with the original, Markdown rendered with its mermaid diagrams drawn,
+and a source editor that saves when you tell it to — one window, with tabs, and never a
+byte over the network.
 
 [![CI](https://github.com/rwijnen/folio-viewer/actions/workflows/ci.yml/badge.svg)](https://github.com/rwijnen/folio-viewer/actions/workflows/ci.yml)
 [![Licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
@@ -71,6 +72,19 @@ whole thing down to one, two or three levels:
 
 ![The outline expanded, at two levels, and at top level only](Docs/outline-folding.png)
 
+### Editing
+
+Source mode is an editor, not a listing. Type, and the tab shows a dot, the header shows
+**Edited**, and the Save button lights up — ⌘S writes the file, and nothing else ever does:
+
+![The Markdown editor with line numbers and syntax colouring](Docs/editor.png)
+
+Switching to the preview (⌘1) shows what you have typed, not what is on disk. Saving
+re-parses the document, so the outline and the rendered page follow along. Closing a tab
+or quitting with unsaved work asks first, reloading from disk asks before discarding, and
+if the file changed underneath you since you opened it, saving asks before overwriting
+someone else's work. **Diffs and other text files stay read-only.**
+
 | | |
 |---|---|
 | Rendered / Source | ⌘1 and ⌘2, or the toolbar switch |
@@ -80,6 +94,7 @@ whole thing down to one, two or three levels:
 | Outline | Sidebar built from the headings; click to jump, in either mode. **Foldable section by section** — collapse an `H1` and everything under it goes with it, or fold the whole document to one, two or three levels so a long file fits on one screen. ⌥-click a triangle for the whole subtree |
 | Images | Local ones inlined as `data:` URIs; remote ones reported, never fetched |
 | Follows links | Sibling `.md` / `.diff` files open in Folio; http(s) goes to your browser |
+| **Editing** | Source mode is a real editor — undo, find, line numbers, live syntax colouring — and ⌘S writes the file. Nothing is ever auto-saved |
 
 ## Tabs
 
@@ -112,13 +127,16 @@ expand a collapsed fold to reveal a hit.
 | ⌃⇥ / ⌃⇧⇥ | Next / previous tab | ⇧⌘B | Choose a diff's base folder |
 | ⌘1 / ⌘2 | Rendered / source | ⇧⌘L | Wrap or scroll long lines |
 | ⌘R | Reload from disk (right-click also offers it) | ⇧⌘E / ⇧⌘K | Expand / collapse all context |
+| ⌘S / ⌥⌘S | Save · save all | | |
 
 ## Why it is safe to point at a file someone sent you
 
 Folio is built on three rules, and they are tested:
 
-1. **It never writes to the files it opens.** Patches are applied in memory; there is no
-   save path.
+1. **It writes only what you ask it to, and only where it came from.** Diffs are never
+   written: the patch is applied in memory to produce the right-hand panel, and there is
+   no save path for them at all. Markdown you have opened can be edited and saved to that
+   same file with ⌘S — explicitly, never automatically, never anywhere else.
 2. **It never uses the network.** Not at build time, not at run time. mermaid is vendored
    so diagrams work offline.
 3. **It does not execute what it renders.** Raw HTML in Markdown is escaped except a
@@ -154,10 +172,10 @@ renderer supports.
 
 No package manager, no framework, one vendored dependency. `swift build` and a shell
 script that assembles the bundle and draws the icon with Core Graphics — the whole thing
-compiles with the Command Line Tools alone. 166 tests run in about five seconds.
+compiles with the Command Line Tools alone. 183 tests run in about five seconds.
 
 Contributions are welcome; please read [CONTRIBUTING.md](CONTRIBUTING.md) first, since
-Folio's read-only, offline, non-executing constraints are deliberate.
+Folio's narrow-writing, offline, non-executing constraints are deliberate.
 
 ## How this was built
 
@@ -171,9 +189,9 @@ what was wrong with it. Every commit carries a `Co-Authored-By: Claude` trailer,
 This is stated plainly because you should know what you are reading before you trust it.
 It does not lower the bar the code has to clear:
 
-- The 166 tests are real tests over real fixtures, and CI runs them on every push.
-- The three rules above — never writes, never networks, never executes what it renders —
-  are the ones under test, not just claims in a README.
+- The 183 tests are real tests over real fixtures, and CI runs them on every push.
+- The three rules above — writes only where you ask, never networks, never executes what
+  it renders — are the ones under test, not just claims in a README.
 - Several of them were tightened only after a test or a measurement contradicted the first
   attempt: a search that counted 131 CSS rules as document matches, a menu whose disabled
   items silently swallowed their keyboard shortcuts, a session restore that cost a second

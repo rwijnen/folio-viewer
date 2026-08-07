@@ -60,13 +60,32 @@ extension AppState {
 
     /// The reading and converting on its own.
     static func makeTextDocument(at url: URL, asMarkdown: Bool) throws -> TextDocument {
-        let raw = try TextNormalizer.readText(at: url)
+        let (raw, encoding) = try TextNormalizer.read(at: url)
+        return makeTextDocument(from: raw, at: url, asMarkdown: asMarkdown, encoding: encoding,
+                                modificationDate: modificationDate(of: url))
+    }
+
+    /// Deliberately FileManager rather than `URL.resourceValues`: a URL caches the
+    /// values it has already been asked for, so it keeps reporting the date the file had
+    /// when it was opened, and nothing would ever look changed.
+    static func modificationDate(of url: URL) -> Date? {
+        (try? FileManager.default.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date
+    }
+
+    /// Builds a document from text in hand, which is also how an edited buffer is
+    /// re-parsed for the preview and the outline without touching the disk.
+    static func makeTextDocument(from raw: String, at url: URL, asMarkdown: Bool,
+                                 encoding: String.Encoding = .utf8,
+                                 modificationDate: Date? = nil) -> TextDocument {
         let sourceLines = TextNormalizer.splitLines(raw)
         let displayLines = TextNormalizer.expandTabs(sourceLines)
         let spec = asMarkdown ? LanguageSpec.plain : LanguageCatalog.spec(forPath: url.lastPathComponent)
 
         var document = TextDocument(
             url: url,
+            rawText: raw,
+            encoding: encoding,
+            modificationDate: modificationDate,
             lines: displayLines,
             spans: asMarkdown
                 ? MarkdownSyntax.spans(for: displayLines)
@@ -89,9 +108,12 @@ extension AppState {
 
     /// Re-reads a document from disk, keeping its place in the tab bar and its scroll
     /// position. Defaults to the visible document.
-    func reloadTextDocument(for tabID: UUID? = nil) {
+    func reloadTextDocument(for tabID: UUID? = nil,
+                            confirmingDiscard: @MainActor (String) -> Bool = AppState.askToDiscard) {
         let target = tabID.flatMap { id in tabs.first { $0.id == id } } ?? active
         guard let tab = target, let document = tab.textDocument else { return }
+        // Re-reading throws away unsaved edits, so say so first.
+        if tab.isDirty, !confirmingDiscard(tab.name) { return }
         do {
             let fresh = try Self.makeTextTab(at: document.url, asMarkdown: document.isMarkdown)
             tab.textDocument = fresh.textDocument
@@ -103,6 +125,8 @@ extension AppState {
             tab.currentMatchIndex = 0
             tab.renderedMatchCount = 0
             tab.renderedMatchIndex = -1
+            tab.draftText = nil
+            tab.editorVersion += 1
             if !searchQuery.isEmpty { recomputeMatches() }
             statusMessage = "Reloaded \(document.name)."
         } catch {
@@ -218,6 +242,8 @@ extension AppState {
     func setReadingMode(_ mode: ReadingMode) {
         // Only Markdown has two modes; the menu no longer stops this being asked.
         guard let tab = active, tab.isMarkdown, tab.readingMode != mode else { return }
+        // The preview should show what you just typed, not what is on disk.
+        if mode == .rendered, tab.isDirty { refreshDocument(for: tab) }
         tab.readingMode = mode
         // The two modes have separate search machinery; re-run for the new one.
         if mode == .source {

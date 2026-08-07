@@ -64,6 +64,12 @@ enum ReadingMode: String, CaseIterable, Identifiable {
 /// A Markdown or plain-text document, prepared for both display modes.
 struct TextDocument {
     var url: URL
+    /// Exactly what is in the file — tabs intact — which is what the editor edits and
+    /// what gets written back. `lines` below is the tab-expanded view of it.
+    var rawText: String = ""
+    var encoding: String.Encoding = .utf8
+    /// When the file was last written, for noticing changes made behind our back.
+    var modificationDate: Date?
     /// Display lines for source mode (tabs expanded).
     var lines: [String]
     var spans: [[SyntaxSpan]]
@@ -127,6 +133,21 @@ final class DocumentTab: Identifiable {
     var visibleAnchor: String = ""
     /// Headings whose contents are folded away in the outline sidebar.
     var collapsedOutline: Set<String> = []
+
+    // MARK: Editing
+
+    /// The edited text, once it differs from what was read. nil means untouched.
+    var draftText: String?
+    /// Bumped when the editor should take its text from the document again — after a
+    /// save, a revert or a reload — rather than from what the reader has typed.
+    var editorVersion = 0
+    /// True while there is something to save.
+    var isDirty: Bool { draftText != nil && draftText != textDocument?.rawText }
+    /// Only Markdown is editable for now; diffs are a view of two other files, and
+    /// other source files are left alone deliberately.
+    var isEditable: Bool { content == .markdown }
+    /// What the editor should show, and what a save would write.
+    var currentText: String { draftText ?? textDocument?.rawText ?? "" }
 
     // MARK: Search, per document
 
