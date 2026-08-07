@@ -159,6 +159,18 @@ Match the surrounding code; there is no formatter to run.
 
 ## Commits and pull requests
 
+**Nothing is committed straight to `main`.** Every change — features, fixes, even
+documentation — goes on a branch and reaches `main` through a pull request, so there is
+always a diff to read and a green CI run before anything lands.
+
+```bash
+git switch main && git pull
+git switch -c feature/what-it-does      # or fix/… or docs/…
+# work, commit
+git push -u origin feature/what-it-does
+gh pr create --base main --fill
+```
+
 - One concern per pull request. A refactor and a feature in the same diff is hard to
   review.
 - Commit subjects in the imperative, under ~72 characters:
