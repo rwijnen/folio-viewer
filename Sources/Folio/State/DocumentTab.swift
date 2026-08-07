@@ -68,8 +68,6 @@ struct TextDocument {
     /// what gets written back. `lines` below is the tab-expanded view of it.
     var rawText: String = ""
     var encoding: String.Encoding = .utf8
-    /// When the file was last written, for noticing changes made behind our back.
-    var modificationDate: Date?
     /// Display lines for source mode (tabs expanded).
     var lines: [String]
     var spans: [[SyntaxSpan]]

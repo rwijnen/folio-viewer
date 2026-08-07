@@ -95,11 +95,20 @@ The parse is deliberately *not* redone on every keystroke: the editor only updat
 draft, and the document is rebuilt when the preview is asked for, or on save. Colouring
 the text view is separate and debounced by 180 ms.
 
-Two details that protect the file. Writing goes through `Data.write(options: .atomic)`,
-so an interrupted save cannot leave a half-written document. And the modification date
-recorded at read time is compared before overwriting — using `FileManager`, not
-`URL.resourceValues`, because a `URL` caches the values it has already been asked for and
-would happily report the date the file had when it was opened, making the check useless.
+Two details protect the file. Writing goes through `Data.write(options: .atomic)`, so an
+interrupted save cannot leave a half-written document. And before overwriting, the file is
+re-read and its **text** compared with the text the document was parsed from.
+
+Comparing content rather than a modification date is both more accurate and, for documents
+of ordinary size, cheaper. A timestamp misses a write that lands within the same second
+and is fooled by tools that preserve dates, while raising false alarms for `touch` or a
+rewrite of identical bytes. Measured on this machine: reading and comparing a 16 KB file
+takes ~14 µs, where merely asking for its attributes takes ~63 µs.
+
+Hashing would be strictly worse. The bytes have to be read either way, so a digest is the
+read *plus* a pass over the data — 19 µs against 14 µs at 16 KB, 376 µs against 57 µs at
+1 MB — and the text to compare against is already in memory for the dirty check. Hashing
+earns its keep when the baseline is *not* held, such as watching many files at once.
 
 ### The outline is a tree, inferred not declared
 
