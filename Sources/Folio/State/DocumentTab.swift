@@ -59,6 +59,8 @@ enum PaneContent: Equatable {
     case commit(GitCommitSummary)
     /// What something else wrote to the file, against what this tab holds.
     case externalChange
+    /// Everything not yet committed: the last commit against what you have now.
+    case workingChanges
 }
 
 /// Something else changed the file while it was open here.

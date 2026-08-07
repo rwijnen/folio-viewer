@@ -53,59 +53,29 @@ struct ExternalChangeView: View {
     let tab: DocumentTab
 
     var body: some View {
-        VStack(spacing: 0) {
-            banner
-            Divider()
-            switch tab.loadState {
-            case .empty, .loading:
-                VStack(spacing: 10) {
-                    ProgressView()
-                    Text("Comparing…")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
+        ComparisonPane(tab: tab,
+                       leftTitle: tab.isDirty ? "In the editor" : "In Folio",
+                       rightTitle: "On disk",
+                       loadingMessage: "Comparing…",
+                       failureTitle: "Could not compare",
+                       tint: .blue) {
+            HStack(spacing: 8) {
+                ComparisonTitle(
+                    title: "What changed on disk",
+                    detail: tab.isDirty
+                        ? "Left is what you have been editing; right is what is in the file now."
+                        : "Left is what Folio is showing; right is what is in the file now.",
+                    symbol: "arrow.triangle.2.circlepath")
+                Spacer()
+                Button(tab.isDirty ? "Discard Mine and Reload" : "Reload") {
+                    state.acceptExternalChange(for: tab)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Theme.rowBackground)
-            case let .failed(message):
-                MessageView(title: "Could not compare", message: message,
-                            systemImage: "doc.questionmark")
-            case let .loaded(file):
-                if let entry = tab.selectedEntry {
-                    SplitDiffView(tab: tab, entry: entry, file: file,
-                                  leftTitle: tab.isDirty ? "In the editor" : "In Folio",
-                                  rightTitle: "On disk")
+                .controlSize(.small)
+                Button(tab.isDirty ? "Keep Mine" : "Dismiss") {
+                    state.dismissExternalChange(for: tab)
                 }
+                .controlSize(.small)
             }
         }
-    }
-
-    private var banner: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "arrow.triangle.2.circlepath")
-                .foregroundStyle(.secondary)
-            VStack(alignment: .leading, spacing: 1) {
-                Text("What changed on disk")
-                    .font(.system(size: 12, weight: .semibold))
-                Text(tab.isDirty
-                     ? "Left is what you have been editing; right is what is in the file now."
-                     : "Left is what Folio is showing; right is what is in the file now.")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-            Spacer()
-
-            Button(tab.isDirty ? "Discard Mine and Reload" : "Reload") {
-                state.acceptExternalChange(for: tab)
-            }
-            .controlSize(.small)
-            Button(tab.isDirty ? "Keep Mine" : "Dismiss") {
-                state.dismissExternalChange(for: tab)
-            }
-            .controlSize(.small)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(Color.blue.opacity(0.08))
     }
 }

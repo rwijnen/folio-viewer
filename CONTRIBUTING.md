@@ -42,7 +42,7 @@ in the project and adding a second needs a good argument.
 git clone https://github.com/rwijnen/folio-viewer.git
 cd folio-viewer
 swift build          # compile
-swift test           # 286 tests, ~15 seconds
+swift test           # 296 tests, ~15 seconds
 ./build.sh           # assemble build/Folio.app
 open -a build/Folio.app Samples/example.md
 ```
@@ -89,6 +89,7 @@ Sources/Folio/
     GitStatusView           the branch pill in the header and the commit sheet
     HistorySidebar          the Outline/History switch, the commit list, the commit pane
     ExternalChangeView      the "changed on disk" bar and its side-by-side view
+    ComparisonPane          the shared shell of all three side-by-side comparisons
     MarkdownWebView         container for the rendered page
     MarkdownPageController  owns one document's live WKWebView
     HTMLPage                the page template: CSS, CSP, find and diagram scripts

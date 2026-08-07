@@ -13,6 +13,9 @@ struct GitStatusPill: View {
     var body: some View {
         if let snapshot = tab.git {
             Menu {
+                Button("Uncommitted Changes…") { state.showWorkingChanges(for: tab) }
+                    .disabled(!state.hasWorkingChanges(tab))
+                Divider()
                 Button("Commit…") { state.presentCommitSheet() }
                     .disabled(!state.canCommit(tab))
                 if let upstream = snapshot.upstream {
