@@ -31,10 +31,9 @@ extension AppState {
     func refreshDocument(for tab: DocumentTab) {
         guard let existing = tab.textDocument else { return }
         var document = AppState.makeTextDocument(from: tab.currentText,
-                                             at: tab.url,
-                                             asMarkdown: existing.isMarkdown,
-                                             encoding: existing.encoding,
-                                             modificationDate: existing.modificationDate)
+                                                 at: tab.url,
+                                                 asMarkdown: existing.isMarkdown,
+                                                 encoding: existing.encoding)
         document.rawText = existing.rawText   // the saved text stays the baseline
         document.contentVersion = existing.contentVersion + 1
         tab.textDocument = document
@@ -51,11 +50,21 @@ extension AppState {
     var canSave: Bool { active?.isDirty == true }
 
     /// Whether the file changed underneath us since it was read.
+    ///
+    /// Compares the text rather than the modification date. A timestamp is both
+    /// imprecise — a write within the same second slips through, and tools like
+    /// `rsync -t` preserve the old date — and over-eager, since `touch` or a tool
+    /// rewriting identical bytes would raise a false alarm. Reading the file costs
+    /// about 15 µs for a document of ordinary size, less than asking for its
+    /// attributes, and this only runs when saving.
+    ///
+    /// Hashing would be strictly slower: the bytes have to be read either way, and the
+    /// text they are compared against is already in memory for the dirty check.
     func fileChangedOnDisk(for tab: DocumentTab) -> Bool {
-        guard let recorded = tab.textDocument?.modificationDate,
-              let current = AppState.modificationDate(of: tab.url) else { return false }
-        // A second of slack: some tools rewrite with a coarse timestamp.
-        return abs(current.timeIntervalSince(recorded)) > 1
+        guard let baseline = tab.textDocument?.rawText else { return false }
+        // Unreadable or gone: nothing of theirs to protect, so let the save recreate it.
+        guard let onDisk = try? TextNormalizer.read(at: tab.url).text else { return false }
+        return onDisk != baseline
     }
 
     /// Writes the edited text back to its file.
@@ -90,9 +99,8 @@ extension AppState {
 
         // What is on disk is the new baseline, so the document is no longer dirty.
         var saved = AppState.makeTextDocument(from: text, at: tab.url,
-                                          asMarkdown: document.isMarkdown,
-                                          encoding: document.encoding,
-                                          modificationDate: AppState.modificationDate(of: tab.url))
+                                              asMarkdown: document.isMarkdown,
+                                              encoding: document.encoding)
         saved.contentVersion = document.contentVersion + 1
         tab.textDocument = saved
         tab.draftText = nil

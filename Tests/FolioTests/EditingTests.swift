@@ -140,8 +140,8 @@ struct EditingTests {
         #expect(!state.fileChangedOnDisk(for: tab))
 
         state.updateDraft("# Mine\n", for: tab)
-        // Someone else writes the file while we were editing.
-        Thread.sleep(forTimeInterval: 1.2)
+        // Someone else writes the file while we were editing. No sleep needed: the
+        // check compares the text, not the timestamp.
         try "# Theirs\n".write(to: file.url, atomically: true, encoding: .utf8)
         #expect(state.fileChangedOnDisk(for: tab))
 
@@ -152,6 +152,50 @@ struct EditingTests {
 
         // Agreeing writes ours.
         #expect(state.save(tab, confirmingOverwrite: { _ in true }))
+        #expect(try file.contents() == "# Mine\n")
+    }
+
+    @Test func rewritingTheSameContentIsNotAConflict() throws {
+        let file = try Scratch("# Title\n")
+        defer { file.remove() }
+        let state = AppState()
+        state.open(at: file.url)
+        let tab = try #require(state.active)
+        state.updateDraft("# Mine\n", for: tab)
+
+        // `touch`, or a tool that rewrites identical bytes: the timestamp moves but the
+        // document did not, so there is nothing to warn about.
+        try "# Title\n".write(to: file.url, atomically: true, encoding: .utf8)
+        #expect(!state.fileChangedOnDisk(for: tab))
+        #expect(state.save(tab, confirmingOverwrite: never))
+        #expect(try file.contents() == "# Mine\n")
+    }
+
+    @Test func aChangeWithinTheSameSecondIsStillNoticed() throws {
+        let file = try Scratch("# Title\n")
+        defer { file.remove() }
+        let state = AppState()
+        state.open(at: file.url)
+        let tab = try #require(state.active)
+        state.updateDraft("# Mine\n", for: tab)
+
+        // Immediately — a timestamp comparison with any slack would miss this.
+        try "# Theirs, a moment later\n".write(to: file.url, atomically: true, encoding: .utf8)
+        #expect(state.fileChangedOnDisk(for: tab))
+    }
+
+    @Test func aDeletedFileIsRecreatedRatherThanQueried() throws {
+        let file = try Scratch("# Title\n")
+        defer { file.remove() }
+        let state = AppState()
+        state.open(at: file.url)
+        let tab = try #require(state.active)
+        state.updateDraft("# Mine\n", for: tab)
+
+        try FileManager.default.removeItem(at: file.url)
+        // Nothing of anyone else's to protect, so saving just writes it back.
+        #expect(!state.fileChangedOnDisk(for: tab))
+        #expect(state.save(tab, confirmingOverwrite: never))
         #expect(try file.contents() == "# Mine\n")
     }
 
