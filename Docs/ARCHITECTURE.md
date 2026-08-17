@@ -58,61 +58,17 @@ over that result so the row alignment comes from one code path rather than two. 
 tells the reader which happened. Only when neither direction applies does Folio fall back
 to showing the hunks alone.
 
-### Launch happens in one pass
+### Launching, and files opened from Finder
 
-macOS delivers `application(_:open:)` **before** `applicationDidFinishLaunching` when the
-app is launched by opening a document. That is not folklore — a traced build printed the
-order:
+`LaunchQueue` holds the files Finder asks for until the session has been restored;
+`AppDelegate` then opens them inside `applicationDidFinishLaunching`, before the window
+first draws.
 
-```
-willFinishLaunching
-application(open:) ["finder.md"]
-didFinishLaunching
-restoreSession restored 0 tabs
-  open task runs
-```
-
-Both obvious readings of that are wrong. Opening the file when the request arrives races
-the session restore, which skips itself when tabs already exist — so the reader's previous
-session would sometimes vanish. Deferring it to the next main-actor hop, which is what the
-code did, lets the restored session draw and then be replaced a frame later, which reads
-as the app closing and reopening.
-
-`LaunchQueue` holds early arrivals instead, and `applicationDidFinishLaunching` restores
-the session and then opens them synchronously, before the window first draws. The sequence
-is fixed rather than timing-dependent, and it is a plain enough object to be tested without
-an application at all.
-
-### Folio handles the open-documents Apple Event itself
-
-Opening a file from Finder made the app appear to close and reopen. It was not closing —
-the process ID never changed — but sampling `CGWindowListCopyWindowInfo` showed the
-window's alpha going `1.0 → 0.28 → 0.012 → 0.0006 → 1.0` over about 350 ms, which is a
-window being hidden and shown again.
-
-The call stack at `NSWindow.willCloseNotification` named the culprit:
-
-```
-AppKit    -[NSWindow _close]
-SwiftUI   AppWindowsController.activateWindowForExternalEvent(matching:handler:)
-SwiftUI   AppWindowsController.open(_: [URL])
-SwiftUI   AppDelegate.application(_:open:)
-AppKit    -[NSApplication _handleAEOpenDocumentsForURLs:]
-```
-
-SwiftUI installs its own handler for the event, and that handler closes and re-presents
-the scene's window *before* forwarding to our delegate. On a single `Window` scene it is a
-real close and reopen. No delegate callback prevents it — `applicationShouldHandleReopen`
-is never even called — so the only remedy is for the event not to reach SwiftUI.
-
-`AppDelegate` registers its own `kAEOpenDocuments` handler in
-`applicationDidFinishLaunching`, which replaces the one AppKit installs during
-`finishLaunching`. Registering earlier would be overwritten. That leaves the document a
-launch was *started* with to SwiftUI, which does no harm because there is no window yet
-to close — and that document is handled by `LaunchQueue` instead.
-
-Measured after the change: `willClose` fires zero times where it fired once per open, and
-the window's alpha and bounds do not change at all.
+`AppDelegate` also owns the `kAEOpenDocuments` Apple Event handler, registered in
+`applicationDidFinishLaunching` so that it replaces AppKit's — SwiftUI's handler closes
+and re-presents the window scene. Every open once the app is running arrives through
+`filesRequested(by:)`; the document a launch is started with arrives through SwiftUI's
+`application(_:open:)` and goes into the queue.
 
 ### One window, with tabs
 
