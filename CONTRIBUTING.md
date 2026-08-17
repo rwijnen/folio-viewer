@@ -105,8 +105,8 @@ Sources/Register/           folio-register, the fallback default-handler tool
 Tools/make-icon.swift       draws the icon with Core Graphics
 ```
 
-[Docs/ARCHITECTURE.md](Docs/ARCHITECTURE.md) explains why the interesting pieces are
-built the way they are — read that before a structural change.
+[Docs/ARCHITECTURE.md](Docs/ARCHITECTURE.md) describes the components and how they fit
+together — read that before a structural change.
 
 The rule of thumb: **logic belongs in `Model/`, where it can be tested**. Views should
 assemble and display, not compute.

@@ -261,7 +261,7 @@ renderer supports.
 | | |
 |---|---|
 | [INSTALL.md](INSTALL.md) | Requirements, building, file associations, Gatekeeper, uninstalling, troubleshooting |
-| [Docs/ARCHITECTURE.md](Docs/ARCHITECTURE.md) | Why the interesting parts are built the way they are |
+| [Docs/ARCHITECTURE.md](Docs/ARCHITECTURE.md) | The components, and how they fit together |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Development setup, tests, how to verify UI without Xcode, common tasks |
 | [SECURITY.md](SECURITY.md) | Threat model and how to report a vulnerability |
 | [CHANGELOG.md](CHANGELOG.md) | What changed, and when |
@@ -296,8 +296,8 @@ It does not lower the bar the code has to clear:
 - Several of them were tightened only after a test or a measurement contradicted the first
   attempt: a search that counted 131 CSS rules as document matches, a menu whose disabled
   items silently swallowed their keyboard shortcuts, a session restore that cost a second
-  at launch until it was made lazy. [Docs/ARCHITECTURE.md](Docs/ARCHITECTURE.md) records
-  the reasoning behind the parts that ended up unusual.
+  at launch until it was made lazy. Those corrections are recorded in the commits that
+  made them.
 - The screenshots are rendered from the app's own view code, not mock-ups.
 
 What it does not mean: that anyone else has audited this. Machine-written code is still
