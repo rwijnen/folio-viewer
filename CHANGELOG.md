@@ -8,6 +8,15 @@ All notable changes to Folio are recorded here. The format follows
 
 ### Fixed
 
+- **Opening a file from Finder no longer looks like the app restarting.** macOS delivers
+  the open request *before* launching finishes, so the previous session was drawn and
+  then replaced a frame later. Files now wait until the session has been restored, and
+  launch happens in one pass. The same bug had a second half: selecting several files in
+  Finder and opening them brought back only the first.
+
+- **The close button on a tab sits at its right-hand edge.** It was pinned next to the
+  title, so it moved with the title's length and was never in the same place twice.
+
 - **Any file you have open can now be committed, not just Markdown.** A new `.diff`, a
   script, a note in a format Folio does not render — none of them offered git at all,
   because the feature was gated on whether Folio could *edit* the file. Editing is still

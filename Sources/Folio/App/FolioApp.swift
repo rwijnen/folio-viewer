@@ -120,6 +120,10 @@ struct FolioApp: App {
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
+    /// Holds files Finder asked for until the session has been restored. See
+    /// `LaunchQueue` for why that ordering matters.
+    @MainActor private let launchQueue = LaunchQueue()
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         // `build.sh --set-default` runs the app with this flag: Launch Services'
         // modern API only works from inside a registered app bundle, so the install
@@ -137,6 +141,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // this and simply joins the restored tabs, or brings its own forward.
         AppState.shared.sessionRestoreEnabled = true
         AppState.shared.restoreSession()
+
+        // Synchronously, before the window first draws, so the reader sees one window
+        // with everything in it rather than a session that is immediately replaced.
+        for url in launchQueue.launchFinished() { AppState.shared.open(at: url) }
     }
 
     /// Quitting with unsaved edits asks rather than losing them.
@@ -151,11 +159,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
-        guard let url = urls.first else { return }
-        Task { @MainActor in
-            // Dispatcher, not openDiff: this is how Finder-opened Markdown arrives too.
-            AppState.shared.open(at: url)
-            NSApp.activate(ignoringOtherApps: true)
+        MainActor.assumeIsolated {
+            let now = launchQueue.open(urls)
+            guard !now.isEmpty else { return }
+            // Every one of them: selecting several files in Finder and opening them
+            // used to bring back only the first.
+            for url in now { AppState.shared.open(at: url) }
+            // Already running, so Finder handed us the file without the focus a launch
+            // would have brought with it.
+            NSApp.activate()
         }
     }
 

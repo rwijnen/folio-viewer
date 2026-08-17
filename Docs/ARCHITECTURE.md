@@ -58,6 +58,31 @@ over that result so the row alignment comes from one code path rather than two. 
 tells the reader which happened. Only when neither direction applies does Folio fall back
 to showing the hunks alone.
 
+### Launch happens in one pass
+
+macOS delivers `application(_:open:)` **before** `applicationDidFinishLaunching` when the
+app is launched by opening a document. That is not folklore — a traced build printed the
+order:
+
+```
+willFinishLaunching
+application(open:) ["finder.md"]
+didFinishLaunching
+restoreSession restored 0 tabs
+  open task runs
+```
+
+Both obvious readings of that are wrong. Opening the file when the request arrives races
+the session restore, which skips itself when tabs already exist — so the reader's previous
+session would sometimes vanish. Deferring it to the next main-actor hop, which is what the
+code did, lets the restored session draw and then be replaced a frame later, which reads
+as the app closing and reopening.
+
+`LaunchQueue` holds early arrivals instead, and `applicationDidFinishLaunching` restores
+the session and then opens them synchronously, before the window first draws. The sequence
+is fixed rather than timing-dependent, and it is a plain enough object to be tested without
+an application at all.
+
 ### One window, with tabs
 
 Folio uses SwiftUI's single `Window` scene rather than `WindowGroup`. `WindowGroup` mints

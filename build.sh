@@ -79,6 +79,11 @@ if [[ "$DO_INSTALL" == 1 ]]; then
 
   LSREGISTER=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
   if [[ -x "$LSREGISTER" ]]; then
+    # Running the app out of build/ registers that copy too, and it carries the same
+    # bundle identifier as the installed one. Two candidates for the same id leaves
+    # Launch Services free to open files with a stale build, which is bewildering to
+    # debug. Drop it, so only the installed copy is a candidate.
+    "$LSREGISTER" -u "$APP" >/dev/null 2>&1 || true
     "$LSREGISTER" -f "$INSTALLED"
     echo "==> Registered with Launch Services"
   fi

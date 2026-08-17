@@ -98,7 +98,9 @@ private struct TabDropDelegate: DropDelegate {
     func dropExited(info: DropInfo) {}
 }
 
-private struct TabChip: View {
+/// One tab. Not private so it can be rendered on its own for checking — the strip it
+/// sits in carries `onDrag`, which comes out blank offscreen.
+struct TabChip: View {
 
     @Environment(AppState.self) private var state
     let tab: DocumentTab
@@ -118,6 +120,11 @@ private struct TabChip: View {
                 .font(.system(size: 11, weight: isActive ? .semibold : .regular))
                 .lineLimit(1)
                 .truncationMode(.middle)
+
+            // Before the trailing controls, not after them: with the spacer at the end
+            // the close button sat against the title and drifted with its length, so it
+            // was never in the same place twice.
+            Spacer(minLength: 4)
 
             if tab.isDirty {
                 Circle()
@@ -141,9 +148,9 @@ private struct TabChip: View {
                 .foregroundStyle(.secondary)
                 .help("Close (⌘W)")
             } else {
-                Spacer().frame(width: 14)
+                // Holds the space so the title does not shift when the button appears.
+                Color.clear.frame(width: 14, height: 14)
             }
-            Spacer(minLength: 0)
         }
         .padding(.leading, 8)
         .padding(.trailing, 4)
