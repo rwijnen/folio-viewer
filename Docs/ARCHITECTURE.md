@@ -83,6 +83,37 @@ the session and then opens them synchronously, before the window first draws. Th
 is fixed rather than timing-dependent, and it is a plain enough object to be tested without
 an application at all.
 
+### Folio handles the open-documents Apple Event itself
+
+Opening a file from Finder made the app appear to close and reopen. It was not closing —
+the process ID never changed — but sampling `CGWindowListCopyWindowInfo` showed the
+window's alpha going `1.0 → 0.28 → 0.012 → 0.0006 → 1.0` over about 350 ms, which is a
+window being hidden and shown again.
+
+The call stack at `NSWindow.willCloseNotification` named the culprit:
+
+```
+AppKit    -[NSWindow _close]
+SwiftUI   AppWindowsController.activateWindowForExternalEvent(matching:handler:)
+SwiftUI   AppWindowsController.open(_: [URL])
+SwiftUI   AppDelegate.application(_:open:)
+AppKit    -[NSApplication _handleAEOpenDocumentsForURLs:]
+```
+
+SwiftUI installs its own handler for the event, and that handler closes and re-presents
+the scene's window *before* forwarding to our delegate. On a single `Window` scene it is a
+real close and reopen. No delegate callback prevents it — `applicationShouldHandleReopen`
+is never even called — so the only remedy is for the event not to reach SwiftUI.
+
+`AppDelegate` registers its own `kAEOpenDocuments` handler in
+`applicationDidFinishLaunching`, which replaces the one AppKit installs during
+`finishLaunching`. Registering earlier would be overwritten. That leaves the document a
+launch was *started* with to SwiftUI, which does no harm because there is no window yet
+to close — and that document is handled by `LaunchQueue` instead.
+
+Measured after the change: `willClose` fires zero times where it fired once per open, and
+the window's alpha and bounds do not change at all.
+
 ### One window, with tabs
 
 Folio uses SwiftUI's single `Window` scene rather than `WindowGroup`. `WindowGroup` mints

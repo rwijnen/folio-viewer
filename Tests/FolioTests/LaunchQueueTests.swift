@@ -75,3 +75,54 @@ struct MultipleOpenTests {
         #expect(state.active?.name == "three.md")
     }
 }
+
+/// Folio handles the open-documents Apple Event itself, because SwiftUI's handler closes
+/// and re-presents the window before the event reaches the delegate. Reading the event is
+/// the part that could fail silently — nothing would open, with no error anywhere.
+@Suite("Open-documents event")
+struct OpenDocumentsEventTests {
+
+    private func openEvent(_ direct: NSAppleEventDescriptor) -> NSAppleEventDescriptor {
+        let event = NSAppleEventDescriptor(eventClass: AEEventClass(kCoreEventClass),
+                                           eventID: AEEventID(kAEOpenDocuments),
+                                           targetDescriptor: nil,
+                                           returnID: AEReturnID(kAutoGenerateReturnID),
+                                           transactionID: AETransactionID(kAnyTransactionID))
+        event.setParam(direct, forKeyword: keyDirectObject)
+        return event
+    }
+
+    @Test func oneFileArrivesAsADescriptorOfItsOwn() throws {
+        let url = URL(fileURLWithPath: "/tmp/notes/one.md")
+        let urls = AppDelegate.filesRequested(by: openEvent(NSAppleEventDescriptor(fileURL: url)))
+        #expect(urls.map(\.path) == ["/tmp/notes/one.md"])
+    }
+
+    @Test func severalFilesArriveAsAList() throws {
+        let paths = ["/tmp/notes/one.md", "/tmp/notes/two.md", "/tmp/notes/three.md"]
+        let list = NSAppleEventDescriptor.list()
+        for (offset, path) in paths.enumerated() {
+            list.insert(NSAppleEventDescriptor(fileURL: URL(fileURLWithPath: path)),
+                        at: offset + 1)
+        }
+        #expect(AppDelegate.filesRequested(by: openEvent(list)).map(\.path) == paths)
+    }
+
+    /// Names with spaces and other characters that have to survive percent-encoding.
+    @Test func awkwardNamesSurvive() throws {
+        let path = "/tmp/notes/my \"weekly\" review & notes.md"
+        let urls = AppDelegate.filesRequested(
+            by: openEvent(NSAppleEventDescriptor(fileURL: URL(fileURLWithPath: path))))
+        #expect(urls.map(\.path) == [path])
+    }
+
+    @Test func anEventWithNothingInItOpensNothing() {
+        let empty = NSAppleEventDescriptor(eventClass: AEEventClass(kCoreEventClass),
+                                           eventID: AEEventID(kAEOpenDocuments),
+                                           targetDescriptor: nil,
+                                           returnID: AEReturnID(kAutoGenerateReturnID),
+                                           transactionID: AETransactionID(kAnyTransactionID))
+        #expect(AppDelegate.filesRequested(by: empty).isEmpty)
+        #expect(AppDelegate.filesRequested(by: openEvent(NSAppleEventDescriptor.list())).isEmpty)
+    }
+}

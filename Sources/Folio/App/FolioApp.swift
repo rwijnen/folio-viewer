@@ -145,6 +145,75 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Synchronously, before the window first draws, so the reader sees one window
         // with everything in it rather than a session that is immediately replaced.
         for url in launchQueue.launchFinished() { AppState.shared.open(at: url) }
+
+        takeOverOpenDocumentEvents()
+    }
+
+    /// Takes over the open-documents Apple Event from SwiftUI.
+    ///
+    /// SwiftUI installs its own handler for it, and that handler calls
+    /// `AppWindowsController.open`, which **closes and re-presents the window** before
+    /// the event reaches this delegate — confirmed from the call stack at
+    /// `NSWindow.willCloseNotification`:
+    ///
+    ///     AppKit    -[NSWindow _close]
+    ///     SwiftUI   AppWindowsController.activateWindowForExternalEvent(matching:handler:)
+    ///     SwiftUI   AppWindowsController.open(_: [URL])
+    ///     SwiftUI   AppDelegate.application(_:open:)
+    ///     AppKit    -[NSApplication _handleAEOpenDocumentsForURLs:]
+    ///
+    /// On a single `Window` scene that is a real close and reopen, which is why opening a
+    /// file from Finder looked like the app restarting. No delegate callback prevents it —
+    /// `applicationShouldHandleReopen` is never even called — so the only remedy is for
+    /// the event not to reach SwiftUI at all.
+    ///
+    /// Registered here rather than in `applicationWillFinishLaunching` because AppKit
+    /// installs its own handlers during `finishLaunching` and would overwrite ours. That
+    /// leaves the document a launch was started with to SwiftUI, which does no harm:
+    /// there is no window yet to close.
+    private func takeOverOpenDocumentEvents() {
+        NSAppleEventManager.shared().setEventHandler(
+            self,
+            andSelector: #selector(handleOpenDocuments(_:withReplyEvent:)),
+            forEventClass: AEEventClass(kCoreEventClass),
+            andEventID: AEEventID(kAEOpenDocuments))
+    }
+
+    @objc
+    private func handleOpenDocuments(_ event: NSAppleEventDescriptor,
+                                     withReplyEvent reply: NSAppleEventDescriptor) {
+        let urls = AppDelegate.filesRequested(by: event)
+        guard !urls.isEmpty else { return }
+
+        MainActor.assumeIsolated {
+            for url in launchQueue.open(urls) { AppState.shared.open(at: url) }
+            // Finder handed us the file without the focus a launch would have brought.
+            NSApp.activate()
+        }
+    }
+
+    /// The files an open-documents event is asking for.
+    ///
+    /// Not private, so the shape of the event can be tested without an application: this
+    /// is the part that would fail silently, opening nothing at all.
+    static func filesRequested(by event: NSAppleEventDescriptor) -> [URL] {
+        guard let direct = event.paramDescriptor(forKeyword: keyDirectObject) else { return [] }
+        // One file arrives as a descriptor of its own; several arrive as a list.
+        let items = direct.numberOfItems > 0
+            ? (1...direct.numberOfItems).compactMap { direct.atIndex($0) }
+            : [direct]
+        return items.compactMap(fileURL)
+    }
+
+    /// The file a descriptor refers to.
+    ///
+    /// This SDK's `NSAppleEventDescriptor` has no `fileURL`, so the descriptor is coerced
+    /// to `furl`, which carries the URL as UTF-8 bytes. Coercing rather than reading
+    /// directly also copes with the alias and bookmark forms older senders still use.
+    static func fileURL(from descriptor: NSAppleEventDescriptor) -> URL? {
+        guard let furl = descriptor.coerce(toDescriptorType: typeFileURL),
+              let text = String(data: furl.data, encoding: .utf8) else { return nil }
+        return URL(string: text)
     }
 
     /// Quitting with unsaved edits asks rather than losing them.
