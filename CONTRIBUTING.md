@@ -43,7 +43,7 @@ in the project and adding a second needs a good argument.
 git clone https://github.com/rwijnen/folio-viewer.git
 cd folio-viewer
 swift build          # compile
-swift test           # 327 tests, ~15 seconds
+swift test           # 336 tests, ~15 seconds
 ./build.sh           # assemble build/Folio.app
 open -a build/Folio.app Samples/example.md
 ```
@@ -98,12 +98,15 @@ Sources/Folio/
     ScrollOffsetKeeper      AppKit bridge that gives scroll views their memory
     LineRenderer            syntax + word diff + search → AttributedString
     FindBar, Theme, FileListView
+  App/
+    FolioApp                the scene, the menus, the application delegate
+    LaunchQueue             holds Finder's files until the session is restored
 Sources/Register/           folio-register, the fallback default-handler tool
 Tools/make-icon.swift       draws the icon with Core Graphics
 ```
 
-[Docs/ARCHITECTURE.md](Docs/ARCHITECTURE.md) explains why the interesting pieces are
-built the way they are — read that before a structural change.
+[Docs/ARCHITECTURE.md](Docs/ARCHITECTURE.md) describes the components and how they fit
+together — read that before a structural change.
 
 The rule of thumb: **logic belongs in `Model/`, where it can be tested**. Views should
 assemble and display, not compute.

@@ -8,6 +8,17 @@ All notable changes to Folio are recorded here. The format follows
 
 ### Fixed
 
+- **Opening a file from Finder no longer looks like the app closing and reopening.**
+  SwiftUI's own handler for the open-documents Apple Event closes and re-presents the
+  window before the event reaches the app, which on a single-window scene is a visible
+  close and reopen. Folio now handles that event itself, so the window is never touched.
+  Two related fixes came with it: files Finder asks for during launch wait until the
+  previous session has been restored, rather than being drawn over a frame later; and
+  selecting several files in Finder now opens all of them instead of only the first.
+
+- **The close button on a tab sits at its right-hand edge.** It was pinned next to the
+  title, so it moved with the title's length and was never in the same place twice.
+
 - **Any file you have open can now be committed, not just Markdown.** A new `.diff`, a
   script, a note in a format Folio does not render — none of them offered git at all,
   because the feature was gated on whether Folio could *edit* the file. Editing is still

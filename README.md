@@ -261,7 +261,7 @@ renderer supports.
 | | |
 |---|---|
 | [INSTALL.md](INSTALL.md) | Requirements, building, file associations, Gatekeeper, uninstalling, troubleshooting |
-| [Docs/ARCHITECTURE.md](Docs/ARCHITECTURE.md) | Why the interesting parts are built the way they are |
+| [Docs/ARCHITECTURE.md](Docs/ARCHITECTURE.md) | The components, and how they fit together |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Development setup, tests, how to verify UI without Xcode, common tasks |
 | [SECURITY.md](SECURITY.md) | Threat model and how to report a vulnerability |
 | [CHANGELOG.md](CHANGELOG.md) | What changed, and when |
@@ -270,7 +270,7 @@ renderer supports.
 
 No package manager, no framework, one vendored dependency. `swift build` and a shell
 script that assembles the bundle and draws the icon with Core Graphics — the whole thing
-compiles with the Command Line Tools alone. 327 tests run in about fifteen seconds.
+compiles with the Command Line Tools alone. 336 tests run in about fifteen seconds.
 
 Contributions are welcome; please read [CONTRIBUTING.md](CONTRIBUTING.md) first, since
 Folio's narrow-writing, offline, non-executing constraints are deliberate.
@@ -287,7 +287,7 @@ what was wrong with it. Every commit carries a `Co-Authored-By: Claude` trailer,
 This is stated plainly because you should know what you are reading before you trust it.
 It does not lower the bar the code has to clear:
 
-- The 327 tests are real tests over real fixtures, and CI runs them on every push.
+- The 336 tests are real tests over real fixtures, and CI runs them on every push.
 - The three rules above — writes only where you ask, online only on Push, never executes
   what it renders — are the ones under test, not just claims in a README. The git tests
   build throwaway repositories and push between them on disk, so the narrowness is
@@ -296,8 +296,8 @@ It does not lower the bar the code has to clear:
 - Several of them were tightened only after a test or a measurement contradicted the first
   attempt: a search that counted 131 CSS rules as document matches, a menu whose disabled
   items silently swallowed their keyboard shortcuts, a session restore that cost a second
-  at launch until it was made lazy. [Docs/ARCHITECTURE.md](Docs/ARCHITECTURE.md) records
-  the reasoning behind the parts that ended up unusual.
+  at launch until it was made lazy. Those corrections are recorded in the commits that
+  made them.
 - The screenshots are rendered from the app's own view code, not mock-ups.
 
 What it does not mean: that anyone else has audited this. Machine-written code is still
