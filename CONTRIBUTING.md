@@ -250,8 +250,10 @@ the old answer, which produced a convincing false negative before the retries ex
 1. Update `CHANGELOG.md` — move items out of *Unreleased* into the new version.
 2. Bump `CFBundleShortVersionString` and `CFBundleVersion` in `Resources/Info.plist`.
 3. `swift test && ./build.sh` one more time.
-4. Tag and push: `git tag -a v1.1.0 -m "Folio 1.1.0" && git push origin v1.1.0`.
+4. Tag and push: `git tag -a v1.2.0 -m "Folio 1.2.0" && git push origin v1.2.0`.
 
-The release workflow builds the app, runs the tests, and attaches a zip plus its SHA-256
-to a GitHub release. The artifact is ad-hoc signed and not notarised, and the release notes
-say so.
+Pushing a `v*` tag is the only thing that publishes a release; merging to `main` runs CI
+and stops there. The workflow refuses to publish unless the tag matches
+`CFBundleShortVersionString` and `CHANGELOG.md` has a heading for it, so steps 1 and 2 are
+checked rather than trusted. It then builds, runs the tests, and attaches a zip plus its
+SHA-256. The artifact is ad-hoc signed and not notarised, and the release notes say so.

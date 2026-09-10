@@ -16,6 +16,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # A tag is the only thing that publishes a release, and nothing else checks that
+      # the bundle agrees with it. Without this, pushing v1.2.0 over a stale Info.plist
+      # ships an app that reports 1.1.0 and nobody notices until someone asks a user
+      # which version they are running.
+      - name: The tag must match the version in the bundle
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          tagged="${GITHUB_REF_NAME#v}"
+          bundled=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" \
+            Resources/Info.plist)
+          echo "tag=$tagged  Info.plist=$bundled"
+          if [[ "$tagged" != "$bundled" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match Info.plist ($bundled). Bump Resources/Info.plist, or retag."
+            exit 1
+          fi
+
+      - name: The changelog must mention this version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          if ! grep -q "^## \[${GITHUB_REF_NAME#v}\]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no heading for ${GITHUB_REF_NAME#v}."
+            exit 1
+          fi
+
       - name: Build the app
         run: ./build.sh
 
