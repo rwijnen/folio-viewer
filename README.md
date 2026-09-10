@@ -125,6 +125,8 @@ a source file, whatever you have open. When there
 is nothing to do it is quiet — just `main`, and `↑`/`↓` for commits to push and pull. When
 there is, it says so in words and takes a colour: `main · +12 −3` for a file edited since
 the last commit, `unsaved` for edits still in the editor, `new file`, or `conflict`.
+
+![The status pill: quiet when there is nothing to do, and saying what it is when there is](Docs/git-status.png)
 Behind it are the only two things Folio will do to your repository. Editing is still
 Markdown-only; committing is not, because a patch or a script someone has just handed you
 is exactly the sort of thing you want to record.
@@ -172,6 +174,8 @@ opened patch gets, so the word-level highlighting, collapsible context, ⌘F and
 memory all work exactly as they do elsewhere. ⌥⌘↑ and ⌥⌘↓ step to the newer or older
 commit without going back to the list, and **Back to the Document** returns.
 
+![The history list: commits, with a badge naming the co-author where there is one](Docs/history.png)
+
 History lives in the document sidebar, so it is there for Markdown and source files but
 not for a diff, whose sidebar lists the files inside the patch instead. The log follows
 renames, so a file that started life as `draft.md` still shows the work you did under that
@@ -196,6 +200,8 @@ group to file the document there. Once a group exists, a dropdown appears beside
 document's name in the title bar: pick a project and the tab bar shows only its
 documents; pick **All documents** to see everything again. Each entry says how many it
 holds, and the menu says how many are not in a group.
+
+![A group selected in the title bar, and the tabs it shows](Docs/groups.png)
 
 Groups are yours to name and nothing is inferred. Folio does not group by folder, because
 a repository whose docs live in `guides/`, `reference/` and `adr/` is one project, not

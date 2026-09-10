@@ -43,7 +43,8 @@ in the project and adding a second needs a good argument.
 git clone https://github.com/rwijnen/folio-viewer.git
 cd folio-viewer
 swift build          # compile
-swift test           # 354 tests, ~15 seconds
+swift test           # 354 tests, ~15 seconds (plus 4 screenshot
+                     # generators, skipped unless asked for)
 ./build.sh           # assemble build/Folio.app
 open -a build/Folio.app Samples/example.md
 ```
@@ -150,6 +151,17 @@ Please do not send a UI change with "looks right to me" as the only evidence. Tw
 techniques in this repo let you actually look at the result, both of which work
 headlessly:
 
+**The screenshots in `Docs/`** are generated from the app's own views, not captured from
+a window, so they can be regenerated whenever a view changes:
+
+```bash
+FOLIO_SCREENSHOTS=Docs swift test --filter ScreenshotTests
+```
+
+`Tests/FolioTests/ScreenshotTests.swift` composes them. Add a picture there rather than by
+hand, or it goes stale the next time someone moves a control — which is exactly what
+happened to the tab bar.
+
 **SwiftUI views** — render them offscreen with `ImageRenderer`. Note that `ScrollView`,
 `List` and other AppKit-backed views come out blank, so rasterise the inner row or content
 stack instead. The screenshots in `Docs/` were produced this way and are labelled as such.
@@ -250,7 +262,7 @@ the old answer, which produced a convincing false negative before the retries ex
 1. Update `CHANGELOG.md` — move items out of *Unreleased* into the new version.
 2. Bump `CFBundleShortVersionString` and `CFBundleVersion` in `Resources/Info.plist`.
 3. `swift test && ./build.sh` one more time.
-4. Tag and push: `git tag -a v1.2.0 -m "Folio 1.2.0" && git push origin v1.2.0`.
+4. Tag and push: `git tag -a v2.1.0 -m "Folio 2.1.0" && git push origin v2.1.0`.
 
 Pushing a `v*` tag is the only thing that publishes a release; merging to `main` runs CI
 and stops there. The workflow refuses to publish unless the tag matches

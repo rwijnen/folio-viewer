@@ -6,7 +6,11 @@ All notable changes to Folio are recorded here. The format follows
 
 ## [Unreleased]
 
-## [1.1.0] — 2026-09-10
+## [2.0.0] — 2026-09-10
+
+Folio was a viewer. It now writes to your repository — commits, pushes, and edits files —
+which is a different proposition from 1.0, and the reason for the major number rather than
+a minor one. Nothing in 1.0 was removed or changed underneath you.
 
 ### Added
 
@@ -218,6 +222,6 @@ in one window with tabs, without ever writing to your files or touching the netw
   asking Launch Services which app would open a probe file.
 - 109 tests over the model, tab and scroll layers, run with Swift Testing.
 
-[Unreleased]: https://github.com/rwijnen/folio-viewer/compare/v1.1.0...HEAD
-[1.1.0]: https://github.com/rwijnen/folio-viewer/compare/v1.0.0...v1.1.0
+[Unreleased]: https://github.com/rwijnen/folio-viewer/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/rwijnen/folio-viewer/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/rwijnen/folio-viewer/releases/tag/v1.0.0
