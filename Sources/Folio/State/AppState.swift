@@ -52,6 +52,12 @@ final class AppState {
         }
     }
 
+    /// The group the tab bar is filtered to; nil shows every document. Changed only
+    /// through `selectGroup`, so the front tab is always one the tab bar is showing.
+    private(set) var selectedGroup: String?
+
+    func setSelectedGroup(_ group: String?) { selectedGroup = group }
+
     // MARK: - Version control (the sheet is window-wide; status lives per document)
 
     /// Layered onto every git command Folio runs. Empty in the app; the tests use it to
@@ -203,6 +209,10 @@ final class AppState {
         activeTabID = id
         guard let id, let tab = tabs.first(where: { $0.id == id }) else { return }
         prepareIfNeeded(tab)
+        // The filter follows the document. Opening a file from another project, or
+        // stepping onto a tab outside the current group, would otherwise leave the front
+        // tab hidden — a window showing a document the tab bar denies is open.
+        revealGroup(of: tab)
         // Here rather than in `activate`, so a tab arriving from a restored session or
         // from a neighbour closing gets its status too.
         refreshGitStatus(for: tab)
@@ -263,6 +273,8 @@ final class AppState {
         stopWatching(tabs[index])
         let wasActive = activeTabID == id
         tabs.remove(at: index)
+        // A filter naming a group with nothing left in it would show an empty tab bar.
+        forgetEmptyGroup()
         guard wasActive else { return }
         if tabs.isEmpty {
             setActive(nil)
@@ -279,22 +291,28 @@ final class AppState {
         closeTab(activeTabID)
     }
 
+    /// Closes the other tabs *you can see*. With a group selected the ones in other
+    /// groups are a different workspace, and closing them from here would be a surprise.
     func closeOtherTabs() {
         guard let activeTabID else { return }
-        for tab in tabs where tab.id != activeTabID {
+        let doomed = Set(visibleTabs.map(\.id)).subtracting([activeTabID])
+        guard !doomed.isEmpty else { return }
+        for tab in tabs where doomed.contains(tab.id) {
             tab.loadTask?.cancel()
             tab.releasePage()
             stopWatching(tab)
         }
-        tabs = tabs.filter { $0.id == activeTabID }
+        tabs = tabs.filter { !doomed.contains($0.id) }
         saveSession()
     }
 
+    /// Cycles through the visible tabs, so ⌃⇥ stays inside the selected group.
     func selectAdjacentTab(offset: Int) {
-        guard tabs.count > 1, let activeTabID,
-              let index = tabs.firstIndex(where: { $0.id == activeTabID }) else { return }
-        let next = (index + offset + tabs.count) % tabs.count
-        activate(tabs[next].id)
+        let visible = visibleTabs
+        guard visible.count > 1, let activeTabID,
+              let index = visible.firstIndex(where: { $0.id == activeTabID }) else { return }
+        let next = (index + offset + visible.count) % visible.count
+        activate(visible[next].id)
     }
 
     func reset() {

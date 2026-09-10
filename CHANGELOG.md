@@ -6,6 +6,18 @@ All notable changes to Folio are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Documents group into projects.** Right-click a tab → *Add to Group* to make one or
+  file the document into an existing one. A dropdown then appears beside the document's
+  name in the title bar; picking a project filters the tab bar to it, and *All documents*
+  brings everything back. Groups are named by you and span folders freely — a repository
+  whose docs live in `guides/`, `reference/` and `adr/` is one project. Switching closes
+  and reloads nothing: a hidden tab keeps its scroll position, git status, unsaved draft
+  and rendered page. The front document is never hidden, a group disappears when its last
+  document leaves, and both the groups and the selected one are remembered between
+  launches.
+
 ### Fixed
 
 - **Opening a file from Finder no longer looks like the app closing and reopening.**

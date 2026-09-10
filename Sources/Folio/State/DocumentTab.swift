@@ -302,6 +302,10 @@ final class DocumentTab: Identifiable {
 
     // MARK: - Identity
 
+    /// The project this document has been filed under, or nil for one that has not
+    /// been filed. Always the reader's choice; nothing infers it.
+    var group: String?
+
     /// Overrides the name in the tab bar for a tab that is not one file — the
     /// repository-wide view, whose `url` is a folder.
     var displayName: String?

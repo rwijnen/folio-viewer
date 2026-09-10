@@ -79,12 +79,13 @@ if [[ "$DO_INSTALL" == 1 ]]; then
 
   LSREGISTER=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
   if [[ -x "$LSREGISTER" ]]; then
-    # Running the app out of build/ registers that copy too, and it carries the same
-    # bundle identifier as the installed one. Two candidates for the same id leaves
-    # Launch Services free to open files with a stale build, which is bewildering to
-    # debug. Drop it, so only the installed copy is a candidate.
-    "$LSREGISTER" -u "$APP" >/dev/null 2>&1 || true
     "$LSREGISTER" -f "$INSTALLED"
+    # Note: running the app out of build/ registers that copy too, under the same bundle
+    # identifier as the installed one, so Launch Services has two candidates and may open
+    # files with a stale build. Unregistering it from here does not stick — rebuilding the
+    # bundle re-registers it faster than we can drop it. If it bites, run by hand once the
+    # build has settled:
+    #   lsregister -u build/Folio.app
     echo "==> Registered with Launch Services"
   fi
 
