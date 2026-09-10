@@ -302,13 +302,9 @@ final class DocumentTab: Identifiable {
 
     // MARK: - Identity
 
-    /// Set when the reader has put this document in a group by hand. Otherwise the
-    /// group is worked out from the folder the file is in.
-    var groupOverride: String?
-    /// The project this document belongs to.
-    var group: String {
-        groupOverride ?? DocumentGroup.automatic(for: url, isFolder: isEphemeral)
-    }
+    /// The project this document has been filed under, or nil for one that has not
+    /// been filed. Always the reader's choice; nothing infers it.
+    var group: String?
 
     /// Overrides the name in the tab bar for a tab that is not one file — the
     /// repository-wide view, whose `url` is a folder.

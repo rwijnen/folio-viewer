@@ -2,36 +2,27 @@ import Foundation
 
 /// Which project a document belongs to.
 ///
-/// A group is only ever a name. There is no registry and nothing to create or delete: a
-/// group exists exactly as long as some open document is in it. That keeps the whole
-/// feature to one string per tab, and means a group cannot be left behind empty.
+/// A group is only ever a name, and it is always chosen by the reader. Deriving one from
+/// the folder was tried first and does not survive contact with a real repository: docs
+/// split across `guides/`, `reference/` and `adr/` are one project, and folder names make
+/// them three.
 ///
-/// The name comes from the folder the file is in, unless the reader has said otherwise.
+/// There is no registry. A group exists exactly as long as some open document names it,
+/// which means it cannot be left behind empty and nothing has to be cleaned up. A
+/// document that has not been filed belongs to no group and appears only under
+/// "All documents".
 enum DocumentGroup {
 
-    /// The group a document falls into when nobody has said otherwise.
-    ///
-    /// `isFolder` is for the repository-wide view, whose `url` *is* a folder rather than
-    /// a file in one — without it that tab would group under the repository's parent,
-    /// away from every document it is about.
-    static func automatic(for url: URL, isFolder: Bool = false) -> String {
-        let folder = isFolder ? url : url.deletingLastPathComponent()
-        let name = folder.lastPathComponent
-        // Some URL forms leave nothing behind; the path always says something. A file at
-        // the root of a volume genuinely groups under "/", which is at least unambiguous.
-        return name.isEmpty ? folder.path : name
-    }
-
-    /// The groups present among a set of names, in the order the tab bar should list
-    /// them: alphabetical, so the dropdown does not reshuffle as tabs move about.
-    static func listed(from names: [String]) -> [String] {
-        Array(Set(names)).sorted {
+    /// The groups present among the open documents, in the order the dropdown lists
+    /// them: alphabetical, so it does not reshuffle as tabs move about.
+    static func listed(from names: [String?]) -> [String] {
+        Array(Set(names.compactMap { $0 })).sorted {
             $0.localizedStandardCompare($1) == .orderedAscending
         }
     }
 
-    /// Trims a name the reader typed. nil when there is nothing left of it, which is how
-    /// "put this back on automatic" is spelled.
+    /// Tidies a name the reader typed. nil when nothing is left of it, which is also how
+    /// "take this out of its group" is spelled.
     static func sanitised(_ name: String) -> String? {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed

@@ -61,12 +61,12 @@ tab.
 its history, an incoming change on disk, or what is not yet committed. The last three are
 comparisons and share `ComparisonPane`.
 
-**Groups.** A document's group is the name of the folder it is in unless
-`DocumentTab.groupOverride` says otherwise; `DocumentGroup` derives it. There is no
-registry — a group exists exactly as long as some open document is in it, so one cannot
-be left behind empty. `AppState.selectedGroup` filters `visibleTabs`, which is what the
-tab bar, ⌃⇥ and Close Other Tabs work on. `setActive` reveals the group of whatever tab
-comes forward, so the front document is never hidden by the filter.
+**Groups.** `DocumentTab.group` is a name the reader filed the document under, or nil.
+Nothing is inferred. There is no registry — a group exists exactly as long as some open
+document names it, so one cannot be left behind empty. `AppState.selectedGroup` filters
+`visibleTabs`, which is what the tab bar, ⌃⇥ and Close Other Tabs work on. `setActive`
+reveals the group of whatever tab comes forward, so the front document is never hidden by
+the filter.
 
 **Session.** Paths, tab order, which was in front, reading mode, scroll offsets and folds
 are a JSON blob in `UserDefaults`. Restoring creates placeholder tabs — a URL and the kind

@@ -9,12 +9,17 @@ struct GroupPicker: View {
     @Environment(AppState.self) private var state
 
     var body: some View {
-        if state.groups.count > 1 {
+        if !state.groups.isEmpty {
             Menu {
                 Button { state.selectGroup(nil) } label: {
                     Text(tick(nil) + "All documents (\(state.tabs.count))")
                 }
                 Divider()
+                if state.ungroupedCount > 0 {
+                    // Said out loud, because with manual filing most documents start here
+                    // and "why is my file not in any project" should not need working out.
+                    Text("\(state.ungroupedCount) not in a group")
+                }
                 ForEach(state.groups, id: \.self) { group in
                     Button { state.selectGroup(group) } label: {
                         Text(tick(group) + "\(group) (\(state.documentCount(inGroup: group)))")
@@ -53,5 +58,37 @@ struct GroupPickerLabel: View {
             .lineLimit(1)
             .truncationMode(.middle)
             .frame(maxWidth: 200, alignment: .leading)
+    }
+}
+
+/// Filing one document, from its own context menu.
+///
+/// A separate view rather than inline in the tab's menu: built in place it grew past what
+/// the type-checker would accept, and this is the only place a document's group changes.
+struct TabGroupMenu: View {
+
+    @Environment(AppState.self) private var state
+    let tab: DocumentTab
+
+    var body: some View {
+        Menu(tab.group.map { "Group: \($0)" } ?? "Add to Group") {
+            Button("New Group…") { state.assignToNewGroup(tab) }
+            if !state.groups.isEmpty {
+                Divider()
+                ForEach(state.groups, id: \.self) { group in
+                    Button(label(for: group)) { state.assign(tab, to: group) }
+                }
+            }
+            if tab.group != nil {
+                Divider()
+                Button("Remove from Group") { state.assign(tab, to: nil) }
+            }
+        }
+    }
+
+    /// A tick in the title rather than a disabled row, so the current group reads at a
+    /// glance and every row stays clickable.
+    private func label(for group: String) -> String {
+        tab.group == group ? "✓ \(group)" : "   \(group)"
     }
 }

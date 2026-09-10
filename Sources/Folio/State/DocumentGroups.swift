@@ -3,14 +3,16 @@ import Foundation
 
 /// Grouping the open documents into projects.
 ///
-/// A group is a name a document carries, taken from its folder unless the reader has
-/// said otherwise, and selecting one filters the tab bar to it. Nothing is closed or
-/// reloaded by switching: a hidden tab keeps its scroll position, its git status, its
-/// unsaved draft and its live page, and comes back exactly as it was.
+/// A document is filed into a group by hand, and selecting one filters the tab bar to it.
+/// Nothing is closed or reloaded by switching: a hidden tab keeps its scroll position,
+/// its git status, its unsaved draft and its live page, and comes back exactly as it was.
 extension AppState {
 
     /// Every group with at least one document open, alphabetically.
     var groups: [String] { DocumentGroup.listed(from: tabs.map(\.group)) }
+
+    /// Documents not filed anywhere. They show under "All documents" only.
+    var ungroupedCount: Int { tabs.count { $0.group == nil } }
 
     /// The tabs the tab bar shows.
     var visibleTabs: [DocumentTab] {
@@ -54,10 +56,10 @@ extension AppState {
 
     // MARK: - Putting a document in one
 
-    /// Moves a document to a group, or back to being named after its folder.
+    /// Files a document into a group, or takes it out of one.
     func assign(_ tab: DocumentTab, to group: String?) {
         let previous = tab.group
-        tab.groupOverride = group.flatMap(DocumentGroup.sanitised)
+        tab.group = group.flatMap(DocumentGroup.sanitised)
         // Follow the document rather than leaving it hidden behind the old filter.
         if selectedGroup == previous, tab.group != previous, tab.id == activeTabID {
             setSelectedGroup(tab.group)

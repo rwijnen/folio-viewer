@@ -6,34 +6,19 @@ import Testing
 @Suite("Group names")
 struct DocumentGroupNameTests {
 
-    @Test func aDocumentIsNamedAfterTheFolderItIsIn() {
-        #expect(DocumentGroup.automatic(for: URL(fileURLWithPath: "/Users/r/notes/one.md"))
-                == "notes")
-        #expect(DocumentGroup.automatic(for: URL(fileURLWithPath: "/Users/r/Work/Acme/plan.md"))
-                == "Acme")
-    }
-
-    /// The repository-wide view's URL is a folder, not a file in one. Without this it
-    /// would group under the repository's parent, away from every document it is about.
-    @Test func aFolderGroupsUnderItsOwnName() {
-        let repo = URL(fileURLWithPath: "/Users/r/Work/acme-docs", isDirectory: true)
-        #expect(DocumentGroup.automatic(for: repo, isFolder: true) == "acme-docs")
-        #expect(DocumentGroup.automatic(for: repo, isFolder: false) == "Work")
-    }
-
-    /// Rare, but it must produce *something* clickable rather than an empty menu row.
-    @Test func aFileAtTheRootOfAVolumeStillHasAName() {
-        #expect(DocumentGroup.automatic(for: URL(fileURLWithPath: "/one.md")) == "/")
-        #expect(!DocumentGroup.automatic(for: URL(fileURLWithPath: "/one.md")).isEmpty)
-    }
-
     @Test func groupsAreListedAlphabeticallyAndOnce() {
         #expect(DocumentGroup.listed(from: ["notes", "acme", "notes", "Beta"])
                 == ["acme", "Beta", "notes"])
         #expect(DocumentGroup.listed(from: []).isEmpty)
     }
 
-    /// An empty name is how "put it back on automatic" is spelled.
+    /// Documents that have not been filed contribute no group.
+    @Test func unfiledDocumentsAreNotAGroup() {
+        #expect(DocumentGroup.listed(from: [nil, "acme", nil]) == ["acme"])
+        #expect(DocumentGroup.listed(from: [nil, nil]).isEmpty)
+    }
+
+    /// An empty name is how "take it out of its group" is spelled.
     @Test func aBlankNameIsNoName() {
         #expect(DocumentGroup.sanitised("  Acme  ") == "Acme")
         #expect(DocumentGroup.sanitised("   ") == nil)
@@ -71,26 +56,53 @@ private final class Scratch {
 @MainActor
 struct GroupedTabTests {
 
-    @Test func documentsGroupByTheirFolder() throws {
+    @Test func documentsStartInNoGroup() throws {
         let scratch = try Scratch()
         try scratch.open("acme", "one.md")
-        try scratch.open("acme", "two.md")
         try scratch.open("beta", "three.md")
 
-        #expect(scratch.state.groups == ["acme", "beta"])
-        #expect(scratch.state.documentCount(inGroup: "acme") == 2)
-        #expect(scratch.state.documentCount(inGroup: "beta") == 1)
-        // Nothing is filtered until a group is chosen.
-        #expect(scratch.state.visibleTabs.count == 3)
+        // Nothing is inferred — not from the folder, not from anything.
+        #expect(scratch.state.groups.isEmpty)
+        #expect(scratch.state.ungroupedCount == 2)
+        #expect(scratch.state.visibleTabs.count == 2)
+    }
+
+    @Test func filingADocumentCreatesTheGroup() throws {
+        let scratch = try Scratch()
+        let one = try scratch.open("acme", "one.md")
+        let two = try scratch.open("acme", "two.md")
+        try scratch.open("beta", "three.md")
+
+        scratch.state.assign(one, to: "Acme rollout")
+        scratch.state.assign(two, to: "Acme rollout")
+
+        #expect(scratch.state.groups == ["Acme rollout"])
+        #expect(scratch.state.documentCount(inGroup: "Acme rollout") == 2)
+        #expect(scratch.state.ungroupedCount == 1)
+    }
+
+    /// Documents from different folders belong together when the reader says they do —
+    /// which is the whole reason the folder is not used.
+    @Test func aGroupCanSpanFolders() throws {
+        let scratch = try Scratch()
+        let guide = try scratch.open("guides", "install.md")
+        let adr = try scratch.open("adr", "0001.md")
+        scratch.state.assign(guide, to: "Docs")
+        scratch.state.assign(adr, to: "Docs")
+
+        scratch.state.selectGroup("Docs")
+        #expect(scratch.state.visibleTabs.count == 2)
+        #expect(scratch.state.groups == ["Docs"])
     }
 
     @Test func choosingAGroupHidesTheRestWithoutClosingThem() throws {
         let scratch = try Scratch()
-        try scratch.open("acme", "one.md")
+        let one = try scratch.open("acme", "one.md")
         let beta = try scratch.open("beta", "three.md")
+        scratch.state.assign(one, to: "Acme")
         scratch.state.updateDraft("# edited\n", for: beta)
 
-        scratch.state.selectGroup("acme")
+        scratch.state.selectGroup("Acme")
         #expect(scratch.state.visibleTabs.map(\.name) == ["one.md"])
         // Still open, still dirty, still remembered.
         #expect(scratch.state.tabs.count == 2)
@@ -105,20 +117,23 @@ struct GroupedTabTests {
         let scratch = try Scratch()
         let acme = try scratch.open("acme", "one.md")
         _ = try scratch.open("beta", "three.md")
+        scratch.state.assign(acme, to: "Acme")
         #expect(scratch.state.activeTabID != acme.id)
 
-        scratch.state.selectGroup("acme")
+        scratch.state.selectGroup("Acme")
         #expect(scratch.state.active?.id == acme.id)
     }
 
-    @Test func openingElsewhereBringsTheFilterWithIt() throws {
+    @Test func openingAnUnfiledDocumentClearsTheFilter() throws {
         let scratch = try Scratch()
-        try scratch.open("acme", "one.md")
-        scratch.state.selectGroup("acme")
+        let one = try scratch.open("acme", "one.md")
+        scratch.state.assign(one, to: "Acme")
+        scratch.state.selectGroup("Acme")
 
-        let beta = try scratch.open("beta", "three.md")
-        #expect(scratch.state.selectedGroup == "beta")
-        #expect(scratch.state.visibleTabs.map(\.id) == [beta.id])
+        let fresh = try scratch.open("beta", "three.md")
+        // It is in no group, so there is no group to switch to — everything shows.
+        #expect(scratch.state.selectedGroup == nil)
+        #expect(scratch.state.visibleTabs.contains { $0.id == fresh.id })
     }
 
     @Test func steppingBetweenTabsStaysInsideTheGroup() throws {
@@ -126,8 +141,10 @@ struct GroupedTabTests {
         let one = try scratch.open("acme", "one.md")
         let two = try scratch.open("acme", "two.md")
         try scratch.open("beta", "three.md")
+        scratch.state.assign(one, to: "Acme")
+        scratch.state.assign(two, to: "Acme")
 
-        scratch.state.selectGroup("acme")
+        scratch.state.selectGroup("Acme")
         scratch.state.selectAdjacentTab(offset: 1)
         #expect([one.id, two.id].contains(scratch.state.activeTabID!))
         scratch.state.selectAdjacentTab(offset: 1)
@@ -136,11 +153,13 @@ struct GroupedTabTests {
 
     @Test func closingOtherTabsSparesTheOnesYouCannotSee() throws {
         let scratch = try Scratch()
-        try scratch.open("acme", "one.md")
+        let one = try scratch.open("acme", "one.md")
         let two = try scratch.open("acme", "two.md")
         try scratch.open("beta", "three.md")
+        scratch.state.assign(one, to: "Acme")
+        scratch.state.assign(two, to: "Acme")
 
-        scratch.state.selectGroup("acme")
+        scratch.state.selectGroup("Acme")
         scratch.state.activate(two.id)
         scratch.state.closeOtherTabs()
 
@@ -152,47 +171,50 @@ struct GroupedTabTests {
         let scratch = try Scratch()
         try scratch.open("acme", "one.md")
         let beta = try scratch.open("beta", "three.md")
-        scratch.state.selectGroup("beta")
+        scratch.state.assign(beta, to: "Beta")
+        scratch.state.selectGroup("Beta")
 
         scratch.state.closeTab(beta.id)
         #expect(scratch.state.selectedGroup == nil)
         #expect(scratch.state.visibleTabs.map(\.name) == ["one.md"])
     }
 
-    // MARK: - Overriding by hand
-
-    @Test func aDocumentCanBeMovedToAnotherGroup() throws {
+    /// The group goes with the last document in it; nothing is left behind to tidy up.
+    @Test func aGroupStopsExistingWhenNothingIsInIt() throws {
         let scratch = try Scratch()
         let one = try scratch.open("acme", "one.md")
-        try scratch.open("beta", "three.md")
-
-        scratch.state.assign(one, to: "Roadmap")
-        #expect(one.group == "Roadmap")
-        #expect(scratch.state.groups == ["beta", "Roadmap"])
-    }
-
-    @Test func movingItBackUsesTheFolderNameAgain() throws {
-        let scratch = try Scratch()
-        let one = try scratch.open("acme", "one.md")
-        scratch.state.assign(one, to: "Roadmap")
-        #expect(one.groupOverride == "Roadmap")
+        scratch.state.assign(one, to: "Acme")
+        #expect(scratch.state.groups == ["Acme"])
 
         scratch.state.assign(one, to: nil)
-        #expect(one.groupOverride == nil)
-        #expect(one.group == "acme")
+        #expect(scratch.state.groups.isEmpty)
+        #expect(one.group == nil)
     }
 
-    @Test func aBlankNameIsTreatedAsGoingBackToAutomatic() throws {
+    // MARK: - Filing by hand
+
+    @Test func aDocumentCanBeMovedBetweenGroups() throws {
         let scratch = try Scratch()
         let one = try scratch.open("acme", "one.md")
+        scratch.state.assign(one, to: "Acme")
+        scratch.state.assign(one, to: "Roadmap")
+        #expect(one.group == "Roadmap")
+        #expect(scratch.state.groups == ["Roadmap"])
+    }
+
+    @Test func aBlankNameTakesItOutOfItsGroup() throws {
+        let scratch = try Scratch()
+        let one = try scratch.open("acme", "one.md")
+        scratch.state.assign(one, to: "Acme")
         scratch.state.assign(one, to: "   ")
-        #expect(one.group == "acme")
+        #expect(one.group == nil)
     }
 
     @Test func movingTheFrontDocumentTakesTheFilterWithIt() throws {
         let scratch = try Scratch()
         let one = try scratch.open("acme", "one.md")
-        scratch.state.selectGroup("acme")
+        scratch.state.assign(one, to: "Acme")
+        scratch.state.selectGroup("Acme")
 
         scratch.state.assign(one, to: "Roadmap")
         #expect(scratch.state.selectedGroup == "Roadmap")
@@ -203,7 +225,7 @@ struct GroupedTabTests {
         let scratch = try Scratch()
         let one = try scratch.open("acme", "one.md")
         scratch.state.assignToNewGroup(one, askingForName: { _ in nil })
-        #expect(one.group == "acme")
+        #expect(one.group == nil)
         scratch.state.assignToNewGroup(one, askingForName: { _ in "  Roadmap " })
         #expect(one.group == "Roadmap")
     }

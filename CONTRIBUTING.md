@@ -69,7 +69,7 @@ Sources/Folio/
     GitHistory              reading the log, and one commit's change to one file
     GitWorkingTree          everything uncommitted in a repository, as one diff
     LineDiff                the only diff Folio computes rather than reads
-    DocumentGroup           which project a document belongs to, from its folder
+    DocumentGroup           listing and tidying project names
     FileWatcher             tells you when something else writes an open file
     PathResolver            works out which folder a diff's paths belong to
     TextNormalizer          line splitting, tab expansion, encoding tolerance

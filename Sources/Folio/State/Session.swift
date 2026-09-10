@@ -21,8 +21,8 @@ struct Session: Codable, Equatable {
         /// Headings folded away in the outline. Absent in sessions written before
         /// the outline could fold.
         var collapsedOutline: [String]?
-        /// A group the reader put this document in by hand. Absent means the group is
-        /// worked out from the folder, which is also how older sessions read.
+        /// The project this document was filed under. Absent means it was not filed,
+        /// which is also how sessions written before groups existed read.
         var group: String?
     }
 
@@ -105,7 +105,7 @@ extension AppState {
                 webScrollOffset: Double(tab.webScrollOffset),
                 collapsedOutline: tab.collapsedOutline.isEmpty
                     ? nil : tab.collapsedOutline.sorted(),
-                group: tab.groupOverride
+                group: tab.group
             ))
         }
         result.activeIndex = activeTabID.flatMap { id in tabs.firstIndex { $0.id == id } }
@@ -135,7 +135,7 @@ extension AppState {
             let tab = DocumentTab(url: url, content: Self.inferredContent(for: url))
             // Straight onto the placeholder, not deferred with the rest: the tab bar
             // filters on it before any document has been read.
-            tab.groupOverride = entry.group
+            tab.group = entry.group
             tab.pendingRestore = entry
             return tab
         }

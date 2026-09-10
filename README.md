@@ -96,7 +96,7 @@ someone else's work. **Diffs and other text files stay read-only.**
 | Follows links | Sibling `.md` / `.diff` files open in Folio; http(s) goes to your browser |
 | **Editing** | Source mode is a real editor — undo, find, line numbers, live syntax colouring — and ⌘S writes the file. Nothing is ever auto-saved |
 | **Git** | The header shows the branch, how far it has drifted, and whether this file has changes. ⌥⌘C commits it; ⌥⌘P pushes. Any file you have open, one file per commit |
-| **Groups** | Documents group by their folder; the dropdown in the title bar filters the tab bar to one project. Right-click a tab to move it |
+| **Groups** | File documents into projects by hand; the dropdown in the title bar filters the tab bar to one. A group can span folders |
 | **History** | The sidebar switches from Outline to History: every commit that touched this file, each one opening in the split diff view. Follows renames |
 | **Who wrote it** | Commits with a `Co-Authored-By` trailer are badged, and the list filters to co-authored or not |
 | **Uncommitted changes** | ⌥⌘D shows the last commit against what you have now, unsaved edits included — what a commit would record |
@@ -191,14 +191,16 @@ or when a merge is unresolved — the menu says which.
 
 ## Groups
 
-Once documents from more than one folder are open, a dropdown appears beside the
-document's name in the title bar. Pick a project and the tab bar shows only its
+Right-click a tab → **Add to Group** → **New Group…** to make one, or pick an existing
+group to file the document there. Once a group exists, a dropdown appears beside the
+document's name in the title bar: pick a project and the tab bar shows only its
 documents; pick **All documents** to see everything again. Each entry says how many it
-holds.
+holds, and the menu says how many are not in a group.
 
-A document's group is the folder it is in — no setup, and it is usually right. To
-override it, right-click the tab → **Move to Group**, and pick an existing one, create a
-new one, or go back to using the folder name.
+Groups are yours to name and nothing is inferred. Folio does not group by folder, because
+a repository whose docs live in `guides/`, `reference/` and `adr/` is one project, not
+three. A group exists exactly as long as a document is in it — take the last one out with
+**Remove from Group** and the group goes with it, so there is nothing to tidy up.
 
 Nothing is closed or reloaded by switching. A hidden tab keeps its scroll position, its
 git status, its unsaved draft and its rendered page, and comes back exactly as it was.

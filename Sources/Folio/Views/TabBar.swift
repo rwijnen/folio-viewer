@@ -44,20 +44,7 @@ struct TabBar: View {
                         }
                         .disabled(state.visibleTabs.count < 2)
                         Divider()
-                        Menu("Move to Group") {
-                            ForEach(state.groups, id: \.self) { group in
-                                Button {
-                                    state.assign(tab, to: group)
-                                } label: {
-                                    Text(group == tab.group ? "✓ \(group)" : "   \(group)")
-                                }
-                            }
-                            Divider()
-                            Button("New Group…") { state.assignToNewGroup(tab) }
-                            if tab.groupOverride != nil {
-                                Button("Use the Folder Name") { state.assign(tab, to: nil) }
-                            }
-                        }
+                        TabGroupMenu(tab: tab)
                         Divider()
                         Button("Reveal in Finder") {
                             NSWorkspace.shared.activateFileViewerSelecting([tab.url])
