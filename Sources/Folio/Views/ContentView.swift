@@ -112,6 +112,9 @@ struct ContentView: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .navigation) {
+            GroupPicker()
+        }
         ToolbarItemGroup {
             if state.content == .diff {
                 Button {

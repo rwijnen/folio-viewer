@@ -17,7 +17,7 @@ struct TabBar: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            ForEach(state.tabs) { tab in
+            ForEach(state.visibleTabs) { tab in
                 TabChip(tab: tab,
                         isActive: tab.id == state.activeTabID,
                         isHovered: hoveredID == tab.id,
@@ -42,7 +42,22 @@ struct TabBar: View {
                             state.activate(tab.id)
                             state.closeOtherTabs()
                         }
-                        .disabled(state.tabs.count < 2)
+                        .disabled(state.visibleTabs.count < 2)
+                        Divider()
+                        Menu("Move to Group") {
+                            ForEach(state.groups, id: \.self) { group in
+                                Button {
+                                    state.assign(tab, to: group)
+                                } label: {
+                                    Text(group == tab.group ? "✓ \(group)" : "   \(group)")
+                                }
+                            }
+                            Divider()
+                            Button("New Group…") { state.assignToNewGroup(tab) }
+                            if tab.groupOverride != nil {
+                                Button("Use the Folder Name") { state.assign(tab, to: nil) }
+                            }
+                        }
                         Divider()
                         Button("Reveal in Finder") {
                             NSWorkspace.shared.activateFileViewerSelecting([tab.url])
@@ -69,7 +84,7 @@ struct TabBar: View {
         .padding(.top, 4)
         .background(Theme.gutterBackground)
         .overlay(alignment: .bottom) { Divider() }
-        .animation(.easeInOut(duration: 0.16), value: state.tabs.map(\.id))
+        .animation(.easeInOut(duration: 0.16), value: state.visibleTabs.map(\.id))
     }
 }
 

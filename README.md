@@ -96,6 +96,7 @@ someone else's work. **Diffs and other text files stay read-only.**
 | Follows links | Sibling `.md` / `.diff` files open in Folio; http(s) goes to your browser |
 | **Editing** | Source mode is a real editor — undo, find, line numbers, live syntax colouring — and ⌘S writes the file. Nothing is ever auto-saved |
 | **Git** | The header shows the branch, how far it has drifted, and whether this file has changes. ⌥⌘C commits it; ⌥⌘P pushes. Any file you have open, one file per commit |
+| **Groups** | Documents group by their folder; the dropdown in the title bar filters the tab bar to one project. Right-click a tab to move it |
 | **History** | The sidebar switches from Outline to History: every commit that touched this file, each one opening in the split diff view. Follows renames |
 | **Who wrote it** | Commits with a `Co-Authored-By` trailer are badged, and the list filters to co-authored or not |
 | **Uncommitted changes** | ⌥⌘D shows the last commit against what you have now, unsaved edits included — what a commit would record |
@@ -188,6 +189,23 @@ Folio makes is indistinguishable from one you made yourself. It will not commit 
 `user.name` and `user.email` are unset, when `HEAD` is detached, when the file is ignored,
 or when a merge is unresolved — the menu says which.
 
+## Groups
+
+Once documents from more than one folder are open, a dropdown appears beside the
+document's name in the title bar. Pick a project and the tab bar shows only its
+documents; pick **All documents** to see everything again. Each entry says how many it
+holds.
+
+A document's group is the folder it is in — no setup, and it is usually right. To
+override it, right-click the tab → **Move to Group**, and pick an existing one, create a
+new one, or go back to using the folder name.
+
+Nothing is closed or reloaded by switching. A hidden tab keeps its scroll position, its
+git status, its unsaved draft and its rendered page, and comes back exactly as it was.
+The front document is never hidden: opening a file from another project, or moving the
+one you are reading, brings the filter with it. Groups and the selected one are
+remembered between launches.
+
 ## Tabs
 
 ![The tab bar across the top of the window](Docs/tabs.png)
@@ -270,7 +288,7 @@ renderer supports.
 
 No package manager, no framework, one vendored dependency. `swift build` and a shell
 script that assembles the bundle and draws the icon with Core Graphics — the whole thing
-compiles with the Command Line Tools alone. 336 tests run in about fifteen seconds.
+compiles with the Command Line Tools alone. 354 tests run in about fifteen seconds.
 
 Contributions are welcome; please read [CONTRIBUTING.md](CONTRIBUTING.md) first, since
 Folio's narrow-writing, offline, non-executing constraints are deliberate.
@@ -287,7 +305,7 @@ what was wrong with it. Every commit carries a `Co-Authored-By: Claude` trailer,
 This is stated plainly because you should know what you are reading before you trust it.
 It does not lower the bar the code has to clear:
 
-- The 336 tests are real tests over real fixtures, and CI runs them on every push.
+- The 354 tests are real tests over real fixtures, and CI runs them on every push.
 - The three rules above — writes only where you ask, online only on Push, never executes
   what it renders — are the ones under test, not just claims in a README. The git tests
   build throwaway repositories and push between them on disk, so the narrowness is

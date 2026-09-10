@@ -21,11 +21,16 @@ struct Session: Codable, Equatable {
         /// Headings folded away in the outline. Absent in sessions written before
         /// the outline could fold.
         var collapsedOutline: [String]?
+        /// A group the reader put this document in by hand. Absent means the group is
+        /// worked out from the folder, which is also how older sessions read.
+        var group: String?
     }
 
     var entries: [Entry] = []
     /// Position of the document that was in front.
     var activeIndex: Int?
+    /// The group the tab bar was filtered to, if any.
+    var selectedGroup: String?
 
     /// A guard against a runaway session file putting a hundred tabs on screen at launch.
     static let maximumEntries = 25
@@ -82,6 +87,7 @@ extension AppState {
     /// Snapshot of what is open, in tab order.
     var session: Session {
         var result = Session()
+        result.selectedGroup = selectedGroup
         for tab in tabs {
             // A tab built in memory has no file to reopen it from.
             if tab.isEphemeral { continue }
@@ -98,7 +104,8 @@ extension AppState {
                 scrollOffset: Double(tab.scrollOffsets.offset(for: tab.scrollKey)),
                 webScrollOffset: Double(tab.webScrollOffset),
                 collapsedOutline: tab.collapsedOutline.isEmpty
-                    ? nil : tab.collapsedOutline.sorted()
+                    ? nil : tab.collapsedOutline.sorted(),
+                group: tab.groupOverride
             ))
         }
         result.activeIndex = activeTabID.flatMap { id in tabs.firstIndex { $0.id == id } }
@@ -126,9 +133,15 @@ extension AppState {
         let restored = stored.entries.map { entry -> DocumentTab in
             let url = URL(fileURLWithPath: entry.path)
             let tab = DocumentTab(url: url, content: Self.inferredContent(for: url))
+            // Straight onto the placeholder, not deferred with the rest: the tab bar
+            // filters on it before any document has been read.
+            tab.groupOverride = entry.group
             tab.pendingRestore = entry
             return tab
         }
+        // Before the tabs, so bringing the front one forward does not have to correct a
+        // filter that is not there yet.
+        setSelectedGroup(stored.selectedGroup)
         adoptRestored(restored, activeIndex: stored.activeIndex)
         if let tab = active { prepareIfNeeded(tab) }
         saveSession()
