@@ -95,36 +95,18 @@ someone else's work. **Diffs and other text files stay read-only.**
 | Images | Local ones inlined as `data:` URIs; remote ones reported, never fetched |
 | Follows links | Sibling `.md` / `.diff` files open in Folio; http(s) goes to your browser |
 | **Editing** | Source mode is a real editor — undo, find, line numbers, live syntax colouring — and ⌘S writes the file. Nothing is ever auto-saved |
-| **Git** | The header shows the branch, how far it has drifted, and whether this file has changes. ⌥⌘C commits it; ⌥⌘P pushes. Any file you have open, one file per commit |
-| **Groups** | File documents into projects by hand; the dropdown in the title bar filters the tab bar to one. A group can span folders |
-| **History** | The sidebar switches from Outline to History: every commit that touched this file, each one opening in the split diff view. Follows renames |
-| **Who wrote it** | Commits with a `Co-Authored-By` trailer are badged, and the list filters to co-authored or not |
-| **Uncommitted changes** | ⌥⌘D shows the last commit against what you have now, unsaved edits included — what a commit would record |
-| **Watches the file** | If something else writes a document you have open, Folio reloads it, or — if you were editing — offers the two versions side by side |
-| **Whole repository** | ⌥⌘U opens everything uncommitted as one diff tab — every changed file in the sidebar, new files included |
 
-### When something else writes the file
+## Version control
 
-Folio watches every open document. If a model, a script or another editor writes the file
-while you have it open:
+Folio commits, pushes and reads history for any document you have open — Markdown, a
+diff, a source file. Editing is still Markdown only.
 
-- **No unsaved edits of yours** — it reloads, keeps your scroll position, and says so in
-  the status line. A stale document that looks current is the worse failure. Turn this off
-  under Document ▸ *Ask Before Reloading Changed Files* if you would rather be asked.
-- **Unsaved edits of yours** — it touches nothing. A bar offers **See What Changed**,
-  which puts your version and the file's side by side, so the choice between them is an
-  informed one rather than a guess.
+### Committing and pushing
 
-Folio's own saves do not trip it, and neither does `touch` or a tool that rewrites
-identical bytes: the text is compared, not the timestamp.
-
-### Git
-
-Any document that lives in a git repository gets a pill in the header — Markdown, a diff,
-a source file, whatever you have open. When there
-is nothing to do it is quiet — just `main`, and `↑`/`↓` for commits to push and pull. When
-there is, it says so in words and takes a colour: `main · +12 −3` for a file edited since
-the last commit, `unsaved` for edits still in the editor, `new file`, or `conflict`.
+A document in a git repository gets a pill in its header. When there is nothing to do it
+is quiet — just `main`, and `↑`/`↓` for commits to push and pull. When there is, it says
+so in words and takes a colour: `main · +12 −3` for a file edited since the last commit,
+`unsaved` for edits still in the editor, `new file`, or `conflict`.
 Behind it are the only two things Folio will do to your repository. Editing is still
 Markdown-only; committing is not, because a patch or a script someone has just handed you
 is exactly the sort of thing you want to record.
@@ -188,6 +170,21 @@ Folio shells out to the `git` on your machine rather than linking a library, so 
 Folio makes is indistinguishable from one you made yourself. It will not commit when
 `user.name` and `user.email` are unset, when `HEAD` is detached, when the file is ignored,
 or when a merge is unresolved — the menu says which.
+
+## When something else writes the file
+
+Folio watches every open document. If a model, a script or another editor writes the file
+while you have it open:
+
+- **No unsaved edits of yours** — it reloads, keeps your scroll position, and says so in
+  the status line. A stale document that looks current is the worse failure. Turn this off
+  under Document ▸ *Ask Before Reloading Changed Files* if you would rather be asked.
+- **Unsaved edits of yours** — it touches nothing. A bar offers **See What Changed**,
+  which puts your version and the file's side by side, so the choice between them is an
+  informed one rather than a guess.
+
+Folio's own saves do not trip it, and neither does `touch` or a tool that rewrites
+identical bytes: the text is compared, not the timestamp.
 
 ## Groups
 
