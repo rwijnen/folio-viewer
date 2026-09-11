@@ -6,6 +6,12 @@ All notable changes to Folio are recorded here. The format follows
 
 ## [Unreleased]
 
+## [2.0.0] — 2026-09-10
+
+Folio was a viewer. It now writes to your repository — commits, pushes, and edits files —
+which is a different proposition from 1.0, and the reason for the major number rather than
+a minor one. Nothing in 1.0 was removed or changed underneath you.
+
 ### Added
 
 - **Documents group into projects.** Right-click a tab → *Add to Group* to make one or
@@ -17,42 +23,6 @@ All notable changes to Folio are recorded here. The format follows
   and rendered page. The front document is never hidden, a group disappears when its last
   document leaves, and both the groups and the selected one are remembered between
   launches.
-
-### Fixed
-
-- **Opening a file from Finder no longer looks like the app closing and reopening.**
-  SwiftUI's own handler for the open-documents Apple Event closes and re-presents the
-  window before the event reaches the app, which on a single-window scene is a visible
-  close and reopen. Folio now handles that event itself, so the window is never touched.
-  Two related fixes came with it: files Finder asks for during launch wait until the
-  previous session has been restored, rather than being drawn over a frame later; and
-  selecting several files in Finder now opens all of them instead of only the first.
-
-- **The close button on a tab sits at its right-hand edge.** It was pinned next to the
-  title, so it moved with the title's length and was never in the same place twice.
-
-- **Any file you have open can now be committed, not just Markdown.** A new `.diff`, a
-  script, a note in a format Folio does not render — none of them offered git at all,
-  because the feature was gated on whether Folio could *edit* the file. Editing is still
-  Markdown-only; committing, pushing, the status pill and ⌥⌘D are not. History stays in
-  the document sidebar, so it is there for Markdown and source files but not for a diff,
-  whose sidebar lists the files inside the patch — asking for it now says so rather than
-  doing nothing.
-
-- **The git pill now says whether the file needs committing.** A small coloured dot told
-  you something was different without saying what, so you had to open the menu to find
-  out. It now reads `main · +12 −3` for a file edited since the last commit, `unsaved`
-  for edits still in the editor, `new file`, or `conflict`, and takes a colour to match.
-  A file with nothing outstanding stays quiet.
-
-- **Commit is no longer offered when there is nothing to commit.** The menu item was
-  always live, the sheet opened on a clean file, and its Commit button would run a commit
-  that git then rejected. Three places decided availability for themselves and disagreed;
-  they now share one answer. ⌥⌘C, which cannot be disabled without losing its shortcut,
-  says why instead of opening a sheet that could only fail. Push does the same when the
-  branch has nothing to send.
-
-### Added
 
 - **See a whole repository's uncommitted changes at once.** ⌥⌘U, or *All Uncommitted
   Changes…*, opens everything not yet committed as an ordinary diff tab: every changed
@@ -125,9 +95,42 @@ All notable changes to Folio are recorded here. The format follows
   front, each one's reading mode and scroll position all come back next launch. Files that
   have moved or been deleted are dropped quietly. A document opened from Finder at launch
   joins the restored tabs rather than replacing them.
+
 - **Tabs can be dragged into any order**, and the new order is what gets remembered.
 
 ### Fixed
+
+- **Opening a file from Finder no longer looks like the app closing and reopening.**
+  SwiftUI's own handler for the open-documents Apple Event closes and re-presents the
+  window before the event reaches the app, which on a single-window scene is a visible
+  close and reopen. Folio now handles that event itself, so the window is never touched.
+  Two related fixes came with it: files Finder asks for during launch wait until the
+  previous session has been restored, rather than being drawn over a frame later; and
+  selecting several files in Finder now opens all of them instead of only the first.
+
+- **The close button on a tab sits at its right-hand edge.** It was pinned next to the
+  title, so it moved with the title's length and was never in the same place twice.
+
+- **Any file you have open can now be committed, not just Markdown.** A new `.diff`, a
+  script, a note in a format Folio does not render — none of them offered git at all,
+  because the feature was gated on whether Folio could *edit* the file. Editing is still
+  Markdown-only; committing, pushing, the status pill and ⌥⌘D are not. History stays in
+  the document sidebar, so it is there for Markdown and source files but not for a diff,
+  whose sidebar lists the files inside the patch — asking for it now says so rather than
+  doing nothing.
+
+- **The git pill now says whether the file needs committing.** A small coloured dot told
+  you something was different without saying what, so you had to open the menu to find
+  out. It now reads `main · +12 −3` for a file edited since the last commit, `unsaved`
+  for edits still in the editor, `new file`, or `conflict`, and takes a colour to match.
+  A file with nothing outstanding stays quiet.
+
+- **Commit is no longer offered when there is nothing to commit.** The menu item was
+  always live, the sheet opened on a clean file, and its Commit button would run a commit
+  that git then rejected. Three places decided availability for themselves and disagreed;
+  they now share one answer. ⌥⌘C, which cannot be disabled without losing its shortcut,
+  says why instead of opening a sheet that could only fail. Push does the same when the
+  branch has nothing to send.
 
 - ⌘F did not open the find bar. Two causes: the menu item asked whether a *diff* was
   loaded, which is never true for a Markdown document, and — the deeper one — a disabled
@@ -135,6 +138,7 @@ All notable changes to Folio are recorded here. The format follows
   re-evaluate as state changes. Every menu action now guards itself instead, so ⌘F, ⌘G,
   ⌘R, ⌘W, ⌘1/⌘2, ⌃⇥, ⌘]/⌘[ and ⇧⌘B all fire. ⌘F also re-focuses the field when the bar is
   already open, and Escape closes it.
+
 - Folio's own menu no longer appears as a second **View** menu next to the system one; it
   is now called **Document**.
 
@@ -144,6 +148,7 @@ All notable changes to Folio are recorded here. The format follows
   **Reload from Disk**, and any reload asked of the web view is redirected to re-read the
   file — including the reload WebKit itself might still put there on a future macOS.
   Reloading keeps the reader's scroll position.
+
 - The rendered page's context menu no longer offers Back, Forward, or any of WebKit's
   download items. There is nothing to navigate, and a viewer that never writes to disk
   should not offer to download.
@@ -217,5 +222,6 @@ in one window with tabs, without ever writing to your files or touching the netw
   asking Launch Services which app would open a probe file.
 - 109 tests over the model, tab and scroll layers, run with Swift Testing.
 
-[Unreleased]: https://github.com/rwijnen/folio-viewer/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/rwijnen/folio-viewer/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/rwijnen/folio-viewer/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/rwijnen/folio-viewer/releases/tag/v1.0.0
