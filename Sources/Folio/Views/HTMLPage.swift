@@ -7,6 +7,16 @@ import Foundation
 /// network, and images only load from the `data:` URIs the converter inlined.
 enum HTMLPage {
 
+    /// How wide the rendered page's column of text may grow, in CSS pixels.
+    ///
+    /// A reading measure rather than a window width: past a point the eye loses its place
+    /// coming back to the start of the next line, so the column stays centred and the
+    /// window can be as wide as you like. At the page's 14px body text this is roughly 110
+    /// characters — generous for plain prose, and deliberately so, because these documents
+    /// carry tables, code fences and diagrams that were being squeezed at the old 860.
+    static let readingWidth = 990
+
+
     static func wrap(body: String, title: String, isDark: Bool,
                      mermaidScript: String?, diagramCount: Int) -> String {
         let nonce = UUID().uuidString
@@ -75,7 +85,7 @@ enum HTMLPage {
       font: 14px/1.6 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
       -webkit-font-smoothing: antialiased;
     }
-    #content { max-width: 860px; margin: 0 auto; padding: 28px 32px 80px; }
+    #content { max-width: \(readingWidth)px; margin: 0 auto; padding: 28px 32px 80px; }
     h1, h2, h3, h4, h5, h6 {
       line-height: 1.3; margin: 1.6em 0 .6em; font-weight: 600; scroll-margin-top: 16px;
     }

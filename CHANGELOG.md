@@ -98,6 +98,13 @@ a minor one. Nothing in 1.0 was removed or changed underneath you.
 
 - **Tabs can be dragged into any order**, and the new order is what gets remembered.
 
+### Changed
+
+- **The rendered page reads wider.** Its column of text may now grow to 990px rather than
+  860 — about 15% more — which is roughly 110 characters at the page's body size. It is
+  still a maximum and still centred, so the window can be any width without the text
+  stretching across it. Tables, code fences and diagrams were the ones being squeezed.
+
 ### Fixed
 
 - **Opening a file from Finder no longer looks like the app closing and reopening.**

@@ -219,6 +219,20 @@ struct MarkdownInlineTests {
 @Suite("Rendered page")
 struct RenderedPageTests {
 
+    /// The column the text is laid out in, not the window. Widened once already because
+    /// tables and code fences were being squeezed; pinned so it is not narrowed by
+    /// accident while someone is tidying the stylesheet.
+    @Test func theRenderedPageUsesTheReadingWidth() {
+        let page = HTMLPage.wrap(body: "<p>hi</p>", title: "t", isDark: false,
+                                 mermaidScript: nil, diagramCount: 0)
+        #expect(HTMLPage.readingWidth == 990)
+        #expect(page.contains("max-width: 990px"))
+        // The value must reach the page, not the interpolation that produces it.
+        #expect(!page.contains("readingWidth"))
+        // Still centred, so the window may be any width without stretching the text.
+        #expect(page.contains("#content { max-width: 990px; margin: 0 auto;"))
+    }
+
     @Test func lockedDownContentSecurityPolicy() {
         let page = HTMLPage.wrap(body: "<p>hi</p>", title: "t", isDark: false,
                                  mermaidScript: nil, diagramCount: 0)
