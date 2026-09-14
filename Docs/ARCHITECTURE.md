@@ -114,7 +114,8 @@ lexer the diff panels use. Raw HTML is escaped apart from a whitelist of attribu
 formatting tags; `javascript:` and similar schemes are stripped; local images are inlined
 as `data:` URIs and remote ones are reported rather than fetched.
 
-**`HTMLPage`** wraps the body with `default-src 'none'; connect-src 'none'; img-src data:
+**`HTMLPage`** caps the text column at `readingWidth` and centres it, so a wide window
+gives margins rather than long lines. It wraps the body with `default-src 'none'; connect-src 'none'; img-src data:
 blob:; script-src 'nonce-…'`. Only the bundled mermaid bootstrap carries the per-load
 nonce. `'unsafe-eval'`, which mermaid needs, is granted only to documents that contain a
 diagram.
