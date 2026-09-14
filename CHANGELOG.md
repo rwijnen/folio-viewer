@@ -6,6 +6,14 @@ All notable changes to Folio are recorded here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- **History works for documents that are not at the repository root.** Every commit
+  reported "records no change to this file", which is most documents in most
+  repositories. Git resolves a pathspec against the working directory, and Folio runs git
+  beside the document, so a repository-relative path matched nothing. Filenames containing
+  `*`, `?` or `[` are taken literally now too.
+
 ## [2.0.0] — 2026-09-10
 
 Folio was a viewer. It now writes to your repository — commits, pushes, and edits files —

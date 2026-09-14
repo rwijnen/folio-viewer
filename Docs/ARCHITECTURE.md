@@ -163,7 +163,9 @@ widen it:
 Nothing forces, pulls, merges, rebases, resets or checks out. Push is the one place Folio
 uses the network.
 
-**`GitHistory`** reads the log for one file (following renames, so each entry carries the
+**`GitHistory`** spells repository-relative paths as `:(top,literal)…` pathspecs, since
+git resolves a plain one against the working directory and Folio runs it beside the
+document. It reads the log for one file (following renames, so each entry carries the
 name the file had then), one commit's change to it, and the file's contents at a revision.
 **`GitWorkingTree`** collects everything uncommitted in a repository as one diff, with
 untracked files diffed individually against `/dev/null` so nothing has to be staged.
