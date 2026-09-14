@@ -38,6 +38,8 @@ private final class Workspace {
     @discardableResult
     func commit(_ name: String, _ contents: String, message: String) async throws -> URL {
         let url = folder.appendingPathComponent(name)
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
+                                                withIntermediateDirectories: true)
         try contents.write(to: url, atomically: true, encoding: .utf8)
         try await git.require(["add", "--", name])
         try await git.require(["commit", "--message", message])
@@ -183,6 +185,30 @@ struct HistoryInAppTests {
                                          confirmingOverwrite: never)
         await workspace.waitFor("the refreshed log") { tab.history.count == 4 }
         #expect(tab.history.first?.subject == "Fourth change")
+    }
+
+    /// The document the reader actually has is rarely at the repository root. It came
+    /// back "records no change to this file" for every commit, because git resolves a
+    /// pathspec against the working directory and Folio runs it beside the document.
+    @Test func aDocumentInASubfolderHasAWorkingHistory() async throws {
+        let workspace = try Workspace()
+        try await workspace.start()
+        let name = "01 - Clients/Miele/WP02 Sharing Concept.md"
+        let file = try await workspace.commit(name, "# One\nkeep\ncommitted\n",
+                                              message: "Add the baseline")
+        try await workspace.commit(name, "# One\nkeep\nrevised\n",
+                                   message: "Revise the baseline")
+
+        let tab = try await workspace.open(file)
+        workspace.state.setSidebarMode(.history, for: tab)
+        await workspace.waitFor("the log") { tab.historyState == .loaded }
+        #expect(tab.history.map(\.subject) == ["Revise the baseline", "Add the baseline"])
+
+        workspace.state.showCommit(tab.history[0], for: tab)
+        await workspace.waitFor("the commit diff") { tab.loadedFile != nil }
+        let loaded = try #require(tab.loadedFile)
+        #expect(loaded.document.leftLines.contains("committed"))
+        #expect(loaded.document.rightLines.contains("revised"))
     }
 
     @Test func filteringHidesCommitsWithoutLosingThem() async throws {

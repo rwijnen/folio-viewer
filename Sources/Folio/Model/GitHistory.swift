@@ -110,7 +110,7 @@ enum GitHistory {
         // `--format=` suppresses the commit header, leaving the diff on its own.
         // `-M` so a rename is reported as one, matching what the log followed.
         let diffText = try await git.require(
-            ["show", "--format=", "--no-color", "-M", commit.hash, "--", path])
+            ["show", "--format=", "--no-color", "-M", commit.hash, "--", pathspec(for: path)])
         guard let file = DiffParser.parse(text: diffText).files.first else {
             throw Git.Failure(command: "show", status: 1,
                               message: "\(commit.shortHash) records no change to this file.")
@@ -140,6 +140,15 @@ enum GitHistory {
         let result = await git.run(["show", "HEAD:./\(fileURL.lastPathComponent)"])
         return result.succeeded ? result.output : nil
     }
+
+    /// A repository-relative path, spelled so git reads it as one.
+    ///
+    /// Pathspecs are resolved against the *working directory*, and Folio runs git in the
+    /// folder the document is in — so a repository-relative path matches nothing unless
+    /// the document happens to sit at the repository root. `:(top)` says to resolve from
+    /// the root instead; `literal` stops `*`, `?` and `[` in a filename being read as
+    /// wildcards.
+    static func pathspec(for path: String) -> String { ":(top,literal)\(path)" }
 
     /// The file exactly as it stood at a commit, for reading rather than comparing.
     static func contents(of commit: GitCommitSummary, using git: Git) async throws -> String {

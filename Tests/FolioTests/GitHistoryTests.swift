@@ -36,9 +36,19 @@ private final class HistoryRepo {
 
     func url(_ name: String) -> URL { folder.appendingPathComponent(name) }
 
+    /// A runner rooted where the app roots it: the folder the document is in. Running
+    /// everything from the repository root hides anything that depends on the working
+    /// directory, which is exactly what let a broken pathspec through.
+    func gitBeside(_ name: String) -> Git {
+        Git(workingDirectory: url(name).deletingLastPathComponent(),
+            environment: HistoryRepo.isolated)
+    }
+
     @discardableResult
     func commit(_ name: String, _ contents: String, message: String) async throws -> URL {
         let url = self.url(name)
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
+                                                withIntermediateDirectories: true)
         try contents.write(to: url, atomically: true, encoding: .utf8)
         try await git.require(["add", "--", name])
         try await git.require(["commit", "--message", message])
@@ -137,6 +147,83 @@ struct GitHistoryTests {
 }
 
 // MARK: - One commit's change
+
+/// Every test here used to put the document at the repository root, where a
+/// repository-relative pathspec and a working-directory-relative one are the same string.
+/// They are not the same anywhere else, and history came back empty for every document in
+/// a subfolder — which is most of them.
+@Suite("Git history in subfolders", .enabled(if: gitIsInstalled))
+struct GitHistorySubfolderTests {
+
+    @Test func historyIsFoundForADocumentInASubfolder() async throws {
+        let repo = try HistoryRepo()
+        try await repo.start()
+        let file = try await repo.commit("notes/clients/acme/brief.md", "# One\nkeep\n",
+                                         message: "Add the brief")
+        try await repo.commit("notes/clients/acme/brief.md", "# One\nkeep\nmore\n",
+                              message: "Extend the brief")
+
+        let git = repo.gitBeside("notes/clients/acme/brief.md")
+        let commits = try await GitHistory.commits(for: file, using: git)
+        #expect(commits.map(\.subject) == ["Extend the brief", "Add the brief"])
+
+        // The failure this guards: git show found nothing, so the pane said the commit
+        // recorded no change to the file.
+        let change = try await GitHistory.change(at: commits[0], using: git)
+        #expect(!change.isNew)
+        #expect(change.parentLines == ["# One", "keep"])
+        #expect(change.diff.additions == 1)
+    }
+
+    /// The reader's own vault is full of these.
+    @Test func spacesAndPunctuationInThePathSurvive() async throws {
+        let repo = try HistoryRepo()
+        try await repo.start()
+        let name = "01 - Clients/Miele/WP02 Sharing Concept - Requirements Baseline.md"
+        let file = try await repo.commit(name, "# One\nkeep\n", message: "Add it")
+        try await repo.commit(name, "# One\nkeep\nadded\n", message: "Extend it")
+
+        let git = repo.gitBeside(name)
+        let commits = try await GitHistory.commits(for: file, using: git)
+        #expect(commits.first?.subject == "Extend it")
+        let change = try await GitHistory.change(at: try #require(commits.first),
+                                                 using: git)
+        #expect(change.diff.additions == 1)
+        #expect(change.parentLines == ["# One", "keep"])
+    }
+
+    /// A pathspec is glob-matched unless told otherwise, so a filename containing `[` or
+    /// `*` would match the wrong thing, or nothing.
+    @Test func globCharactersInAFilenameAreTakenLiterally() async throws {
+        let repo = try HistoryRepo()
+        try await repo.start()
+        let name = "notes/draft [v2] *final*.md"
+        let file = try await repo.commit(name, "# One\n", message: "Add the draft")
+        try await repo.commit(name, "# One\ntwo\n", message: "Extend the draft")
+
+        let git = repo.gitBeside(name)
+        let commits = try await GitHistory.commits(for: file, using: git)
+        let change = try await GitHistory.change(at: try #require(commits.first),
+                                                 using: git)
+        #expect(change.diff.additions == 1)
+    }
+
+    @Test func aRenameIsStillFollowedAcrossFolders() async throws {
+        let repo = try HistoryRepo()
+        try await repo.start()
+        try await repo.commit("notes/draft.md", "# Draft\nbody\n", message: "Start it")
+        try await repo.rename("notes/draft.md", to: "notes/final.md", message: "Rename it")
+        try await repo.commit("notes/final.md", "# Draft\nbody\nmore\n", message: "Extend it")
+
+        let git = repo.gitBeside("notes/final.md")
+        let commits = try await GitHistory.commits(for: repo.url("notes/final.md"),
+                                                   using: git)
+        #expect(commits.map(\.subject) == ["Extend it", "Rename it", "Start it"])
+        #expect(commits.map(\.path) == ["notes/final.md", "notes/final.md", "notes/draft.md"])
+        let change = try await GitHistory.change(at: commits[0], using: git)
+        #expect(change.parentLines == ["# Draft", "body"])
+    }
+}
 
 @Suite("Git history change", .enabled(if: gitIsInstalled))
 struct GitHistoryChangeTests {
