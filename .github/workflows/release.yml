@@ -14,7 +14,12 @@ jobs:
     runs-on: macos-15
 
     steps:
-      - uses: actions/checkout@v4
+      # Pinned by commit, with the version beside it. A floating major tag is
+      # what broke this workflow: `action-gh-release@v2` declares node20, the
+      # runners stopped providing it, and the forced move to node24 made the
+      # asset upload fail — on a tag push, which is the one run that matters
+      # and the one nobody sees until they go looking for the zip.
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
 
       # A tag is the only thing that publishes a release, and nothing else checks that
       # the bundle agrees with it. Without this, pushing v1.2.0 over a stale Info.plist
@@ -52,7 +57,7 @@ jobs:
           shasum -a 256 Folio.app.zip | tee Folio.app.zip.sha256
 
       - name: Publish the release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@e598afbe1493e6b1bafb1f389cabb956eab91231  # v3.0.3
         with:
           files: |
             Folio.app.zip

@@ -6,6 +6,15 @@ All notable changes to Folio are recorded here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- **The release workflow could not attach its artifacts.** GitHub stopped providing
+  Node 20 and forced the release action onto Node 24, which it does not support, so
+  tagging 2.1.0 built and tested the app and then failed to upload the zip. The actions
+  are now on versions that target Node 24, and pinned by commit rather than by a major
+  tag — a floating tag moving underneath the workflow is what caused this, and it does
+  not show up in any diff.
+
 ## [2.1.0] — 2026-09-17
 
 ### Added

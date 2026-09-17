@@ -272,5 +272,7 @@ the old answer, which produced a convincing false negative before the retries ex
 Pushing a `v*` tag is the only thing that publishes a release; merging to `main` runs CI
 and stops there. The workflow refuses to publish unless the tag matches
 `CFBundleShortVersionString` and `CHANGELOG.md` has a heading for it, so steps 1 and 2 are
-checked rather than trusted. It then builds, runs the tests, and attaches a zip plus its
+checked rather than trusted. Actions are pinned by commit rather than by a major tag: a
+floating tag moving is not visible in any diff, and the run it breaks is the tag push,
+which nobody watches. It then builds, runs the tests, and attaches a zip plus its
 SHA-256. The artifact is ad-hoc signed and not notarised, and the release notes say so.
