@@ -65,6 +65,9 @@ final class AppState {
     /// key cannot change what a test sees.
     @ObservationIgnored var gitEnvironment: [String: String] = [:]
 
+    /// The note or change request being written, if the sheet is up.
+    var annotationDraft: AnnotationDraft?
+
     var isCommitSheetPresented = false
     var commitMessage = ""
     var commitShouldPush = false

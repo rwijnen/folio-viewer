@@ -153,6 +153,10 @@ extension AppState {
             } else {
                 tab.diagramReport = total == 0 ? nil : "\(total) diagram\(total == 1 ? "" : "s")"
             }
+        case "selection":
+            selectionChanged(text: payload["text"] as? String ?? "",
+                             lineHint: payload["line"] as? Int,
+                             for: tab.id)
         case "anchor":
             tab.visibleAnchor = payload["anchor"] as? String ?? ""
         default:

@@ -18,7 +18,8 @@ enum HTMLPage {
 
 
     static func wrap(body: String, title: String, isDark: Bool,
-                     mermaidScript: String?, diagramCount: Int) -> String {
+                     mermaidScript: String?, diagramCount: Int,
+                     annotated: [ClosedRange<Int>] = []) -> String {
         let nonce = UUID().uuidString
         let needsDiagrams = diagramCount > 0
         let mermaid = needsDiagrams ? (mermaidScript ?? "") : ""
@@ -38,6 +39,8 @@ enum HTMLPage {
         }
 
         var scripts = "<script nonce=\"\(nonce)\">\(findScript)</script>"
+        scripts += "<script nonce=\"\(nonce)\">\(selectionScript)</script>"
+        scripts += "<script nonce=\"\(nonce)\">\(annotationScript(annotated))</script>"
         if needsDiagrams {
             scripts += mermaid.isEmpty
                 ? "<script nonce=\"\(nonce)\">\(missingMermaidScript)</script>"
@@ -70,12 +73,14 @@ enum HTMLPage {
       --tk-keyword: #cf222e; --tk-type: #953800; --tk-constant: #0550ae;
       --tk-string: #0a3069; --tk-number: #0550ae; --tk-comment: #6e7781;
       --tk-annotation: #8250df; --error-bg: #fff1e5; --error-fg: #9a3412;
+      --annotated: #fff4e5; --annotated-edge: #e8a33d;
     }
     html[data-theme="dark"] {
       --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --border: #3d444d;
       --code-bg: #161b22; --quote-border: #3d444d; --link: #4493f8;
       --table-stripe: #161b22; --mark: rgba(210,153,34,.45); --mark-current: #e3852b;
       --tk-keyword: #ff7b72; --tk-type: #ffa657; --tk-constant: #79c0ff;
+      --annotated: rgba(232,163,61,.16); --annotated-edge: #b1760f;
       --tk-string: #a5d6ff; --tk-number: #79c0ff; --tk-comment: #8b949e;
       --tk-annotation: #d2a8ff; --error-bg: #3b2300; --error-fg: #ffb77c;
     }
@@ -86,6 +91,12 @@ enum HTMLPage {
       -webkit-font-smoothing: antialiased;
     }
     #content { max-width: \(readingWidth)px; margin: 0 auto; padding: 28px 32px 80px; }
+    /* A passage carrying a note or a change request. Deliberately a wash rather than a
+       border: it must be visible while reading without breaking the line's rhythm. */
+    .folio-annotated {
+      background: var(--annotated); border-radius: 3px;
+      box-shadow: -4px 0 0 0 var(--annotated-edge);
+    }
     h1, h2, h3, h4, h5, h6 {
       line-height: 1.3; margin: 1.6em 0 .6em; font-weight: 600; scroll-margin-top: 16px;
     }
@@ -350,4 +361,73 @@ enum HTMLPage {
       }
     })();
     """
+}
+
+extension HTMLPage {
+
+    /// Reports the selection to the app as it changes.
+    ///
+    /// Continuously, rather than when the context menu opens: the menu is built by AppKit
+    /// and there is no moment in that sequence to ask the page a question and wait for the
+    /// answer. By the time the menu is wanted, the app already knows.
+    static let selectionScript = """
+    (function () {
+      var last = '', timer = null;
+      function lineOf(node) {
+        var el = node && node.nodeType === 1 ? node : (node ? node.parentElement : null);
+        while (el) {
+          if (el.hasAttribute && el.hasAttribute('data-line')) {
+            return parseInt(el.getAttribute('data-line'), 10);
+          }
+          el = el.parentElement;
+        }
+        return null;
+      }
+      function report() {
+        var sel = window.getSelection();
+        var text = sel ? String(sel) : '';
+        if (text === last) { return; }
+        last = text;
+        var line = null;
+        if (sel && sel.rangeCount > 0) { line = lineOf(sel.getRangeAt(0).startContainer); }
+        if (window.webkit && window.webkit.messageHandlers
+            && window.webkit.messageHandlers.folio) {
+          window.webkit.messageHandlers.folio.postMessage(
+            { type: 'selection', text: text, line: line });
+        }
+      }
+      document.addEventListener('selectionchange', function () {
+        // Coalesced: this fires on every tick of a drag.
+        if (timer) { clearTimeout(timer); }
+        timer = setTimeout(report, 120);
+      });
+    })();
+    """
+
+    /// Tints the blocks a note or change request was left against.
+    ///
+    /// Marks whole blocks rather than the exact words. The words are recorded against the
+    /// *source*, and the rendered page is a different shape — mapping a character range
+    /// back through the conversion would be a second, less reliable locator for a tint
+    /// nobody reads that closely.
+    static func annotationScript(_ ranges: [ClosedRange<Int>]) -> String {
+        guard !ranges.isEmpty else { return "" }
+        let pairs = ranges.map { "[\($0.lowerBound),\($0.upperBound)]" }.joined(separator: ",")
+        return """
+        (function () {
+          var ranges = [\(pairs)];
+          var blocks = document.querySelectorAll('[data-line]');
+          for (var i = 0; i < blocks.length; i++) {
+            var line = parseInt(blocks[i].getAttribute('data-line'), 10);
+            if (isNaN(line)) { continue; }
+            for (var r = 0; r < ranges.length; r++) {
+              if (line >= ranges[r][0] && line <= ranges[r][1]) {
+                blocks[i].classList.add('folio-annotated');
+                break;
+              }
+            }
+          }
+        })();
+        """
+    }
 }

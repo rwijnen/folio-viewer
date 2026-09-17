@@ -24,6 +24,9 @@ struct Session: Codable, Equatable {
         /// The project this document was filed under. Absent means it was not filed,
         /// which is also how sessions written before groups existed read.
         var group: String?
+        /// Notes and change requests left against this document. Absent in sessions
+        /// written before there were any.
+        var annotations: [Annotation]?
     }
 
     var entries: [Entry] = []
@@ -105,7 +108,8 @@ extension AppState {
                 webScrollOffset: Double(tab.webScrollOffset),
                 collapsedOutline: tab.collapsedOutline.isEmpty
                     ? nil : tab.collapsedOutline.sorted(),
-                group: tab.group
+                group: tab.group,
+                annotations: tab.annotations.isEmpty ? nil : tab.annotations
             ))
         }
         result.activeIndex = activeTabID.flatMap { id in tabs.firstIndex { $0.id == id } }
@@ -136,6 +140,7 @@ extension AppState {
             // Straight onto the placeholder, not deferred with the rest: the tab bar
             // filters on it before any document has been read.
             tab.group = entry.group
+            tab.annotations = entry.annotations ?? []
             tab.pendingRestore = entry
             return tab
         }

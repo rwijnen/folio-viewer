@@ -96,6 +96,46 @@ struct MarkdownEditorView: NSViewRepresentable {
             self.appliedVersion = tab.editorVersion
         }
 
+        // MARK: - Annotating from the source
+
+        /// Mirrors what the rendered page reports, so a note can be left from either
+        /// side. Here the line is exact rather than a hint: the character range says so.
+        func textViewDidChangeSelection(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            let range = textView.selectedRange()
+            guard range.length > 0, let text = textView.string as NSString? else {
+                state.selectionChanged(text: "", lineHint: nil, for: tab.id)
+                return
+            }
+            let selected = text.substring(with: range)
+            // Lines before the selection begins, counted in the text as it stands.
+            let preceding = text.substring(to: range.location)
+            let line = preceding.reduce(into: 0) { $0 += $1 == "\n" ? 1 : 0 }
+            state.selectionChanged(text: selected, lineHint: line, for: tab.id)
+        }
+
+        func textView(_ view: NSTextView, menu: NSMenu, for event: NSEvent,
+                      at charIndex: Int) -> NSMenu? {
+            guard view.selectedRange().length > 0 else { return menu }
+            let items = Annotation.Kind.allCases.map { kind -> NSMenuItem in
+                let item = NSMenuItem(title: "Add \(kind.label)…",
+                                      action: #selector(annotate(_:)), keyEquivalent: "")
+                item.representedObject = kind.rawValue
+                item.target = self
+                return item
+            }
+            // At the top, above Cut and Copy: it is why you right-clicked a selection.
+            for (offset, item) in items.enumerated() { menu.insertItem(item, at: offset) }
+            menu.insertItem(NSMenuItem.separator(), at: items.count)
+            return menu
+        }
+
+        @objc private func annotate(_ sender: NSMenuItem) {
+            guard let raw = sender.representedObject as? String,
+                  let kind = Annotation.Kind(rawValue: raw) else { return }
+            state.beginAnnotation(kind, for: tab)
+        }
+
         deinit {
             if let scrollObservation { NotificationCenter.default.removeObserver(scrollObservation) }
         }

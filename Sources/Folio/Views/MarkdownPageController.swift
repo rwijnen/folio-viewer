@@ -45,11 +45,21 @@ final class MarkdownPageController: NSObject, WKNavigationDelegate, WKScriptMess
             guard let self, let tab = self.tab else { return }
             self.state?.reloadTextDocument(for: tab.id)
         }
+        webView.hasSelection = { [weak self] in
+            guard let self, let tab = self.tab, let state = self.state else { return false }
+            return state.hasSelection(tab)
+        }
+        webView.onAnnotate = { [weak self] kind in
+            guard let self, let tab = self.tab else { return }
+            self.state?.beginAnnotation(kind, for: tab)
+        }
     }
 
     /// Breaks the web view ↔ handler retain cycle before the controller is dropped.
     func teardown() {
         webView.onReloadFromDisk = nil
+        webView.onAnnotate = nil
+        webView.hasSelection = nil
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "folio")
         webView.navigationDelegate = nil
         webView.removeFromSuperview()

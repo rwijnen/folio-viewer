@@ -83,14 +83,36 @@ enum ExternalChange: Equatable {
     case removed
 }
 
+/// A passage the reader has selected, as the rendered page reports it.
+struct PendingSelection: Equatable {
+    /// The words as they were laid out, without the Markdown behind them.
+    var text: String
+    /// The source line the enclosing block begins on, when the page knows one.
+    var lineHint: Int?
+}
+
 /// What the document sidebar is listing.
 enum SidebarMode: String, CaseIterable, Identifiable {
     case outline
     case history
+    case notes
 
     var id: String { rawValue }
-    var label: String { self == .outline ? "Outline" : "History" }
-    var symbol: String { self == .outline ? "list.bullet.indent" : "clock.arrow.circlepath" }
+    var label: String {
+        switch self {
+        case .outline: return "Outline"
+        case .history: return "History"
+        case .notes: return "Notes"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .outline: return "list.bullet.indent"
+        case .history: return "clock.arrow.circlepath"
+        case .notes: return "text.bubble"
+        }
+    }
 }
 
 /// Which commits the history list shows.
@@ -306,6 +328,14 @@ final class DocumentTab: Identifiable {
     /// been filed. Always the reader's choice; nothing infers it.
     var group: String?
 
+    // MARK: Notes and change requests
+
+    /// What the reader has marked up in this document. Never written into the file.
+    var annotations: [Annotation] = []
+    /// What is selected in the rendered page right now, as the page last reported it.
+    /// Kept out of Observation: it changes on every drag of the mouse.
+    @ObservationIgnored var pendingSelection: PendingSelection?
+
     /// Overrides the name in the tab bar for a tab that is not one file — the
     /// repository-wide view, whose `url` is a folder.
     var displayName: String?
@@ -376,7 +406,8 @@ final class DocumentTab: Identifiable {
                                  title: document.name,
                                  isDark: isDark,
                                  mermaidScript: WebResources.mermaid,
-                                 diagramCount: document.diagramCount)
+                                 diagramCount: document.diagramCount,
+                                 annotated: annotations.map { $0.startLine...$0.endLine })
         pageCache = (pageVersion, html)
         return html
     }

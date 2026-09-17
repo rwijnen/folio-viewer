@@ -30,6 +30,11 @@ struct DocumentView: View {
         .background(Theme.rowBackground)
         .onAppear { appState.isDarkAppearance = colorScheme == .dark }
         .onChange(of: colorScheme) { appState.isDarkAppearance = colorScheme == .dark }
+        .sheet(isPresented: Binding(get: { appState.annotationDraft != nil },
+                                    set: { if !$0 { appState.cancelAnnotationDraft() } })) {
+            AnnotationSheet(tab: tab)
+                .environment(appState)
+        }
         .sheet(isPresented: Bindable(appState).isCommitSheetPresented) {
             CommitSheet(tab: tab)
                 .environment(appState)

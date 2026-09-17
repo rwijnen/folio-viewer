@@ -17,9 +17,15 @@ extension AppState {
     func setSidebarMode(_ mode: SidebarMode, for requested: DocumentTab? = nil) {
         guard let tab = requested ?? active, tab.sidebarMode != mode else { return }
         // A diff's sidebar lists the files inside the patch, so there is nowhere to put
-        // a history. Committing and the rest work; this one does not.
+        // the document sidebar at all.
         guard tab.content != .diff else {
-            statusMessage = "History is shown beside a document, not beside a diff."
+            statusMessage = mode == .notes
+                ? "Notes are kept beside a document, not beside a diff."
+                : "History is shown beside a document, not beside a diff."
+            return
+        }
+        guard mode != .history || tab.git != nil else {
+            statusMessage = "\(tab.name) is not in a git repository, so it has no history."
             return
         }
         tab.sidebarMode = mode

@@ -68,6 +68,20 @@ document names it, so one cannot be left behind empty. `AppState.selectedGroup` 
 reveals the group of whatever tab comes forward, so the front document is never hidden by
 the filter.
 
+**Notes.** `Annotation` records a passage the reader marked up — its words, the source
+lines, and what they wrote. Nothing is written to the document. A selection made in the
+rendered view has lost the Markdown that produced it, so `AnnotationLocator` finds it in
+the source by comparing words with markers stripped and whitespace flattened, ordered by
+the line the block reported; the same reasoning as locating a hunk by content rather than
+by its declared position. `AnnotationReport` renders the lot, reading the source at the
+moment it is asked so the text quoted is the text as it stands.
+
+The page reports its selection continuously rather than when the menu opens: AppKit builds
+the context menu with no point at which the page can be asked a question and awaited, so by
+the time the menu is wanted the app already knows. Blocks carry `data-line` — headings
+always did, paragraphs now too — which is both the hint the locator starts from and what
+the marking script tints.
+
 **Session.** Paths, tab order, which was in front, reading mode, scroll offsets and folds
 are a JSON blob in `UserDefaults`. Restoring creates placeholder tabs — a URL and the kind
 guessed from the extension — and only the document in front is read; the rest fill in when

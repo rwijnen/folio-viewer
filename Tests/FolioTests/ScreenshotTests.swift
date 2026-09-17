@@ -115,26 +115,51 @@ struct ScreenshotTests {
     }
 
     @Test func history() throws {
+        // Fixed dates, not offsets from now: a committed picture that changes every time
+        // the suite runs shows up as noise in every diff. These are old enough that the
+        // list writes them out in full rather than as "2h ago", which is what makes the
+        // rendering stable.
         let day: TimeInterval = 86_400
+        let reference = Date(timeIntervalSince1970: 1_780_000_000)
         func commit(_ subject: String, ago: TimeInterval, hash: String,
                     _ coAuthors: [String] = []) -> GitCommitSummary {
             GitCommitSummary(hash: hash, shortHash: hash, author: "You",
-                             date: Date().addingTimeInterval(-ago), subject: subject,
+                             date: reference.addingTimeInterval(-ago), subject: subject,
                              path: "weekly-review.md", coAuthors: coAuthors)
         }
         try write("history", width: 300) {
             VStack(alignment: .leading, spacing: 2) {
-                CommitRow(commit: commit("Draft this week's retrospective", ago: 2 * 3600,
+                CommitRow(commit: commit("Draft this week's retrospective", ago: 40 * day,
                                          hash: "a1b2c3d",
                                          ["Claude Opus 5 <noreply@anthropic.com>"]),
                           isCurrent: false, isFirst: true)
                 CommitRow(commit: commit("Rewrite the summary in my own words",
-                                         ago: 3 * day, hash: "9f8e7d6"),
+                                         ago: 60 * day, hash: "9f8e7d6"),
                           isCurrent: true, isFirst: false)
-                CommitRow(commit: commit("Add the outcomes section", ago: 40 * day,
+                CommitRow(commit: commit("Add the outcomes section", ago: 90 * day,
                                          hash: "0011223",
                                          ["Claude Opus 5 <noreply@anthropic.com>"]),
                           isCurrent: false, isFirst: false)
+            }
+        }
+    }
+
+    @Test func notes() throws {
+        func annotation(_ kind: Annotation.Kind, _ quote: String, _ lines: ClosedRange<Int>,
+                        _ comment: String) -> Annotation {
+            Annotation(kind: kind, quote: quote, startLine: lines.lowerBound,
+                       endLine: lines.upperBound, comment: comment)
+        }
+        try write("notes", width: 300) {
+            VStack(alignment: .leading, spacing: 2) {
+                AnnotationRow(annotation: annotation(
+                    .changeRequest, "Contacts carry no channel, editing is open to anyone",
+                    2...3, "Split this into two sentences and name the role explicitly."))
+                AnnotationRow(annotation: annotation(
+                    .note, "Indirect reps never see the dealer's end customer",
+                    8...8, "Check this against the register — C-1 may contradict it."))
+                AnnotationRow(annotation: annotation(
+                    .changeRequest, "Actors", 5...5, "Rename to \"Roles\" throughout."))
             }
         }
     }

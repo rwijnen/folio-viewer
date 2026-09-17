@@ -203,7 +203,11 @@ enum MarkdownConverter {
                     index += 1
                 }
                 if !emittedHeading, !paragraph.isEmpty {
-                    html += "<p>" + inline(paragraph.joined(separator: "\n")) + "</p>\n"
+                    // The line it starts on, so a selection inside it can be traced back
+                    // to the source. Headings already carry one; this covers the prose.
+                    let startLine = lineOffset + index - paragraph.count
+                    html += "<p data-line=\"\(startLine)\">"
+                        + inline(paragraph.joined(separator: "\n")) + "</p>\n"
                 }
             }
 

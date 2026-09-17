@@ -6,6 +6,16 @@ All notable changes to Folio are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Notes and change requests.** Select a passage in the rendered view or in source mode,
+  right-click, and add a note or a change request; leave as many as you like across a
+  document. The sidebar gains a **Notes** mode listing them in document order, annotated
+  passages are tinted where they sit, and **Copy for AI** puts them all on the clipboard —
+  the file named first, then each item's lines, the source as it stands at the moment you
+  copy, and what you asked for. Your document is never touched: the notes live beside it
+  and are remembered between launches.
+
 ### Fixed
 
 - **History works for documents that are not at the repository root.** Every commit

@@ -97,6 +97,7 @@ someone else's work. **Diffs and other text files stay read-only.**
 | **Editing** | Source mode is a real editor — undo, find, line numbers, live syntax colouring — and ⌘S writes the file. Nothing is ever auto-saved |
 | **Git** | The header shows the branch, how far it has drifted, and whether this file has changes. ⌥⌘C commits it; ⌥⌘P pushes. Any file you have open, one file per commit |
 | **Groups** | File documents into projects by hand; the dropdown in the title bar filters the tab bar to one. A group can span folders |
+| **Notes** | Select a passage, right-click, add a note or a change request. One button copies them all for an assistant, with file, lines and source |
 | **History** | The sidebar switches from Outline to History: every commit that touched this file, each one opening in the split diff view. Follows renames |
 | **Who wrote it** | Commits with a `Co-Authored-By` trailer are badged, and the list filters to co-authored or not |
 | **Uncommitted changes** | ⌥⌘D shows the last commit against what you have now, unsaved edits included — what a commit would record |
@@ -192,6 +193,45 @@ Folio shells out to the `git` on your machine rather than linking a library, so 
 Folio makes is indistinguishable from one you made yourself. It will not commit when
 `user.name` and `user.email` are unset, when `HEAD` is detached, when the file is ignored,
 or when a merge is unresolved — the menu says which.
+
+## Notes and change requests
+
+Select a passage — in the rendered view or in source mode — right-click, and add a **note**
+or a **change request**. Leave as many as you like across a document.
+
+![Notes and change requests listed beside the document](Docs/notes.png)
+
+The sidebar gains a third mode, **Notes**, listing them in the order they appear in the
+file; annotated passages are tinted in the document so you can see what you have already
+covered. **Copy for AI** puts the lot on the clipboard, shaped for handing over:
+
+```markdown
+# Requested changes to `01 - Clients/Miele/WP02.md`
+
+1 change request and 1 note.
+
+## 1. Change request — lines 3–4
+
+Source as it stands:
+
+```
+Contacts carry **no channel**, editing is open
+to anyone who can [see them](./roles.md).
+```
+
+**Change requested:**
+
+Split into two sentences and name the role explicitly.
+```
+
+The file is named first, then the lines, then the source **as it stands at the moment you
+copy** — not as it stood when you wrote the note — so what you ask for matches what is
+actually there. A selection made in the rendered view has lost the Markdown behind it, so
+Folio traces it back to the source by its words rather than by position, the same way it
+locates a diff hunk by content.
+
+**Your document is never touched.** Notes live beside it, remembered between launches, and
+nothing is written into the file or next to it.
 
 ## Groups
 
@@ -296,7 +336,7 @@ renderer supports.
 
 No package manager, no framework, one vendored dependency. `swift build` and a shell
 script that assembles the bundle and draws the icon with Core Graphics — the whole thing
-compiles with the Command Line Tools alone. 354 tests run in about fifteen seconds.
+compiles with the Command Line Tools alone. 398 tests run in about fifteen seconds.
 
 Contributions are welcome; please read [CONTRIBUTING.md](CONTRIBUTING.md) first, since
 Folio's narrow-writing, offline, non-executing constraints are deliberate.
@@ -313,7 +353,7 @@ what was wrong with it. Every commit carries a `Co-Authored-By: Claude` trailer,
 This is stated plainly because you should know what you are reading before you trust it.
 It does not lower the bar the code has to clear:
 
-- The 354 tests are real tests over real fixtures, and CI runs them on every push.
+- The 398 tests are real tests over real fixtures, and CI runs them on every push.
 - The three rules above — writes only where you ask, online only on Push, never executes
   what it renders — are the ones under test, not just claims in a README. The git tests
   build throwaway repositories and push between them on disk, so the narrowness is
