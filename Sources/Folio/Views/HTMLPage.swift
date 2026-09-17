@@ -19,7 +19,7 @@ enum HTMLPage {
 
     static func wrap(body: String, title: String, isDark: Bool,
                      mermaidScript: String?, diagramCount: Int,
-                     annotated: [ClosedRange<Int>] = []) -> String {
+                     annotated: [AnnotatedPassage] = []) -> String {
         let nonce = UUID().uuidString
         let needsDiagrams = diagramCount > 0
         let mermaid = needsDiagrams ? (mermaidScript ?? "") : ""
@@ -91,9 +91,15 @@ enum HTMLPage {
       -webkit-font-smoothing: antialiased;
     }
     #content { max-width: \(readingWidth)px; margin: 0 auto; padding: 28px 32px 80px; }
-    /* A passage carrying a note or a change request. Deliberately a wash rather than a
-       border: it must be visible while reading without breaking the line's rhythm. */
-    .folio-annotated {
+    /* The words a note or change request was left against. A wash and an underline
+       rather than a border, so it is visible while reading without breaking the line. */
+    mark.folio-annotated {
+      background: var(--annotated); color: inherit; border-radius: 2px;
+      box-shadow: 0 1px 0 0 var(--annotated-edge);
+    }
+    /* Only when the words cannot be found in the rendered page — an annotation left
+       against source that renders to something else, say a table cell reflowed away. */
+    .folio-annotated-block {
       background: var(--annotated); border-radius: 3px;
       box-shadow: -4px 0 0 0 var(--annotated-edge);
     }
@@ -248,9 +254,14 @@ enum HTMLPage {
         target.scrollIntoView({ block: 'center', behavior: 'smooth' });
         return wrapped;
       };
+      // While a chosen heading is being scrolled to, the page reports that heading
+      // rather than whatever is passing the top of the window — otherwise the outline's
+      // selection walks down the list during the animation and only then settles.
+      var pinned = null, quiet = null;
       window.folioScrollTo = function (anchor) {
         var element = document.getElementById(anchor);
         if (!element) { return false; }
+        pinned = anchor;
         element.scrollIntoView({ block: 'start', behavior: 'smooth' });
         return true;
       };
@@ -270,6 +281,13 @@ enum HTMLPage {
       // reader back in place if the page is ever reloaded.
       var scrollTimer = null;
       document.addEventListener('scroll', function () {
+        // The animation is over when the scrolling stops; there is no event for it.
+        if (pinned) {
+          post({ type: 'anchor', anchor: pinned, scrollY: window.scrollY });
+          if (quiet) { clearTimeout(quiet); }
+          quiet = setTimeout(function () { quiet = null; pinned = null; }, 150);
+          return;
+        }
         if (scrollTimer) { return; }
         scrollTimer = setTimeout(function () {
           scrollTimer = null;
@@ -404,26 +422,118 @@ extension HTMLPage {
     })();
     """
 
-    /// Tints the blocks a note or change request was left against.
+    /// One passage the reader marked up: where it is in the source, and the words as
+    /// the page renders them.
+    struct AnnotatedPassage: Equatable {
+        var lines: ClosedRange<Int>
+        /// The selection as it was made, which is the rendered text rather than the
+        /// Markdown behind it — `see them` where the source says `[see them](./x.md)`.
+        var quote: String
+    }
+
+    /// Marks the words a note or change request was left against.
     ///
-    /// Marks whole blocks rather than the exact words. The words are recorded against the
-    /// *source*, and the rendered page is a different shape — mapping a character range
-    /// back through the conversion would be a second, less reliable locator for a tint
-    /// nobody reads that closely.
-    static func annotationScript(_ ranges: [ClosedRange<Int>]) -> String {
-        guard !ranges.isEmpty else { return "" }
-        let pairs = ranges.map { "[\($0.lowerBound),\($0.upperBound)]" }.joined(separator: ",")
+    /// The words, not the block they sit in. The quote was taken from the rendered page
+    /// in the first place, so it can be found there again — including where it runs
+    /// across a link or a bold run, which is why this walks text nodes and builds one
+    /// string per block rather than searching each node on its own.
+    ///
+    /// Whitespace is flattened on both sides before comparing: the source wraps its
+    /// paragraphs, and the selection does not come back with those newlines in it.
+    static func annotationScript(_ passages: [AnnotatedPassage]) -> String {
+        guard !passages.isEmpty else { return "" }
+        let payload = passages.map {
+            [$0.lines.lowerBound, $0.lines.upperBound, $0.quote] as [Any]
+        }
+        // Slashes unescaped: a quote can contain a path or a URL, and `\/` throughout
+        // makes the script unreadable when anyone comes to look at it.
+        guard let data = try? JSONSerialization.data(withJSONObject: payload,
+                                                     options: [.withoutEscapingSlashes]),
+              let json = String(data: data, encoding: .utf8) else { return "" }
+        // `<` cannot reach the page raw: `</script>` inside a quote would end the script.
+        // Inside JSON these only ever occur within string literals, where \u003c is `<`.
+        let safe = json.replacingOccurrences(of: "<", with: "\\u003c")
         return """
         (function () {
-          var ranges = [\(pairs)];
-          var blocks = document.querySelectorAll('[data-line]');
-          for (var i = 0; i < blocks.length; i++) {
-            var line = parseInt(blocks[i].getAttribute('data-line'), 10);
-            if (isNaN(line)) { continue; }
-            for (var r = 0; r < ranges.length; r++) {
-              if (line >= ranges[r][0] && line <= ranges[r][1]) {
-                blocks[i].classList.add('folio-annotated');
-                break;
+          var passages = \(safe);
+
+          function flatten(text) { return text.replace(/\\s+/g, ' ').trim(); }
+
+          // The block's text nodes as one string, with a way back from any index in the
+          // flattened version to a node and an offset inside it.
+          function index(root) {
+            var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+            var spans = [], raw = '', node;
+            while ((node = walker.nextNode())) {
+              spans.push({ node: node, at: raw.length });
+              raw += node.nodeValue;
+            }
+            var flat = '', back = [], space = true;
+            for (var i = 0; i < raw.length; i++) {
+              var ch = raw[i];
+              if (ch === ' ' || ch === '\\n' || ch === '\\t' || ch === '\\r') {
+                if (space) { continue; }
+                space = true; flat += ' '; back.push(i);
+              } else {
+                space = false; flat += ch; back.push(i);
+              }
+            }
+            return { spans: spans, flat: flat, back: back };
+          }
+
+          function at(ix, rawIndex) {
+            for (var i = ix.spans.length - 1; i >= 0; i--) {
+              if (rawIndex >= ix.spans[i].at) {
+                return { node: ix.spans[i].node, offset: rawIndex - ix.spans[i].at };
+              }
+            }
+            return null;
+          }
+
+          function mark(block, needle) {
+            var ix = index(block);
+            var found = ix.flat.indexOf(needle);
+            if (found === -1 || !needle) { return false; }
+            var startRaw = ix.back[found];
+            var endRaw = ix.back[found + needle.length - 1] + 1;
+            var from = at(ix, startRaw), to = at(ix, endRaw);
+            if (!from || !to) { return false; }
+            var range = document.createRange();
+            try {
+              range.setStart(from.node, from.offset);
+              range.setEnd(to.node, to.offset);
+            } catch (e) { return false; }
+            var element = document.createElement('mark');
+            element.className = 'folio-annotated';
+            try {
+              range.surroundContents(element);
+            } catch (e) {
+              // The range crosses an element boundary, so it cannot simply be wrapped.
+              try {
+                element.appendChild(range.extractContents());
+                range.insertNode(element);
+              } catch (e2) { return false; }
+            }
+            return true;
+          }
+
+          var blocks = document.querySelectorAll('#content [data-line]');
+          for (var p = 0; p < passages.length; p++) {
+            var from = passages[p][0], to = passages[p][1];
+            var needle = flatten(passages[p][2]);
+            var candidates = [];
+            for (var b = 0; b < blocks.length; b++) {
+              var line = parseInt(blocks[b].getAttribute('data-line'), 10);
+              if (!isNaN(line) && line >= from && line <= to) { candidates.push(blocks[b]); }
+            }
+            var done = false;
+            for (var c = 0; c < candidates.length && !done; c++) {
+              done = mark(candidates[c], needle);
+            }
+            if (!done) {
+              // Say something rather than nothing: the note exists either way.
+              for (var f = 0; f < candidates.length; f++) {
+                candidates[f].classList.add('folio-annotated-block');
               }
             }
           }

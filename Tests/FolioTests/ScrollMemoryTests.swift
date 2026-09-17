@@ -169,6 +169,35 @@ struct ScrollMemoryTests {
         #expect(foreground.visibleAnchor != "document-0")
     }
 
+    /// Clicking a heading used to leave the outline's selection walking down the list
+    /// while the page animated towards it, settling on the right one a moment later.
+    /// The chosen heading is claimed immediately and the page holds it until it stops.
+    @Test func choosingAHeadingSelectsItAtOnceRatherThanOnArrival() throws {
+        let state = AppState()
+        let folder = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("folio-anchor-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let url = folder.appendingPathComponent("doc.md")
+        // Two headings, so the one being scrolled to is not the one already selected.
+        try "# First\n\nbody\n\n# Second\n\nbody\n"
+            .write(to: url, atomically: true, encoding: .utf8)
+
+        state.open(at: url)
+        let tab = try #require(state.active)
+        #expect(tab.visibleAnchor == "first")
+
+        state.scrollToAnchor("second")
+        #expect(tab.visibleAnchor == "second")
+        #expect(tab.pendingAnchor == "second")
+
+        // And the page reports the heading it was sent to, not each one it passes.
+        let page = HTMLPage.wrap(body: "<p>hi</p>", title: "t", isDark: false,
+                                 mermaidScript: nil, diagramCount: 0)
+        #expect(page.contains("pinned = anchor"))
+        #expect(page.contains("anchor: pinned"))
+    }
+
     @Test func exposesAScrollOffsetHookToThePage() {
         let page = HTMLPage.wrap(body: "<p>hi</p>", title: "t", isDark: false,
                                  mermaidScript: nil, diagramCount: 0)

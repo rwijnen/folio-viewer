@@ -20,6 +20,12 @@ All notable changes to Folio are recorded here. The format follows
 
 ### Fixed
 
+- **Clicking a heading in the outline no longer walks the selection down the list.** The
+  page scrolls smoothly and reports whichever heading is at the top as it goes, so the
+  outline's selection stepped through every heading in between before settling on the one
+  you asked for. The chosen heading is selected straight away and held until the page
+  stops moving.
+
 - **History works for documents that are not at the repository root.** Every commit
   reported "records no change to this file", which is most documents in most
   repositories. Git resolves a pathspec against the working directory, and Folio runs git

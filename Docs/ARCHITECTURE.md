@@ -79,8 +79,12 @@ moment it is asked so the text quoted is the text as it stands.
 The page reports its selection continuously rather than when the menu opens: AppKit builds
 the context menu with no point at which the page can be asked a question and awaited, so by
 the time the menu is wanted the app already knows. Blocks carry `data-line` — headings
-always did, paragraphs now too — which is both the hint the locator starts from and what
-the marking script tints.
+always did, paragraphs now too — which is the hint the locator starts from and which narrows
+the marking script to the blocks worth searching. The script marks the words themselves: it
+flattens a block's text nodes into one string, finds the quote in it and wraps that range,
+so a passage running across a link or a bold run is marked as one. A quote it cannot find —
+a selection made in source mode, whose Markdown is not what the page renders — falls back to
+tinting the block.
 
 **Session.** Paths, tab order, which was in front, reading mode, scroll offsets and folds
 are a JSON blob in `UserDefaults`. Restoring creates placeholder tabs — a URL and the kind

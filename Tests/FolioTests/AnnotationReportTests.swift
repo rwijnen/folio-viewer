@@ -131,32 +131,66 @@ struct AnnotationReportTests {
 @Suite("Annotations in the page")
 struct AnnotationPageTests {
 
-    private func page(annotated: [ClosedRange<Int>]) -> String {
+    private func page(_ annotated: [HTMLPage.AnnotatedPassage]) -> String {
         HTMLPage.wrap(body: "<p data-line=\"2\">hello</p>", title: "t", isDark: false,
                       mermaidScript: nil, diagramCount: 0, annotated: annotated)
     }
 
+    private func passage(_ lines: ClosedRange<Int>, _ quote: String)
+        -> HTMLPage.AnnotatedPassage {
+        HTMLPage.AnnotatedPassage(lines: lines, quote: quote)
+    }
+
     @Test func thePageReportsTheSelectionAsItChanges() {
-        let html = page(annotated: [])
+        let html = page([])
         #expect(html.contains("selectionchange"))
         #expect(html.contains("'type': 'selection'") || html.contains("type: 'selection'"))
         // The line comes from the nearest block that records one.
         #expect(html.contains("data-line"))
     }
 
-    @Test func annotatedLinesAreMarkedAndUnannotatedOnesAreNot() {
-        #expect(page(annotated: [2...4]).contains("[2,4]"))
-        #expect(page(annotated: [2...4]).contains("folio-annotated"))
-        #expect(page(annotated: [1...1, 7...9]).contains("[1,1],[7,9]"))
+    @Test func theMarkingScriptCarriesTheLinesAndTheWords() {
+        let html = page([passage(2...4, "editing is open")])
+        #expect(html.contains("[2,4,\"editing is open\"]"))
+        #expect(html.contains("folio-annotated"))
 
         // No annotations, no marking script at all — nothing to paint. The style rule
         // stays in the sheet either way, which is why the test looks for the script.
-        #expect(!page(annotated: []).contains("var ranges = ["))
-        #expect(page(annotated: [1...1]).contains("var ranges = ["))
+        #expect(!page([]).contains("var passages = ["))
+        #expect(page([passage(1...1, "x")]).contains("var passages = ["))
+    }
+
+    /// The words, not the paragraph around them: marking the whole block claims a
+    /// precision the note does not have and buries the passage in a wash of colour.
+    @Test func theWordsAreMarkedRatherThanTheBlockTheySitIn() {
+        let html = page([passage(2...2, "hello")])
+        #expect(html.contains("createElement('mark')"))
+        #expect(html.contains("element.className = 'folio-annotated'"))
+        // The block wash is the fallback for when the words cannot be found, so it is
+        // only ever reached after a failed match.
+        let marking = try! #require(html.range(of: "var passages = ["))
+        let script = String(html[marking.lowerBound...])
+        let blockWash = try! #require(script.range(of: "folio-annotated-block"))
+        let failedMatch = try! #require(script.range(of: "if (!done) {"))
+        #expect(failedMatch.lowerBound < blockWash.lowerBound)
+    }
+
+    /// A quote is arbitrary text from the reader's document, and it is interpolated into
+    /// a script tag. `</script>` in a paragraph would otherwise end the script early.
+    @Test func aQuoteCannotBreakOutOfTheScript() {
+        let html = page([passage(1...1, "this </script><img> is text")])
+        #expect(!html.contains("</script><img>"))
+        #expect(html.contains("\\u003c/script"))
+    }
+
+    /// Whitespace differs between the source and the selection — the source wraps its
+    /// paragraphs and the selection comes back without the newlines.
+    @Test func theScriptFlattensWhitespaceBeforeComparing() {
+        #expect(page([passage(1...1, "x")]).contains("replace(/\\s+/g, ' ')"))
     }
 
     @Test func theMarkHasAColourInBothThemes() {
-        #expect(page(annotated: [1...1]).contains("--annotated:"))
-        #expect(page(annotated: [1...1]).contains(".folio-annotated"))
+        #expect(page([passage(1...1, "x")]).contains("--annotated:"))
+        #expect(page([passage(1...1, "x")]).contains("folio-annotated"))
     }
 }

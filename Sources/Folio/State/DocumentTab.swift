@@ -407,7 +407,10 @@ final class DocumentTab: Identifiable {
                                  isDark: isDark,
                                  mermaidScript: WebResources.mermaid,
                                  diagramCount: document.diagramCount,
-                                 annotated: annotations.map { $0.startLine...$0.endLine })
+                                 annotated: annotations.map {
+                                    HTMLPage.AnnotatedPassage(lines: $0.startLine...$0.endLine,
+                                                              quote: $0.quote)
+                                 })
         pageCache = (pageVersion, html)
         return html
     }
