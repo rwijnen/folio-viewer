@@ -149,6 +149,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         takeOverOpenDocumentEvents()
     }
 
+    /// Re-reads the document and its repository whenever Folio comes back to the front.
+    ///
+    /// Work on a repository happens in a terminal as much as in here — a commit, a pull,
+    /// a branch switch — and most of it never touches the file Folio is showing, so the
+    /// watcher has nothing to report. Coming back to the window is the moment the reader
+    /// expects what they are looking at to be current.
+    ///
+    /// Both calls compare before they act: an unchanged file and an unmoved `HEAD` leave
+    /// everything exactly as it was, so this is safe to run on every activation.
+    func applicationDidBecomeActive(_ notification: Notification) {
+        let state = AppState.shared
+        guard state.sessionRestoreEnabled else { return }
+        if let tab = state.active, tab.textDocument != nil {
+            state.fileChangedOnDisk(tabID: tab.id)
+        }
+        state.refreshGitStatus()
+    }
+
     /// Takes over the open-documents Apple Event from SwiftUI.
     ///
     /// SwiftUI installs its own handler for it, and that handler calls

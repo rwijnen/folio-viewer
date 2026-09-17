@@ -56,6 +56,24 @@ extension AppState {
         }
     }
 
+    /// Throws away a log that no longer describes the repository.
+    ///
+    /// Called when `HEAD` moves under the reader. Read again straight away when the list
+    /// is on screen, so it visibly catches up; otherwise just forgotten, and read when
+    /// the reader next asks for it. A commit being shown is left alone — it is a commit
+    /// that existed a moment ago, and if it has genuinely gone the pane says so rather
+    /// than emptying itself while someone is reading.
+    func historyWentStale(for tab: DocumentTab) {
+        guard tab.git != nil else { return }
+        if tab.sidebarMode == .history {
+            loadHistory(for: tab, force: true)
+            return
+        }
+        tab.historyTask?.cancel()
+        tab.history = []
+        tab.historyState = .idle
+    }
+
     /// True when the log was read and had nothing in it — a file that is in a repository
     /// folder but has never been committed.
     func historyIsEmpty(_ tab: DocumentTab) -> Bool {

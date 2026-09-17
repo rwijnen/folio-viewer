@@ -20,6 +20,13 @@ All notable changes to Folio are recorded here. The format follows
 
 ### Fixed
 
+- **Commits made outside Folio now show up.** The file's history was read once and then
+  kept, so committing in a terminal, pulling, or switching branch left the list showing a
+  repository that no longer existed — and the document itself could be stale too, since
+  none of that necessarily touches the file on disk. Folio now notices when `HEAD` has
+  moved and reads the log again, and re-checks the document and its repository whenever
+  you switch back to the app.
+
 - **Clicking a heading in the outline no longer walks the selection down the list.** The
   page scrolls smoothly and reports whichever heading is at the top as it goes, so the
   outline's selection stepped through every heading in between before settling on the one

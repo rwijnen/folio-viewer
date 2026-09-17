@@ -37,10 +37,15 @@ extension AppState {
         let token = tab.gitRefreshToken
         let url = tab.url
         let git = runner(for: tab)
-        Task { [weak tab] in
+        Task { [weak self, weak tab] in
             let snapshot = await GitRepository.snapshot(for: url, using: git)
             guard let tab, tab.gitRefreshToken == token else { return }
+            let moved = tab.git?.head != snapshot?.head
             tab.git = snapshot
+            // The repository moved under the reader — a pull, a commit made in a
+            // terminal, a branch switch. Anything already read from the log describes a
+            // repository that no longer exists, so it is read again.
+            if moved { self?.historyWentStale(for: tab) }
         }
     }
 

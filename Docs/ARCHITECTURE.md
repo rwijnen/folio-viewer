@@ -182,6 +182,11 @@ widen it:
 Nothing forces, pulls, merges, rebases, resets or checks out. Push is the one place Folio
 uses the network.
 
+`GitSnapshot` carries the commit `HEAD` points at, so a refresh can tell the repository
+moved underneath the reader — a pull, a commit made in a terminal, a branch switch. When it
+has, the file's log is re-read if the list is on screen and dropped if it is not; a log read
+once and kept forever describes a repository that no longer exists.
+
 **`GitHistory`** spells repository-relative paths as `:(top,literal)…` pathspecs, since
 git resolves a plain one against the working directory and Folio runs it beside the
 document. It reads the log for one file (following renames, so each entry carries the
@@ -197,6 +202,11 @@ Git is offered for any document opened from a file, not only the ones Folio can 
 re-opens the path with short retries, because an atomic save replaces the inode and a held
 descriptor would never fire again. Events are coalesced over 120 ms, and the watcher
 reports only that something happened.
+
+Most work on a repository never touches the file being shown, so the watcher has nothing
+to report. `applicationDidBecomeActive` therefore re-reads the front document and its git
+status whenever Folio comes back to the front. Both comparisons are against what is already
+held, so an unchanged file and an unmoved `HEAD` cost a read and change nothing.
 
 The `AppState` extensions in **`ExternalChanges.swift`** decide what that means: they
 re-read the file and compare the text,

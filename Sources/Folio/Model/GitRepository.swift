@@ -18,6 +18,12 @@ struct GitSnapshot: Equatable, Sendable {
     }
 
     var root: URL
+    /// The commit `HEAD` points at, or nil in a repository with no commits yet.
+    ///
+    /// Carried so a refresh can tell that the repository moved underneath the reader — a
+    /// pull, a commit from a terminal, a branch switch — which is the moment anything
+    /// read from the log stops being true.
+    var head: String?
     /// nil when `HEAD` is detached, which is a state Folio can read but will not write in.
     var branch: String?
     /// The tracking branch, `origin/main` style, or nil when there is none.
@@ -126,6 +132,10 @@ enum GitRepository {
             .resolvingSymlinksInPath()
 
         var snapshot = GitSnapshot(root: root)
+
+        // Fails in a repository with no commits, which is a state Folio does show.
+        let head = await git.run(["rev-parse", "HEAD"])
+        snapshot.head = head.succeeded ? head.trimmed : nil
 
         // Fails on a detached HEAD, which is exactly how we detect one.
         let branch = await git.run(["symbolic-ref", "--quiet", "--short", "HEAD"])
