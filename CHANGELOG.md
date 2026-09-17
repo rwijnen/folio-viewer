@@ -6,6 +6,8 @@ All notable changes to Folio are recorded here. The format follows
 
 ## [Unreleased]
 
+## [2.1.0] — 2026-09-17
+
 ### Added
 
 - **Notes and change requests.** Select a passage in the rendered view or in source mode,
@@ -247,6 +249,7 @@ in one window with tabs, without ever writing to your files or touching the netw
   asking Launch Services which app would open a probe file.
 - 109 tests over the model, tab and scroll layers, run with Swift Testing.
 
-[Unreleased]: https://github.com/rwijnen/folio-viewer/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/rwijnen/folio-viewer/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/rwijnen/folio-viewer/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/rwijnen/folio-viewer/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/rwijnen/folio-viewer/releases/tag/v1.0.0
