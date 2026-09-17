@@ -42,16 +42,23 @@ enum WebContextMenu {
     }
 
     /// Removes the items above and puts `reloadItem` at the top of the menu.
-    static func customise(_ menu: NSMenu, reloadItem: NSMenuItem?) {
+    static func customise(_ menu: NSMenu, reloadItem: NSMenuItem?,
+                          annotationItems: [NSMenuItem] = []) {
         for item in menu.items where shouldRemove(item) {
             menu.removeItem(item)
         }
         tidySeparators(menu)
-        guard let reloadItem else { return }
+
+        // Annotating comes first: it is the thing you right-clicked a selection to do.
+        var top = annotationItems
+        if let reloadItem { top.append(reloadItem) }
+        guard !top.isEmpty else { return }
         if !menu.items.isEmpty {
             menu.insertItem(NSMenuItem.separator(), at: 0)
         }
-        menu.insertItem(reloadItem, at: 0)
+        for (offset, item) in top.enumerated() {
+            menu.insertItem(item, at: offset)
+        }
     }
 
     /// Removing items tends to leave separators stranded at the edges or doubled up.
@@ -77,6 +84,10 @@ final class FolioWebView: WKWebView {
 
     /// Called by the *Reload from Disk* item this view adds to the context menu.
     var onReloadFromDisk: (() -> Void)?
+    /// Called with the kind the reader chose. Absent, or returning false from
+    /// `hasSelection`, and the annotation items are left out of the menu.
+    var onAnnotate: ((Annotation.Kind) -> Void)?
+    var hasSelection: (() -> Bool)?
 
     override func willOpenMenu(_ menu: NSMenu, with event: NSEvent) {
         super.willOpenMenu(menu, with: event)
@@ -90,7 +101,26 @@ final class FolioWebView: WKWebView {
             item.target = self
             reloadItem = item
         }
-        WebContextMenu.customise(menu, reloadItem: reloadItem)
+        var annotationItems: [NSMenuItem] = []
+        // Only with something selected: "Add a Note" against nothing has no meaning, and
+        // a permanently present item that usually does nothing teaches people to ignore it.
+        if onAnnotate != nil, hasSelection?() == true {
+            for kind in Annotation.Kind.allCases {
+                let item = NSMenuItem(title: "Add \(kind.label)…",
+                                      action: #selector(annotate(_:)), keyEquivalent: "")
+                item.representedObject = kind.rawValue
+                item.target = self
+                annotationItems.append(item)
+            }
+        }
+        WebContextMenu.customise(menu, reloadItem: reloadItem,
+                                 annotationItems: annotationItems)
+    }
+
+    @objc private func annotate(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String,
+              let kind = Annotation.Kind(rawValue: raw) else { return }
+        onAnnotate?(kind)
     }
 
     @objc private func reloadFromDisk() {

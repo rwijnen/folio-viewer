@@ -6,7 +6,32 @@ All notable changes to Folio are recorded here. The format follows
 
 ## [Unreleased]
 
+## [2.1.0] — 2026-09-17
+
+### Added
+
+- **Notes and change requests.** Select a passage in the rendered view or in source mode,
+  right-click, and add a note or a change request; leave as many as you like across a
+  document. The sidebar gains a **Notes** mode listing them in document order, annotated
+  passages are tinted where they sit, and **Copy for AI** puts them all on the clipboard —
+  the file named first, then each item's lines, the source as it stands at the moment you
+  copy, and what you asked for. Your document is never touched: the notes live beside it
+  and are remembered between launches.
+
 ### Fixed
+
+- **Commits made outside Folio now show up.** The file's history was read once and then
+  kept, so committing in a terminal, pulling, or switching branch left the list showing a
+  repository that no longer existed — and the document itself could be stale too, since
+  none of that necessarily touches the file on disk. Folio now notices when `HEAD` has
+  moved and reads the log again, and re-checks the document and its repository whenever
+  you switch back to the app.
+
+- **Clicking a heading in the outline no longer walks the selection down the list.** The
+  page scrolls smoothly and reports whichever heading is at the top as it goes, so the
+  outline's selection stepped through every heading in between before settling on the one
+  you asked for. The chosen heading is selected straight away and held until the page
+  stops moving.
 
 - **History works for documents that are not at the repository root.** Every commit
   reported "records no change to this file", which is most documents in most
@@ -237,6 +262,7 @@ in one window with tabs, without ever writing to your files or touching the netw
   asking Launch Services which app would open a probe file.
 - 109 tests over the model, tab and scroll layers, run with Swift Testing.
 
-[Unreleased]: https://github.com/rwijnen/folio-viewer/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/rwijnen/folio-viewer/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/rwijnen/folio-viewer/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/rwijnen/folio-viewer/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/rwijnen/folio-viewer/releases/tag/v1.0.0

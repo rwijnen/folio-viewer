@@ -43,7 +43,7 @@ in the project and adding a second needs a good argument.
 git clone https://github.com/rwijnen/folio-viewer.git
 cd folio-viewer
 swift build          # compile
-swift test           # 354 tests, ~15 seconds (plus 4 screenshot
+swift test           # 398 tests, ~15 seconds (plus 4 screenshot
                      # generators, skipped unless asked for)
 ./build.sh           # assemble build/Folio.app
 open -a build/Folio.app Samples/example.md
@@ -71,6 +71,9 @@ Sources/Folio/
     GitWorkingTree          everything uncommitted in a repository, as one diff
     LineDiff                the only diff Folio computes rather than reads
     DocumentGroup           listing and tidying project names
+    Annotation              a note or change request against a passage
+    AnnotationLocator       finds a rendered selection's lines in the source
+    AnnotationReport        the text handed to an assistant
     FileWatcher             tells you when something else writes an open file
     PathResolver            works out which folder a diff's paths belong to
     TextNormalizer          line splitting, tab expansion, encoding tolerance
@@ -84,10 +87,12 @@ Sources/Folio/
     GitHistoryLoading       the history list and showing one commit in the pane
     ExternalChanges         what to do when a file changes underneath a tab
     DocumentGroups          the group filter, and moving a document between groups
+    Annotations             leaving notes, and copying them out
   Views/
     ContentView             tab bar + sidebar + detail
     TabBar                  the strip of open documents
     GroupPicker             the project dropdown in the title bar
+    NotesSidebar            the notes list, the sheet, the copy button
     SplitDiffView           the two panels, headers, banners
     DiffRowView             one aligned row
     SourceListingView       single-column source with line numbers

@@ -68,6 +68,24 @@ document names it, so one cannot be left behind empty. `AppState.selectedGroup` 
 reveals the group of whatever tab comes forward, so the front document is never hidden by
 the filter.
 
+**Notes.** `Annotation` records a passage the reader marked up — its words, the source
+lines, and what they wrote. Nothing is written to the document. A selection made in the
+rendered view has lost the Markdown that produced it, so `AnnotationLocator` finds it in
+the source by comparing words with markers stripped and whitespace flattened, ordered by
+the line the block reported; the same reasoning as locating a hunk by content rather than
+by its declared position. `AnnotationReport` renders the lot, reading the source at the
+moment it is asked so the text quoted is the text as it stands.
+
+The page reports its selection continuously rather than when the menu opens: AppKit builds
+the context menu with no point at which the page can be asked a question and awaited, so by
+the time the menu is wanted the app already knows. Blocks carry `data-line` — headings
+always did, paragraphs now too — which is the hint the locator starts from and which narrows
+the marking script to the blocks worth searching. The script marks the words themselves: it
+flattens a block's text nodes into one string, finds the quote in it and wraps that range,
+so a passage running across a link or a bold run is marked as one. A quote it cannot find —
+a selection made in source mode, whose Markdown is not what the page renders — falls back to
+tinting the block.
+
 **Session.** Paths, tab order, which was in front, reading mode, scroll offsets and folds
 are a JSON blob in `UserDefaults`. Restoring creates placeholder tabs — a URL and the kind
 guessed from the extension — and only the document in front is read; the rest fill in when
@@ -164,6 +182,11 @@ widen it:
 Nothing forces, pulls, merges, rebases, resets or checks out. Push is the one place Folio
 uses the network.
 
+`GitSnapshot` carries the commit `HEAD` points at, so a refresh can tell the repository
+moved underneath the reader — a pull, a commit made in a terminal, a branch switch. When it
+has, the file's log is re-read if the list is on screen and dropped if it is not; a log read
+once and kept forever describes a repository that no longer exists.
+
 **`GitHistory`** spells repository-relative paths as `:(top,literal)…` pathspecs, since
 git resolves a plain one against the working directory and Folio runs it beside the
 document. It reads the log for one file (following renames, so each entry carries the
@@ -179,6 +202,11 @@ Git is offered for any document opened from a file, not only the ones Folio can 
 re-opens the path with short retries, because an atomic save replaces the inode and a held
 descriptor would never fire again. Events are coalesced over 120 ms, and the watcher
 reports only that something happened.
+
+Most work on a repository never touches the file being shown, so the watcher has nothing
+to report. `applicationDidBecomeActive` therefore re-reads the front document and its git
+status whenever Folio comes back to the front. Both comparisons are against what is already
+held, so an unchanged file and an unmoved `HEAD` cost a read and change nothing.
 
 The `AppState` extensions in **`ExternalChanges.swift`** decide what that means: they
 re-read the file and compare the text,

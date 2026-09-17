@@ -50,9 +50,21 @@ struct MarkdownBlockTests {
 
     @Test func rendersParagraphsAndThematicBreaks() {
         let result = html("one\n\ntwo\n\n---\n")
-        #expect(result.contains("<p>one</p>"))
-        #expect(result.contains("<p>two</p>"))
+        #expect(result.contains(">one</p>"))
+        #expect(result.contains(">two</p>"))
         #expect(result.contains("<hr>"))
+    }
+
+    /// A selection made in the rendered view is traced back to the file through the line
+    /// each block records. Headings have carried one for a while; prose needs it too.
+    @Test func everyParagraphSaysWhichLineItStartsOn() {
+        let result = html("first\n\n\nthird line down\n")
+        #expect(result.contains("<p data-line=\"0\">first</p>"))
+        #expect(result.contains("<p data-line=\"3\">third line down</p>"))
+
+        // A paragraph wrapped across source lines reports the line it begins on.
+        let wrapped = html("# Title\n\nwrapped over\ntwo lines\n")
+        #expect(wrapped.contains("<p data-line=\"2\">"))
     }
 
     @Test func rendersUnorderedAndOrderedLists() {

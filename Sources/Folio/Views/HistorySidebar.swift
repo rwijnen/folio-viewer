@@ -11,14 +11,19 @@ struct DocumentSidebar: View {
     let tab: DocumentTab
     let document: TextDocument
 
+    /// History is only meaningful inside a repository.
+    private var offered: [SidebarMode] {
+        SidebarMode.allCases.filter { $0 != .history || tab.git != nil }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            // Only offered when there is a history to show; a document outside a
-            // repository keeps the sidebar it always had.
-            if tab.git != nil {
+            // History needs a repository; the outline and notes do not, so a document
+            // outside one still gets a switch — with only the modes that mean anything.
+            if !offered.isEmpty {
                 Picker("", selection: Binding(get: { tab.sidebarMode },
                                               set: { state.setSidebarMode($0, for: tab) })) {
-                    ForEach(SidebarMode.allCases) { mode in
+                    ForEach(offered) { mode in
                         Label(mode.label, systemImage: mode.symbol).tag(mode)
                     }
                 }
@@ -28,9 +33,12 @@ struct DocumentSidebar: View {
                 .padding(.top, 8)
             }
 
-            if tab.sidebarMode == .history, tab.git != nil {
+            switch tab.sidebarMode {
+            case .history where tab.git != nil:
                 HistorySidebar(tab: tab)
-            } else {
+            case .notes:
+                NotesSidebar(tab: tab)
+            default:
                 OutlineSidebar(tab: tab, document: document)
             }
         }

@@ -153,6 +153,10 @@ extension AppState {
             } else {
                 tab.diagramReport = total == 0 ? nil : "\(total) diagram\(total == 1 ? "" : "s")"
             }
+        case "selection":
+            selectionChanged(text: payload["text"] as? String ?? "",
+                             lineHint: payload["line"] as? Int,
+                             for: tab.id)
         case "anchor":
             tab.visibleAnchor = payload["anchor"] as? String ?? ""
         default:
@@ -176,6 +180,10 @@ extension AppState {
 
     func scrollToAnchor(_ anchor: String) {
         guard let tab = active else { return }
+        // Claim the selection now rather than waiting for the page to report back. The
+        // scroll is animated and passes over every heading in between, so following the
+        // page would walk the outline's selection down the list and settle a moment later.
+        tab.visibleAnchor = anchor
         tab.pendingAnchor = anchor
         tab.anchorRequest += 1
     }

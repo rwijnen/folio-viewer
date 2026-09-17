@@ -235,6 +235,52 @@ struct HistoryInAppTests {
         #expect(tab.visibleHistory.count == 2)
     }
 
+    /// Commits made outside Folio — a terminal, a pull, another tool — while the file is
+    /// open. The log was read once and then kept forever, so the sidebar went on showing
+    /// a repository that no longer existed.
+    @Test func commitsMadeOutsideFolioAppearOnTheNextRefresh() async throws {
+        let (workspace, tab) = try await loaded()
+        #expect(tab.history.count == 3)
+        #expect(tab.sidebarMode == .history)
+
+        // Nothing to do with Folio: the file changes and is committed behind its back.
+        try await workspace.commit("note.md", "# One\nkeep\nfrom elsewhere\n",
+                                   message: "Committed in a terminal")
+
+        workspace.state.refreshGitStatus(for: tab)
+        await workspace.waitFor("the refreshed log") { tab.history.count == 4 }
+        #expect(tab.history.first?.subject == "Committed in a terminal")
+    }
+
+    /// The same, with the history sidebar not on screen: the stale log is dropped rather
+    /// than re-read, and reading it is what switching to the list does anyway.
+    @Test func anOutdatedLogIsDroppedWhenTheListIsNotShowing() async throws {
+        let (workspace, tab) = try await loaded()
+        workspace.state.setSidebarMode(.outline, for: tab)
+        #expect(tab.history.count == 3)
+
+        try await workspace.commit("note.md", "# One\nkeep\nagain\n", message: "Also elsewhere")
+        workspace.state.refreshGitStatus(for: tab)
+        await workspace.waitFor("the log to be dropped") { tab.historyState == .idle }
+        #expect(tab.history.isEmpty)
+
+        workspace.state.setSidebarMode(.history, for: tab)
+        await workspace.waitFor("the log") { tab.historyState == .loaded }
+        #expect(tab.history.first?.subject == "Also elsewhere")
+    }
+
+    /// A refresh that finds nothing new must not throw the list away and read it again —
+    /// the list flickers and the scroll position goes.
+    @Test func aRefreshThatChangesNothingLeavesTheListAlone() async throws {
+        let (workspace, tab) = try await loaded()
+        let before = tab.history
+        workspace.state.refreshGitStatus(for: tab)
+        // Long enough for a refresh to have landed.
+        try? await Task.sleep(nanoseconds: 400_000_000)
+        #expect(tab.historyState == .loaded)
+        #expect(tab.history == before)
+    }
+
     @Test func reloadingFromDiskPutsThePaneBackOnTheDocument() async throws {
         let (workspace, tab) = try await loaded()
         workspace.state.showCommit(tab.history[0], for: tab)

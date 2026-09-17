@@ -17,9 +17,15 @@ extension AppState {
     func setSidebarMode(_ mode: SidebarMode, for requested: DocumentTab? = nil) {
         guard let tab = requested ?? active, tab.sidebarMode != mode else { return }
         // A diff's sidebar lists the files inside the patch, so there is nowhere to put
-        // a history. Committing and the rest work; this one does not.
+        // the document sidebar at all.
         guard tab.content != .diff else {
-            statusMessage = "History is shown beside a document, not beside a diff."
+            statusMessage = mode == .notes
+                ? "Notes are kept beside a document, not beside a diff."
+                : "History is shown beside a document, not beside a diff."
+            return
+        }
+        guard mode != .history || tab.git != nil else {
+            statusMessage = "\(tab.name) is not in a git repository, so it has no history."
             return
         }
         tab.sidebarMode = mode
@@ -48,6 +54,24 @@ extension AppState {
                 tab.historyState = .failed(error.localizedDescription)
             }
         }
+    }
+
+    /// Throws away a log that no longer describes the repository.
+    ///
+    /// Called when `HEAD` moves under the reader. Read again straight away when the list
+    /// is on screen, so it visibly catches up; otherwise just forgotten, and read when
+    /// the reader next asks for it. A commit being shown is left alone — it is a commit
+    /// that existed a moment ago, and if it has genuinely gone the pane says so rather
+    /// than emptying itself while someone is reading.
+    func historyWentStale(for tab: DocumentTab) {
+        guard tab.git != nil else { return }
+        if tab.sidebarMode == .history {
+            loadHistory(for: tab, force: true)
+            return
+        }
+        tab.historyTask?.cancel()
+        tab.history = []
+        tab.historyState = .idle
     }
 
     /// True when the log was read and had nothing in it — a file that is in a repository
