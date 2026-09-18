@@ -193,6 +193,13 @@ final class AppState {
     // MARK: - Tabs
 
     func adopt(_ tab: DocumentTab) {
+        // A document opened while a project is selected joins that project. Without this
+        // a new tab has no group, coming forward drops the filter to All documents, and
+        // a file opened from Finder throws away the view the reader was working in.
+        if tab.group == nil, let selectedGroup {
+            tab.group = selectedGroup
+            statusMessage = "\(tab.name) was opened in \(selectedGroup)."
+        }
         tabs.append(tab)
         setActive(tab.id)
         noteShown(tab.id)

@@ -124,16 +124,59 @@ struct GroupedTabTests {
         #expect(scratch.state.active?.id == acme.id)
     }
 
-    @Test func openingAnUnfiledDocumentClearsTheFilter() throws {
+    /// Opening a document while a project is selected used to drop the filter: the new
+    /// tab was in no group, coming forward revealed "no group", and the reader lost the
+    /// view they were working in — every time they opened a file from Finder.
+    @Test func aDocumentOpenedWhileAGroupIsSelectedJoinsIt() throws {
         let scratch = try Scratch()
         let one = try scratch.open("acme", "one.md")
         scratch.state.assign(one, to: "Acme")
         scratch.state.selectGroup("Acme")
 
         let fresh = try scratch.open("beta", "three.md")
-        // It is in no group, so there is no group to switch to — everything shows.
-        #expect(scratch.state.selectedGroup == nil)
+        #expect(fresh.group == "Acme")
+        #expect(scratch.state.selectedGroup == "Acme")
         #expect(scratch.state.visibleTabs.contains { $0.id == fresh.id })
+        // The folder it came from has nothing to do with it; the open filter does.
+        #expect(scratch.state.visibleTabs.count == 2)
+    }
+
+    /// With everything showing there is no project to join, so nothing is invented.
+    @Test func aDocumentOpenedWithNoGroupSelectedStaysUnfiled() throws {
+        let scratch = try Scratch()
+        let one = try scratch.open("acme", "one.md")
+        scratch.state.assign(one, to: "Acme")
+        scratch.state.selectGroup(nil)
+
+        let fresh = try scratch.open("beta", "three.md")
+        #expect(fresh.group == nil)
+        #expect(scratch.state.selectedGroup == nil)
+    }
+
+    /// Reopening a document that is already open is not a new document: it comes
+    /// forward as it is, and the filter follows it rather than refiling it.
+    @Test func reopeningADocumentDoesNotRefileIt() throws {
+        let scratch = try Scratch()
+        let one = try scratch.open("acme", "one.md")
+        let two = try scratch.open("beta", "two.md")
+        scratch.state.assign(one, to: "Acme")
+        scratch.state.assign(two, to: "Beta")
+        scratch.state.selectGroup("Acme")
+
+        scratch.state.open(at: two.url)
+        #expect(two.group == "Beta")
+        #expect(scratch.state.selectedGroup == "Beta")
+    }
+
+    /// Taking a document out of a group by hand must stick, even with a group selected.
+    @Test func takingADocumentOutOfAGroupIsNotUndone() throws {
+        let scratch = try Scratch()
+        let one = try scratch.open("acme", "one.md")
+        scratch.state.assign(one, to: "Acme")
+        scratch.state.selectGroup("Acme")
+
+        scratch.state.assign(one, to: nil)
+        #expect(one.group == nil)
     }
 
     @Test func steppingBetweenTabsStaysInsideTheGroup() throws {

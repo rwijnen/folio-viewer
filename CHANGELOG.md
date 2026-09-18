@@ -6,6 +6,14 @@ All notable changes to Folio are recorded here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- **A document opened while a project is selected joins that project.** Opening a file
+  from Finder used to throw the tab bar back to *All documents*, because the new tab was
+  in no group and bringing it forward dropped the filter — so the view you were working
+  in went every time you opened something. With *All documents* showing, nothing is
+  filed: there is no project to join.
+
 ### Fixed
 
 - **The release workflow could not attach its artifacts.** GitHub stopped providing
