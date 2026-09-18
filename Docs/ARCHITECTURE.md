@@ -62,7 +62,9 @@ its history, an incoming change on disk, or what is not yet committed. The last 
 comparisons and share `ComparisonPane`.
 
 **Groups.** `DocumentTab.group` is a name the reader filed the document under, or nil.
-Nothing is inferred. There is no registry — a group exists exactly as long as some open
+Nothing is inferred from the path. A document opened while a group is selected joins that
+group — `adopt` is the one route new tabs take, so that is the one place it happens, and a
+restored session goes through `adoptRestored` instead and keeps what it had. There is no registry — a group exists exactly as long as some open
 document names it, so one cannot be left behind empty. `AppState.selectedGroup` filters
 `visibleTabs`, which is what the tab bar, ⌃⇥ and Close Other Tabs work on. `setActive`
 reveals the group of whatever tab comes forward, so the front document is never hidden by

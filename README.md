@@ -243,6 +243,10 @@ holds, and the menu says how many are not in a group.
 
 ![A group selected in the title bar, and the tabs it shows](Docs/groups.png)
 
+While a project is selected, anything you open joins it — including files opened from
+Finder, which is where most of them come from. With **All documents** showing there is no
+project to join, so nothing is filed.
+
 Groups are yours to name and nothing is inferred. Folio does not group by folder, because
 a repository whose docs live in `guides/`, `reference/` and `adr/` is one project, not
 three. A group exists exactly as long as a document is in it — take the last one out with
