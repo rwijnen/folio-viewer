@@ -227,6 +227,13 @@ final class AppState {
     /// The single place the front tab changes: a restored tab is only read when it gets
     /// here, so nothing else may assign `activeTabID` directly.
     private func setActive(_ id: UUID?) {
+        // Bringing the companion forward is a change of focus, not a change of what is
+        // on screen. The two trade roles so the panes still name different documents —
+        // without this the companion became active while staying the companion, and both
+        // panes drew the same file. `splitIsLeading` flips so neither one moves.
+        if let id, id == splitTabID {
+            setSplit(activeTabID, leading: !splitIsLeading)
+        }
         activeTabID = id
         guard let id, let tab = tabs.first(where: { $0.id == id }) else { return }
         prepareIfNeeded(tab)

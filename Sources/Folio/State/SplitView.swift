@@ -26,7 +26,11 @@ extension AppState {
     /// The two documents in the order they are drawn, left first.
     var panes: [DocumentTab] {
         guard let active else { return [] }
-        guard let companion = splitTab else { return [active] }
+        // The companion never being the active document is maintained by `setActive`;
+        // checked again here because the cost of being wrong is the window drawing one
+        // file twice, with two views fighting over a single tab's scroll offset and its
+        // one live web view. Showing a single document is the safe way to be wrong.
+        guard let companion = splitTab, companion.id != active.id else { return [active] }
         return splitIsLeading ? [companion, active] : [active, companion]
     }
 
@@ -78,14 +82,12 @@ extension AppState {
 
     /// Moves the focus to a document already on screen.
     ///
-    /// The companion becomes the active document and the active one becomes the
-    /// companion, while `splitIsLeading` flips to hold both where they are.
+    /// Ordinary activation: `setActive` trades the two roles when the tab coming forward
+    /// is the companion, so every route into it — this, the tab bar, ⌃⇥, re-opening a
+    /// file that is already open — behaves the same and none of them can leave the same
+    /// document in both panes.
     func focusPane(_ id: UUID) {
-        guard let activeTabID, id != activeTabID, id == splitTabID else {
-            if id != activeTabID { activate(id) }
-            return
-        }
-        setSplit(activeTabID, leading: !splitIsLeading)
+        guard id != activeTabID else { return }
         activate(id)
     }
 

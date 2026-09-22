@@ -67,6 +67,45 @@ struct SplitViewTests {
         #expect(scratch.state.panes.map(\.id) == [two.id, one.id])
     }
 
+    /// Clicking the companion's tab in the tab bar. `activate` knew nothing about panes,
+    /// so it made the companion active while leaving it the companion — and both panes
+    /// then named the same document.
+    @Test func bringingTheCompanionForwardFromTheTabBarDoesNotDuplicateIt() throws {
+        let scratch = try Scratch()
+        let one = try scratch.open("one.md")
+        let two = try scratch.open("two.md")
+        scratch.state.openInSplit(one.id)
+
+        scratch.state.activate(one.id)
+        #expect(scratch.state.panes.map(\.id) == [two.id, one.id])
+        #expect(scratch.state.activeTabID == one.id)
+        #expect(scratch.state.splitTabID == two.id)
+    }
+
+    /// ⌃⇥ onto the companion is the same thing by another route.
+    @Test func steppingOntoTheCompanionDoesNotDuplicateIt() throws {
+        let scratch = try Scratch()
+        let one = try scratch.open("one.md")
+        let two = try scratch.open("two.md")
+        scratch.state.openInSplit(one.id)
+
+        for _ in 0..<4 {
+            scratch.state.selectAdjacentTab(offset: 1)
+            #expect(Set(scratch.state.panes.map(\.id)).count == scratch.state.panes.count)
+        }
+    }
+
+    /// And re-opening a file that is already the companion.
+    @Test func reopeningTheCompanionDoesNotDuplicateIt() throws {
+        let scratch = try Scratch()
+        let one = try scratch.open("one.md")
+        try scratch.open("two.md")
+        scratch.state.openInSplit(one.id)
+
+        scratch.state.open(at: one.url)
+        #expect(Set(scratch.state.panes.map(\.id)).count == 2)
+    }
+
     @Test func swappingMovesThemAndLeavesTheFocusAlone() throws {
         let scratch = try Scratch()
         let one = try scratch.open("one.md")
