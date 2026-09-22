@@ -179,7 +179,7 @@ struct ContentView: View {
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
-                .help("Rendered (⌘1) or source (⌘2)")
+                .help("Rendered (⌘1), source (⌘2), or both (⌘3)")
             }
 
             if !state.searchesRenderedPage {

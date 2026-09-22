@@ -303,6 +303,7 @@ final class AppState {
     func closeTab(_ id: UUID) {
         guard let index = tabs.firstIndex(where: { $0.id == id }) else { return }
         tabs[index].loadTask?.cancel()
+        tabs[index].previewRefresh?.cancel()
         tabs[index].releasePage()
         stopWatching(tabs[index])
         let wasActive = activeTabID == id
@@ -552,6 +553,8 @@ final class AppState {
     /// True when ⌘F should be handled by JavaScript inside the rendered page.
     var searchesRenderedPage: Bool {
         guard let tab = active, !tab.isShowingComparison else { return false }
+        // Side by side counts as source: the editor is the half you are working in,
+        // and native search can select and reveal a match where the page cannot.
         return tab.content == .markdown && tab.readingMode == .rendered
     }
 

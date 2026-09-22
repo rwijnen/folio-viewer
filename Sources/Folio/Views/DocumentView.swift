@@ -101,8 +101,8 @@ struct DocumentView: View {
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
-                .frame(width: 160)
-                .help("⌘1 rendered · ⌘2 source")
+                .frame(width: 210)
+                .help("⌘1 rendered · ⌘2 source · ⌘3 both")
             }
 
             if tab.isEditable {
@@ -189,8 +189,25 @@ struct DocumentView: View {
         case .editor:
             MarkdownEditorView(tab: tab, version: tab.editorVersion)
                 .background(Theme.rowBackground)
+        case .listing:
+            SourceListingView(tab: tab, document: document)
+        case .sourceAndPreview:
+            HSplitView {
+                MarkdownEditorView(tab: tab, version: tab.editorVersion)
+                    .background(Theme.rowBackground)
+                    .frame(minWidth: 220, maxWidth: .infinity, maxHeight: .infinity)
+                preview(rendering)
+                    .frame(minWidth: 220, maxWidth: .infinity, maxHeight: .infinity)
+            }
         case .rendered:
-            MarkdownWebView(tab: tab,
+            preview(rendering)
+        }
+    }
+
+    /// The rendered half. Shared so the page is wired the same way whether it is the
+    /// whole pane or the right of two.
+    private func preview(_ rendering: PaneRendering) -> some View {
+        MarkdownWebView(tab: tab,
                             html: rendering.html ?? "",
                             token: rendering.token,
                             baseURL: document.folder,
@@ -203,9 +220,6 @@ struct DocumentView: View {
                             focusTarget: tab.renderedFocusTarget,
                             anchorRequest: tab.anchorRequest,
                             anchor: tab.pendingAnchor)
-        case .listing:
-            SourceListingView(tab: tab, document: document)
-        }
     }
 
     private func copySource() {
@@ -349,10 +363,13 @@ struct OutlineSidebar: View {
     }
 
     private func jump(to item: OutlineItem) {
-        if document.isMarkdown, state.readingMode == .rendered {
+        // Both halves when both are up: landing in one and leaving the other where it
+        // was is the thing a side-by-side view is supposed to save you from.
+        if document.isMarkdown, state.readingMode.showsPreview {
             state.scrollToAnchor(item.id)
             state.visibleAnchor = item.id
-        } else {
+        }
+        if state.readingMode.showsEditor {
             state.scrollSource(to: item.lineIndex)
         }
     }

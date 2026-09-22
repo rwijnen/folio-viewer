@@ -6,6 +6,15 @@ All notable changes to Folio are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Write with the preview beside you.** ⌘3, or **Both** in the header switch, puts the
+  Markdown source on the left and the page it makes on the right. The preview follows
+  what you type, catching up a moment after you stop, and nothing is written to disk to
+  make it happen. Clicking a heading in the outline moves both halves. It is one
+  document, not a split window — the same tab drawn twice, so it keeps one set of unsaved
+  edits and one git status.
+
 ## [2.2.0] — 2026-09-22
 
 ### Added

@@ -250,8 +250,11 @@ extension AppState {
         // Only Markdown has two modes; the menu no longer stops this being asked.
         guard let tab = requested ?? active, tab.isMarkdown, tab.readingMode != mode else { return }
         // The preview should show what you just typed, not what is on disk.
-        if mode == .rendered, tab.isDirty { refreshDocument(for: tab) }
+        if mode.showsPreview, tab.isDirty { refreshDocument(for: tab) }
         tab.readingMode = mode
+        // Leaving the mode that has a live preview leaves nothing pending behind it.
+        tab.previewRefresh?.cancel()
+        tab.previewRefresh = nil
         // The two modes have separate search machinery; re-run for the new one. Only
         // when this is the focused document — the find bar follows that one.
         guard tab.id == activeTabID else {
@@ -267,6 +270,8 @@ extension AppState {
     }
 
     func toggleReadingMode() {
+        // Straight between the two single-pane modes. Side by side is its own
+        // command, so toggling out of it lands somewhere predictable.
         setReadingMode(readingMode == .rendered ? .source : .rendered)
     }
 

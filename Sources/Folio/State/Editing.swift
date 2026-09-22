@@ -12,9 +12,34 @@ extension AppState {
 
     /// Called by the editor as the text changes. Cheap on purpose — the expensive
     /// re-parse waits until the preview is needed or the file is saved.
+    /// How long typing has to stop before the preview is rebuilt.
+    ///
+    /// Re-parsing and re-rendering on every keystroke is wasted work, and the rendered
+    /// page is a web view that reloads — doing that mid-word is worse than a short wait.
+    /// Long enough to sit inside a word, short enough to feel like it is keeping up.
+    static let previewRefreshDelay: Duration = .milliseconds(400)
+
     func updateDraft(_ text: String, for tab: DocumentTab) {
         guard tab.isEditable else { return }
         tab.draftText = text
+        scheduleLivePreview(for: tab)
+    }
+
+    /// Rebuilds the preview a moment after typing stops, for the mode that shows both.
+    ///
+    /// Only that mode: everywhere else the document is rebuilt when the preview is asked
+    /// for or on save, and re-parsing behind a preview nobody is looking at is work for
+    /// nothing.
+    func scheduleLivePreview(for tab: DocumentTab) {
+        tab.previewRefresh?.cancel()
+        guard tab.readingMode == .sideBySide, tab.isEditable else { return }
+        tab.previewRefresh = Task { [weak self, weak tab] in
+            try? await Task.sleep(for: AppState.previewRefreshDelay)
+            guard !Task.isCancelled, let self, let tab, tab.readingMode == .sideBySide else {
+                return
+            }
+            self.refreshDocument(for: tab)
+        }
     }
 
     /// Throws away unsaved edits and shows the file as it is on disk.

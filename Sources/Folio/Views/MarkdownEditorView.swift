@@ -216,7 +216,7 @@ struct MarkdownEditorView: NSViewRepresentable {
         /// The rendered page reports this itself; source mode has nothing to ask, so the
         /// topmost visible line is worked out from the layout and turned into a heading.
         private func reportVisibleHeading() {
-            guard tab.readingMode == .source,
+            guard tab.readingMode.showsEditor,
                   let textView, let layoutManager = textView.layoutManager,
                   let container = textView.textContainer,
                   let clip = scrollView?.contentView else { return }
