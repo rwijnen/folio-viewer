@@ -23,14 +23,6 @@ private final class Scratch {
         state.open(at: url)
         return state.active!
     }
-
-    func waitFor(_ what: String, timeout: TimeInterval = 5, _ condition: () -> Bool) async {
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline, !condition() {
-            try? await Task.sleep(nanoseconds: 20_000_000)
-        }
-        if !condition() { Issue.record("timed out waiting for \(what)") }
-    }
 }
 
 @Suite("Source and preview")
@@ -77,9 +69,13 @@ struct SourceAndPreviewTests {
         scratch.state.setReadingMode(.sideBySide, for: tab)
 
         scratch.state.updateDraft("# Heading\n\nlive text\n", for: tab)
-        await scratch.waitFor("the preview to catch up") {
-            tab.paneRendering(isDark: false).html?.contains("live text") == true
-        }
+        // Waiting on the rebuild itself, not polling for its effect behind a timeout.
+        // How soon a task gets to run is the machine's business, and a busy one — CI
+        // running the whole suite on two cores — loses that race without anything being
+        // wrong. What this test is about is that the rebuild happens and what it
+        // produces.
+        await tab.previewRefresh?.value
+        #expect(tab.paneRendering(isDark: false).html?.contains("live text") == true)
         // Nothing was written to disk to achieve it.
         #expect(try String(contentsOf: tab.url, encoding: .utf8).contains("original"))
         #expect(tab.isDirty)
@@ -96,9 +92,8 @@ struct SourceAndPreviewTests {
         for index in 1...12 {
             scratch.state.updateDraft("# Heading\n\nburst \(index)\n", for: tab)
         }
-        await scratch.waitFor("the rebuild") {
-            tab.paneRendering(isDark: false).html?.contains("burst 12") == true
-        }
+        await tab.previewRefresh?.value
+        #expect(tab.paneRendering(isDark: false).html?.contains("burst 12") == true)
         let after = try #require(tab.textDocument?.contentVersion)
         #expect(after - before == 1)
     }
