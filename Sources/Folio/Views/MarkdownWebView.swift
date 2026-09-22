@@ -22,6 +22,9 @@ struct MarkdownWebView: NSViewRepresentable {
     let focusTarget: Int
     let anchorRequest: Int
     let anchor: String?
+    /// Where the editor beside this page has scrolled to, when there is one.
+    var lineRequest: Int = 0
+    var line: Int = 0
 
     @Environment(AppState.self) private var state
 
@@ -45,6 +48,7 @@ struct MarkdownWebView: NSViewRepresentable {
         controller.load(html: html, baseURL: baseURL, token: token)
         controller.apply(query: query, caseSensitive: caseSensitive,
                          focusRequest: focusRequest, focusTarget: focusTarget,
-                         anchorRequest: anchorRequest, anchor: anchor)
+                         anchorRequest: anchorRequest, anchor: anchor,
+                         lineRequest: lineRequest, line: line)
     }
 }

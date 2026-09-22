@@ -6,7 +6,18 @@ All notable changes to Folio are recorded here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- **⌘F in the source editor now shows you what it found.** It counted the matches and
+  highlighted none of them, so the count was all you got. Every hit is now marked, the
+  current one is selected and scrolled to, and the count is taken from the text in the
+  editor rather than from the last parse — which was stale as soon as you typed.
+
 ### Added
+
+- **The two halves scroll together.** Move either one and the other follows, matched by
+  the line of source rather than by how far down the window is, so they stay level
+  through a long code fence or a drawn diagram.
 
 - **Write with the preview beside you.** ⌘3, or **Both** in the header switch, puts the
   Markdown source on the left and the page it makes on the right. The preview follows

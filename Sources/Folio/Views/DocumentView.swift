@@ -187,14 +187,12 @@ struct DocumentView: View {
         case .workingChanges:
             WorkingChangesView(tab: tab)
         case .editor:
-            MarkdownEditorView(tab: tab, version: tab.editorVersion)
-                .background(Theme.rowBackground)
+            editor
         case .listing:
             SourceListingView(tab: tab, document: document)
         case .sourceAndPreview:
             HSplitView {
-                MarkdownEditorView(tab: tab, version: tab.editorVersion)
-                    .background(Theme.rowBackground)
+                editor
                     .frame(minWidth: 220, maxWidth: .infinity, maxHeight: .infinity)
                 preview(rendering)
                     .frame(minWidth: 220, maxWidth: .infinity, maxHeight: .infinity)
@@ -202,6 +200,21 @@ struct DocumentView: View {
         case .rendered:
             preview(rendering)
         }
+    }
+
+    /// The editing half. Shared so ⌘F reaches it the same way whether it is the whole
+    /// pane or the left of two.
+    ///
+    /// The query is only handed over when this pane has the focus: the find bar is one
+    /// bar for the window, and marking hits in a document nobody is searching would put
+    /// colour on two documents at once.
+    private var editor: some View {
+        MarkdownEditorView(tab: tab,
+                           version: tab.editorVersion,
+                           query: isFocused ? appState.searchQuery : "",
+                           caseSensitive: appState.searchCaseSensitive,
+                           matchIndex: appState.currentMatchIndex)
+            .background(Theme.rowBackground)
     }
 
     /// The rendered half. Shared so the page is wired the same way whether it is the
@@ -219,7 +232,9 @@ struct DocumentView: View {
                             focusRequest: tab.renderedFocusRequest,
                             focusTarget: tab.renderedFocusTarget,
                             anchorRequest: tab.anchorRequest,
-                            anchor: tab.pendingAnchor)
+                            anchor: tab.pendingAnchor,
+                            lineRequest: tab.previewLineRequest,
+                            line: tab.previewLine)
     }
 
     private func copySource() {

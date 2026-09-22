@@ -159,6 +159,9 @@ extension AppState {
                              for: tab.id)
         case "anchor":
             tab.visibleAnchor = payload["anchor"] as? String ?? ""
+            if let line = payload["line"] as? Int {
+                editorFollowed(previewLine: line, for: tab)
+            }
         default:
             break
         }
@@ -284,7 +287,13 @@ extension AppState {
         }
         let needle = Array(searchCaseSensitive ? searchQuery : searchQuery.lowercased())
         var found: [SearchMatch] = []
-        for (index, line) in document.lines.enumerated() {
+        // What is in the editor, not the last parse: `document.lines` is rebuilt when the
+        // preview is asked for, so it is stale the moment anyone types, and it is
+        // tab-expanded, so a count taken from it can disagree with what the editor finds
+        // in itself. A read-only document has no draft and the two are the same text.
+        let lines = tab.isEditable
+            ? TextNormalizer.splitLines(tab.currentText) : document.lines
+        for (index, line) in lines.enumerated() {
             for range in AppState.occurrences(of: needle, in: line,
                                               caseSensitive: searchCaseSensitive) {
                 found.append(SearchMatch(rowIndex: index, isLeft: true, range: range))

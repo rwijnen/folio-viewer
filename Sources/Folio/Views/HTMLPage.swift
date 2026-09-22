@@ -270,6 +270,38 @@ enum HTMLPage {
         element.scrollIntoView({ block: 'start', behavior: 'smooth' });
         return true;
       };
+      // Which source line the page is showing, for keeping an editor beside it in step.
+      // Blocks carry `data-line` already — headings always did, paragraphs since notes
+      // were added — so this is a question the page can answer without being told
+      // anything new about the document.
+      window.folioTopLine = function () {
+        var blocks = document.querySelectorAll('#content [data-line]');
+        var best = null;
+        for (var i = 0; i < blocks.length; i++) {
+          if (blocks[i].getBoundingClientRect().top <= 24) {
+            var line = parseInt(blocks[i].getAttribute('data-line'), 10);
+            if (!isNaN(line)) { best = line; }
+          }
+        }
+        return best;
+      };
+      // The reverse: put the block covering this source line at the top. Nearest at or
+      // above, because most lines are inside a block rather than starting one.
+      window.folioScrollToLine = function (line) {
+        var blocks = document.querySelectorAll('#content [data-line]');
+        var target = null;
+        for (var i = 0; i < blocks.length; i++) {
+          var at = parseInt(blocks[i].getAttribute('data-line'), 10);
+          if (isNaN(at)) { continue; }
+          if (at <= line) { target = blocks[i]; } else { break; }
+        }
+        if (!target) { window.scrollTo(0, 0); return true; }
+        // Not scrollIntoView: that animates, and an editor being scrolled alongside does
+        // not, so the two would visibly disagree for the length of the animation.
+        var top = target.getBoundingClientRect().top + window.scrollY - 12;
+        window.scrollTo(0, Math.max(0, top));
+        return true;
+      };
       window.folioScrollToOffset = function (y) {
         window.scrollTo(0, y);
         return window.scrollY;
@@ -296,7 +328,8 @@ enum HTMLPage {
         if (scrollTimer) { return; }
         scrollTimer = setTimeout(function () {
           scrollTimer = null;
-          post({ type: 'anchor', anchor: window.folioTopAnchor(), scrollY: window.scrollY });
+          post({ type: 'anchor', anchor: window.folioTopAnchor(),
+                 line: window.folioTopLine(), scrollY: window.scrollY });
         }, 120);
       }, { passive: true });
     })();

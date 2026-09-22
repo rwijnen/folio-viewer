@@ -147,6 +147,120 @@ struct SourceAndPreviewTests {
         #expect(tab.paneRendering(isDark: false).kind != .sourceAndPreview)
     }
 
+    // MARK: Keeping the halves level
+
+    @Test func scrollingTheEditorMovesThePreview() throws {
+        let scratch = try Scratch()
+        let tab = try scratch.open("note.md")
+        scratch.state.setReadingMode(.sideBySide, for: tab)
+        let before = tab.previewLineRequest
+
+        scratch.state.previewFollowed(editorLine: 42, for: tab)
+        #expect(tab.previewLine == 42)
+        #expect(tab.previewLineRequest == before + 1)
+    }
+
+    @Test func scrollingThePreviewMovesTheEditor() throws {
+        let scratch = try Scratch()
+        let tab = try scratch.open("note.md")
+        scratch.state.setReadingMode(.sideBySide, for: tab)
+        let before = tab.sourceScrollRequest
+
+        scratch.state.editorFollowed(previewLine: 17, for: tab)
+        #expect(tab.sourceScrollLine == 17)
+        #expect(tab.sourceScrollRequest == before + 1)
+    }
+
+    /// The whole difficulty of syncing two views. Moving the preview to match the editor
+    /// makes the preview report a new position, which would move the editor, which would
+    /// move the preview — forever, and drifting as each rounds to the nearest block.
+    @Test func aSyncedScrollDoesNotBounceBack() throws {
+        let scratch = try Scratch()
+        let tab = try scratch.open("note.md")
+        scratch.state.setReadingMode(.sideBySide, for: tab)
+
+        scratch.state.previewFollowed(editorLine: 42, for: tab)
+        let settled = tab.sourceScrollRequest
+
+        // The preview, having been moved, reports where it now is.
+        scratch.state.editorFollowed(previewLine: 41, for: tab)
+        #expect(tab.sourceScrollRequest == settled)
+        #expect(tab.previewLine == 42)
+    }
+
+    @Test func theHalvesFollowEachOtherAgainOnceTheyHaveSettled() async throws {
+        let scratch = try Scratch()
+        let tab = try scratch.open("note.md")
+        scratch.state.setReadingMode(.sideBySide, for: tab)
+
+        scratch.state.previewFollowed(editorLine: 42, for: tab)
+        try? await Task.sleep(for: .seconds(AppState.scrollSyncQuiet + 0.1))
+
+        // A genuine scroll by the reader, after the pushed one has died down.
+        scratch.state.editorFollowed(previewLine: 90, for: tab)
+        #expect(tab.sourceScrollLine == 90)
+    }
+
+    /// Nothing is synced when only one half is on screen — there is nothing to sync to,
+    /// and moving the hidden one would lose the reader's place in it.
+    @Test func theOtherModesAreNotSynced() throws {
+        let scratch = try Scratch()
+        let tab = try scratch.open("note.md")
+        scratch.state.setReadingMode(.source, for: tab)
+        let before = tab.previewLineRequest
+
+        scratch.state.previewFollowed(editorLine: 42, for: tab)
+        #expect(tab.previewLineRequest == before)
+    }
+
+    // MARK: Finding things in the editor
+
+    /// Reported: ⌘F in source mode counted the hits and showed none of them.
+    @Test func theEditorFindsHitsInWhatItIsHolding() throws {
+        let text = "# Heading\n\nalpha beta\nbeta again\n"
+        let found = MarkdownEditorView.Coordinator.ranges(of: "beta", in: text,
+                                                          caseSensitive: false)
+        #expect(found.count == 2)
+        // UTF-16 offsets, which is what an NSTextView addresses.
+        #expect((text as NSString).substring(with: found[0]) == "beta")
+        #expect((text as NSString).substring(with: found[1]) == "beta")
+    }
+
+    /// Emoji and accents are two UTF-16 units to a character, so a range counted in
+    /// characters would land in the middle of one.
+    @Test func hitsAfterAnEmojiAreStillInTheRightPlace() throws {
+        let text = "🎉 party\n\nneedle here\n"
+        let found = MarkdownEditorView.Coordinator.ranges(of: "needle", in: text,
+                                                          caseSensitive: false)
+        #expect(found.count == 1)
+        #expect((text as NSString).substring(with: found[0]) == "needle")
+    }
+
+    @Test func caseSensitivityIsRespected() throws {
+        let text = "Beta and beta\n"
+        #expect(MarkdownEditorView.Coordinator.ranges(of: "beta", in: text,
+                                                      caseSensitive: true).count == 1)
+        #expect(MarkdownEditorView.Coordinator.ranges(of: "beta", in: text,
+                                                      caseSensitive: false).count == 2)
+    }
+
+    /// The count in the find bar and what the editor marks have to be the same number,
+    /// so the search state must look at the draft rather than at the last parse.
+    @Test func theCountMatchesWhatTheEditorHoldsWhileTyping() throws {
+        let scratch = try Scratch()
+        let tab = try scratch.open("note.md")
+        scratch.state.setReadingMode(.source, for: tab)
+
+        scratch.state.updateDraft("# Heading\n\nneedle one\nneedle two\n", for: tab)
+        scratch.state.searchQuery = "needle"
+        scratch.state.recomputeMatches()
+
+        #expect(scratch.state.matches.count == 2)
+        let inEditor = MarkdownEditorView.Coordinator.ranges(of: "needle", in: tab.currentText,
+                                                             caseSensitive: false)
+        #expect(inEditor.count == scratch.state.matches.count)
+    }
+
     @Test func theModeIsRememberedBetweenLaunches() throws {
         let scratch = try Scratch()
         let tab = try scratch.open("note.md")

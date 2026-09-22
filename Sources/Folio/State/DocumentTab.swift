@@ -249,6 +249,14 @@ final class DocumentTab: Identifiable {
 
     var textDocument: TextDocument?
     var readingMode: ReadingMode = .rendered
+    /// The source line the preview has been asked to show, and a counter so asking for
+    /// the same line twice still moves it.
+    var previewLine = 0
+    var previewLineRequest = 0
+    /// Until when this document's halves ignore each other's scroll reports. See
+    /// `ScrollSync.swift`.
+    @ObservationIgnored var scrollSyncQuietUntil: Date?
+
     /// The pending live-preview rebuild, so typing on cancels the one before it.
     @ObservationIgnored var previewRefresh: Task<Void, Never>?
     /// Bumped when the rendered page must be rebuilt (content or appearance change).

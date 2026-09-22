@@ -21,6 +21,7 @@ final class MarkdownPageController: NSObject, WKNavigationDelegate, WKScriptMess
     private var appliedQueryKey: String?
     private var appliedFocusRequest = 0
     private var appliedAnchorRequest = 0
+    private var appliedLineRequest = 0
     private var pendingQuery: (query: String, caseSensitive: Bool)?
     /// Offset to reapply once the reloaded page has laid out.
     private var offsetToRestore: CGFloat = 0
@@ -79,7 +80,8 @@ final class MarkdownPageController: NSObject, WKNavigationDelegate, WKScriptMess
 
     func apply(query: String, caseSensitive: Bool,
                focusRequest: Int, focusTarget: Int,
-               anchorRequest: Int, anchor: String?) {
+               anchorRequest: Int, anchor: String?,
+               lineRequest: Int = 0, line: Int = 0) {
         let queryKey = "\(caseSensitive ? "s" : "i")\u{1}\(query)"
         if appliedQueryKey != queryKey {
             appliedQueryKey = queryKey
@@ -92,6 +94,11 @@ final class MarkdownPageController: NSObject, WKNavigationDelegate, WKScriptMess
         if appliedAnchorRequest != anchorRequest, let anchor {
             appliedAnchorRequest = anchorRequest
             scroll(to: anchor)
+        }
+        // Keeping the preview level with an editor beside it.
+        if appliedLineRequest != lineRequest {
+            appliedLineRequest = lineRequest
+            webView.evaluateJavaScript("window.folioScrollToLine(\(line))")
         }
     }
 
