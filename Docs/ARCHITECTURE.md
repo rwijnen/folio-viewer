@@ -61,6 +61,21 @@ tab.
 its history, an incoming change on disk, or what is not yet committed. The last three are
 comparisons and share `ComparisonPane`.
 
+**Split view.** Two documents side by side, modelled as two slots rather than a list.
+`activeTabID` is the document being worked in — the one the sidebar, ⌘F, git and every
+menu already follow — and `splitTabID` is its companion. Focusing the companion promotes
+it to `activeTabID` and demotes the other, which is what lets the rest of the app stay as
+it was instead of learning about panes. `splitIsLeading` exists because of that swap: it
+records which side the companion is on, so focus changes the outline and the toolbar but
+never moves a document out from under the pointer. Both panes are spared when live web
+views are trimmed, since both are on screen.
+
+What a pane draws is decided by `DocumentTab.paneRendering(isDark:)` rather than in the
+view. The app's forwarding accessors (`state.renderedPage`, `state.readingMode`) answer
+for whichever document is in front, which is the wrong question once there are two panes;
+a method on the tab cannot ask it, having no reference to the app. That also puts the
+decision somewhere a test can reach, which a SwiftUI body is not.
+
 **Groups.** `DocumentTab.group` is a name the reader filed the document under, or nil.
 Nothing is inferred from the path. A document opened while a group is selected joins that
 group — `adopt` is the one route new tabs take, so that is the one place it happens, and a

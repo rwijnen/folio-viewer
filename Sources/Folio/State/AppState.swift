@@ -52,6 +52,17 @@ final class AppState {
         }
     }
 
+    /// The companion document in a split window, or nil when one document is showing.
+    /// Changed only through the methods in `SplitView.swift`.
+    private(set) var splitTabID: UUID?
+    /// Whether the companion is drawn on the left. See `SplitView.swift` for why.
+    private(set) var splitIsLeading = false
+
+    func setSplit(_ id: UUID?, leading: Bool) {
+        splitTabID = id
+        splitIsLeading = leading
+    }
+
     /// The group the tab bar is filtered to; nil shows every document. Changed only
     /// through `selectGroup`, so the front tab is always one the tab bar is showing.
     private(set) var selectedGroup: String?
@@ -216,6 +227,13 @@ final class AppState {
     /// The single place the front tab changes: a restored tab is only read when it gets
     /// here, so nothing else may assign `activeTabID` directly.
     private func setActive(_ id: UUID?) {
+        // Bringing the companion forward is a change of focus, not a change of what is
+        // on screen. The two trade roles so the panes still name different documents —
+        // without this the companion became active while staying the companion, and both
+        // panes drew the same file. `splitIsLeading` flips so neither one moves.
+        if let id, id == splitTabID {
+            setSplit(activeTabID, leading: !splitIsLeading)
+        }
         activeTabID = id
         guard let id, let tab = tabs.first(where: { $0.id == id }) else { return }
         prepareIfNeeded(tab)
@@ -252,7 +270,9 @@ final class AppState {
     /// rest are torn down and reload at their saved scroll offset when shown again.
     static let maximumLivePages = 5
 
-    private func noteShown(_ id: UUID) {
+    /// Not private: a split pane shows a second document, and it has to count as
+    /// shown or the page behind it is a candidate for being torn down.
+    func noteShown(_ id: UUID) {
         showCounter += 1
         tabs.first { $0.id == id }?.lastShownAt = showCounter
         trimLivePages()
@@ -271,7 +291,11 @@ final class AppState {
     private func trimLivePages() {
         let live = tabs.filter { $0.page != nil }.sorted { $0.lastShownAt > $1.lastShownAt }
         guard live.count > Self.maximumLivePages else { return }
-        for tab in live.dropFirst(Self.maximumLivePages) where tab.id != activeTabID {
+        // Every document on screen is spared, not just the active one: in a split window
+        // the companion is being looked at, and releasing its page would blank a pane the
+        // reader can see.
+        let onScreen = Set([activeTabID, splitTabID].compactMap { $0 })
+        for tab in live.dropFirst(Self.maximumLivePages) where !onScreen.contains(tab.id) {
             tab.releasePage()
         }
     }
@@ -285,12 +309,17 @@ final class AppState {
         tabs.remove(at: index)
         // A filter naming a group with nothing left in it would show an empty tab bar.
         forgetEmptyGroup()
+        // A pane pointing at a document that is gone would draw nothing at all. Also
+        // below, after a replacement has come forward: the neighbour chosen for the
+        // empty pane can be the companion, and a document cannot be both panes.
+        forgetSplitIfGone()
         guard wasActive else { return }
         if tabs.isEmpty {
             setActive(nil)
         } else {
             // The neighbour that comes forward may never have been read.
             setActive(tabs[min(index, tabs.count - 1)].id)
+            forgetSplitIfGone()
             if !searchQuery.isEmpty { recomputeMatches() }
         }
         saveSession()
@@ -313,6 +342,7 @@ final class AppState {
             stopWatching(tab)
         }
         tabs = tabs.filter { !doomed.contains($0.id) }
+        forgetSplitIfGone()
         saveSession()
     }
 

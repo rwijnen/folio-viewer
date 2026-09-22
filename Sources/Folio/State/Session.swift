@@ -34,6 +34,10 @@ struct Session: Codable, Equatable {
     var activeIndex: Int?
     /// The group the tab bar was filtered to, if any.
     var selectedGroup: String?
+    /// Position of the document that was beside the front one, if the window was split.
+    var splitIndex: Int?
+    /// Which side that companion was on.
+    var splitIsLeading: Bool?
 
     /// A guard against a runaway session file putting a hundred tabs on screen at launch.
     static let maximumEntries = 25
@@ -43,22 +47,31 @@ struct Session: Codable, Equatable {
         var copy = self
         copy.entries = Array(entries.prefix(Self.maximumEntries))
         if let active = activeIndex, active >= Self.maximumEntries { copy.activeIndex = 0 }
+        // A companion that was trimmed away cannot be restored beside anything.
+        if let split = splitIndex, split >= Self.maximumEntries { copy.splitIndex = nil }
         return copy
     }
 
-    /// Drops entries whose file is no longer there, keeping `activeIndex` pointing at the
-    /// same document.
+    /// Drops entries whose file is no longer there, keeping `activeIndex` and
+    /// `splitIndex` pointing at the same documents.
     func existingOnly(using fileExists: (String) -> Bool = {
         FileManager.default.fileExists(atPath: $0)
     }) -> Session {
         var result = Session()
+        result.selectedGroup = selectedGroup
         var newActive: Int?
+        var newSplit: Int?
         for (index, entry) in entries.enumerated() where fileExists(entry.path) {
             if index == activeIndex { newActive = result.entries.count }
+            if index == splitIndex { newSplit = result.entries.count }
             result.entries.append(entry)
         }
         // The document that was in front has gone: fall back to the last one.
         result.activeIndex = newActive ?? (result.entries.isEmpty ? nil : result.entries.count - 1)
+        // The companion is not fallen back on: a split is a thing the reader arranged,
+        // and filling the empty half with whatever happens to be nearby is not it.
+        result.splitIndex = newSplit
+        result.splitIsLeading = newSplit == nil ? nil : splitIsLeading
         return result
     }
 }
@@ -91,9 +104,14 @@ extension AppState {
     var session: Session {
         var result = Session()
         result.selectedGroup = selectedGroup
+        // Where each saved tab landed in `entries`. Not the same as its index in `tabs`:
+        // an ephemeral tab is skipped, so anything after one is off by however many came
+        // before it, and the front document would be restored as its neighbour.
+        var positions: [UUID: Int] = [:]
         for tab in tabs {
             // A tab built in memory has no file to reopen it from.
             if tab.isEphemeral { continue }
+            positions[tab.id] = result.entries.count
             if let pending = tab.pendingRestore {
                 result.entries.append(pending)
                 continue
@@ -112,7 +130,9 @@ extension AppState {
                 annotations: tab.annotations.isEmpty ? nil : tab.annotations
             ))
         }
-        result.activeIndex = activeTabID.flatMap { id in tabs.firstIndex { $0.id == id } }
+        result.activeIndex = activeTabID.flatMap { positions[$0] }
+        result.splitIndex = splitTabID.flatMap { positions[$0] }
+        result.splitIsLeading = splitIsLeading ? true : nil
         return result
     }
 
@@ -148,6 +168,12 @@ extension AppState {
         // filter that is not there yet.
         setSelectedGroup(stored.selectedGroup)
         adoptRestored(restored, activeIndex: stored.activeIndex)
+        // After the tabs, since it names one of them, and only when it is not the front
+        // document — a window cannot show the same document in both panes.
+        if let split = stored.splitIndex, restored.indices.contains(split),
+           restored[split].id != activeTabID {
+            setSplit(restored[split].id, leading: stored.splitIsLeading ?? false)
+        }
         if let tab = active { prepareIfNeeded(tab) }
         saveSession()
         return tabs.count

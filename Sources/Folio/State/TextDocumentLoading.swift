@@ -243,13 +243,21 @@ extension AppState {
 
     // MARK: - Modes
 
-    func setReadingMode(_ mode: ReadingMode) {
+    /// `for` names the document: each pane carries its own switch, and the one on the
+    /// right must not change the mode of the document on the left. Menu commands leave
+    /// it out and get the focused document, as they should.
+    func setReadingMode(_ mode: ReadingMode, for requested: DocumentTab? = nil) {
         // Only Markdown has two modes; the menu no longer stops this being asked.
-        guard let tab = active, tab.isMarkdown, tab.readingMode != mode else { return }
+        guard let tab = requested ?? active, tab.isMarkdown, tab.readingMode != mode else { return }
         // The preview should show what you just typed, not what is on disk.
         if mode == .rendered, tab.isDirty { refreshDocument(for: tab) }
         tab.readingMode = mode
-        // The two modes have separate search machinery; re-run for the new one.
+        // The two modes have separate search machinery; re-run for the new one. Only
+        // when this is the focused document — the find bar follows that one.
+        guard tab.id == activeTabID else {
+            saveSession()
+            return
+        }
         if mode == .source {
             recomputeMatches()
         } else {

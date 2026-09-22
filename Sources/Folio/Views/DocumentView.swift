@@ -9,10 +9,15 @@ struct DocumentView: View {
     let tab: DocumentTab
     let document: TextDocument
 
+    /// Window-wide things — the find bar, the sheets — belong to the document being
+    /// worked in. Drawn from both panes they would be doubled, and a sheet presented
+    /// twice from one window is undefined.
+    private var isFocused: Bool { tab.id == appState.activeTabID }
+
     var body: some View {
         VStack(spacing: 0) {
             header
-            if let report = appState.diagramReport, report.contains("fail") || report.contains("missing") {
+            if let report = tab.diagramReport, report.contains("fail") || report.contains("missing") {
                 Banner(text: report.contains("missing")
                        ? "mermaid.min.js is missing from the app bundle — diagram source is shown instead."
                        : "Some mermaid diagrams could not be drawn; their source is shown in place.",
@@ -21,7 +26,7 @@ struct DocumentView: View {
             if let change = tab.externalChange {
                 ExternalChangeBanner(tab: tab, change: change)
             }
-            if appState.isFindPresented {
+            if isFocused, appState.isFindPresented {
                 FindBar()
             }
             Divider()
@@ -30,12 +35,13 @@ struct DocumentView: View {
         .background(Theme.rowBackground)
         .onAppear { appState.isDarkAppearance = colorScheme == .dark }
         .onChange(of: colorScheme) { appState.isDarkAppearance = colorScheme == .dark }
-        .sheet(isPresented: Binding(get: { appState.annotationDraft != nil },
+        .sheet(isPresented: Binding(get: { isFocused && appState.annotationDraft != nil },
                                     set: { if !$0 { appState.cancelAnnotationDraft() } })) {
             AnnotationSheet(tab: tab)
                 .environment(appState)
         }
-        .sheet(isPresented: Bindable(appState).isCommitSheetPresented) {
+        .sheet(isPresented: Binding(get: { isFocused && appState.isCommitSheetPresented },
+                                    set: { appState.isCommitSheetPresented = $0 })) {
             CommitSheet(tab: tab)
                 .environment(appState)
         }
@@ -87,8 +93,8 @@ struct DocumentView: View {
             GitStatusPill(tab: tab)
 
             if document.isMarkdown {
-                Picker("", selection: Binding(get: { appState.readingMode },
-                                              set: { appState.setReadingMode($0) })) {
+                Picker("", selection: Binding(get: { tab.readingMode },
+                                              set: { appState.setReadingMode($0, for: tab) })) {
                     ForEach(ReadingMode.allCases) { mode in
                         Text(mode.label).tag(mode)
                     }
@@ -101,7 +107,7 @@ struct DocumentView: View {
 
             if tab.isEditable {
                 Button {
-                    appState.saveActiveDocument()
+                    appState.save(tab)
                 } label: {
                     Label("Save", systemImage: "arrow.down.doc")
                         .font(.system(size: 11))
@@ -114,7 +120,7 @@ struct DocumentView: View {
 
             Menu {
                 if tab.isEditable {
-                    Button("Save") { appState.saveActiveDocument() }
+                    Button("Save") { appState.save(tab) }
                         .disabled(!tab.isDirty)
                     Button("Revert to Saved") { appState.revertDraft(for: tab) }
                         .disabled(!tab.isDirty)
@@ -123,15 +129,21 @@ struct DocumentView: View {
                 if tab.git != nil {
                     Button("Uncommitted Changes…") { appState.showWorkingChanges(for: tab) }
                         .disabled(!appState.hasWorkingChanges(tab))
-                    Button("Commit…") { appState.presentCommitSheet() }
+                    Button("Commit…") {
+                        appState.focusPane(tab.id)
+                        appState.presentCommitSheet()
+                    }
                         .disabled(!appState.canCommit(tab))
                     if let upstream = tab.git?.upstream {
-                        Button("Push to \(upstream)") { appState.pushActiveDocument() }
+                        Button("Push to \(upstream)") {
+                            appState.focusPane(tab.id)
+                            appState.pushActiveDocument()
+                        }
                             .disabled(!appState.canPush(tab))
                     }
                     Divider()
                 }
-                Button("Reload from Disk") { appState.reloadTextDocument() }
+                Button("Reload from Disk") { appState.reloadTextDocument(for: tab.id) }
                     .keyboardShortcut("r", modifiers: .command)
                 Divider()
                 Button("Copy Source") { copySource() }
@@ -161,28 +173,37 @@ struct DocumentView: View {
 
     @ViewBuilder
     private var content: some View {
-        if let commit = tab.viewingCommit {
-            HistoricalCommitView(tab: tab, commit: commit)
-        } else if tab.pane == .externalChange {
+        // What to draw is decided on the tab, in `PaneRendering`, not from the app's
+        // forwarding accessors — those answer for whichever document is in front, which
+        // is a different question once there are two panes. See PaneRendering.swift.
+        let rendering = tab.paneRendering(isDark: appState.isDarkAppearance)
+        switch rendering.kind {
+        case .commit:
+            if let commit = tab.viewingCommit {
+                HistoricalCommitView(tab: tab, commit: commit)
+            }
+        case .externalChange:
             ExternalChangeView(tab: tab)
-        } else if tab.pane == .workingChanges {
+        case .workingChanges:
             WorkingChangesView(tab: tab)
-        } else if document.isMarkdown, appState.readingMode == .source, tab.isEditable {
+        case .editor:
             MarkdownEditorView(tab: tab, version: tab.editorVersion)
                 .background(Theme.rowBackground)
-        } else if document.isMarkdown, appState.readingMode == .rendered,
-                  let html = appState.renderedPage {
+        case .rendered:
             MarkdownWebView(tab: tab,
-                            html: html,
-                            token: appState.renderedPageToken,
+                            html: rendering.html ?? "",
+                            token: rendering.token,
                             baseURL: document.folder,
+                            // The find bar is one bar for the window, so the query and
+                            // how it is matched are the only things here that are not
+                            // this document's own.
                             query: appState.searchQuery,
                             caseSensitive: appState.searchCaseSensitive,
-                            focusRequest: appState.renderedFocusRequest,
-                            focusTarget: appState.renderedFocusTarget,
-                            anchorRequest: appState.anchorRequest,
-                            anchor: appState.pendingAnchor)
-        } else {
+                            focusRequest: tab.renderedFocusRequest,
+                            focusTarget: tab.renderedFocusTarget,
+                            anchorRequest: tab.anchorRequest,
+                            anchor: tab.pendingAnchor)
+        case .listing:
             SourceListingView(tab: tab, document: document)
         }
     }
