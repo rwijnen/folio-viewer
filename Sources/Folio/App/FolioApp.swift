@@ -33,6 +33,21 @@ struct FolioApp: App {
                 Button("Close Tab") { state.closeActiveTabAskingToSave() }
                     .keyboardShortcut("w", modifiers: .command)
                 Button("Close Other Tabs") { state.closeOtherTabs() }
+                Divider()
+                Button(state.isSplit ? "Close Split View" : "Split View") {
+                    state.isSplit ? state.closeSplit() : state.splitWithNeighbour()
+                }
+                .keyboardShortcut("s", modifiers: [.control, .command])
+                Button("Swap Panes") { state.swapPanes() }
+                    .keyboardShortcut("x", modifiers: [.control, .command])
+                    .disabled(!state.isSplit)
+                Button("Focus the Other Pane") {
+                    if let other = state.panes.first(where: { $0.id != state.activeTabID }) {
+                        state.focusPane(other.id)
+                    }
+                }
+                .keyboardShortcut("o", modifiers: [.control, .command])
+                .disabled(!state.isSplit)
             }
             CommandGroup(after: .newItem) {
                 Button("Choose Base Folder…") { state.presentBaseFolderPanel() }

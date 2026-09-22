@@ -8,6 +8,12 @@ All notable changes to Folio are recorded here. The format follows
 
 ### Added
 
+- **Two documents side by side.** ⌃⌘S splits the window, or right-click a tab and choose
+  **Open Beside**. Each pane keeps its own scroll position, reading mode, outline state
+  and unsaved edits; the focused pane is outlined and is the one ⌘S, ⌘F, the outline and
+  the git buttons act on. ⌃⌘O moves the focus across, ⌃⌘X swaps the two over, and the
+  divider drags. A split is remembered between launches.
+
 - **The outline follows what you are reading.** The section you are in is marked with a
   bar down the edge of the sidebar and scrolled into view as you go, so a long document
   no longer leaves you hunting for your place. It works in source mode too, which

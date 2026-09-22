@@ -80,16 +80,50 @@ struct ContentView: View {
 
     @ViewBuilder
     private var detail: some View {
-        if let tab = state.active, let document = tab.textDocument {
-            DocumentView(tab: tab, document: document)
+        let panes = state.panes
+        if panes.count > 1 {
+            HSplitView {
+                ForEach(panes) { tab in
+                    pane(tab)
+                }
+            }
+        } else if let tab = panes.first {
+            pane(tab)
         } else {
-            diffDetail
+            diffDetail(for: nil)
         }
     }
 
+    /// One document, whichever pane it is in.
+    ///
+    /// The focused one is outlined, because otherwise nothing on screen says which of the
+    /// two ⌘S, ⌘F, the outline and the git buttons are about to act on. Clicking anywhere
+    /// in a pane focuses it.
     @ViewBuilder
-    private var diffDetail: some View {
-        switch state.loadState {
+    private func pane(_ tab: DocumentTab) -> some View {
+        Group {
+            if let document = tab.textDocument {
+                DocumentView(tab: tab, document: document)
+            } else {
+                diffDetail(for: tab)
+            }
+        }
+        .frame(minWidth: 280, maxWidth: .infinity, maxHeight: .infinity)
+        .overlay {
+            if state.isSplit, tab.id == state.activeTabID {
+                RoundedRectangle(cornerRadius: 2)
+                    .strokeBorder(Color.accentColor.opacity(0.55), lineWidth: 2)
+                    .allowsHitTesting(false)
+            }
+        }
+        // High priority so it wins over the views inside, which would otherwise swallow
+        // the click and leave the focus where it was.
+        .simultaneousGesture(TapGesture().onEnded { state.focusPane(tab.id) })
+    }
+
+    @ViewBuilder
+    private func diffDetail(for tab: DocumentTab?) -> some View {
+        switch tab?.loadState ?? .empty {
         case .empty:
             WelcomeView()
         case .loading:
@@ -102,7 +136,7 @@ struct ContentView: View {
         case let .failed(message):
             MessageView(title: "Nothing to compare", message: message, systemImage: "doc.questionmark")
         case let .loaded(file):
-            if let tab = state.active, let entry = tab.selectedEntry {
+            if let tab, let entry = tab.selectedEntry {
                 SplitDiffView(tab: tab, entry: entry, file: file, showsGitStatus: true)
             } else {
                 WelcomeView()

@@ -102,6 +102,7 @@ someone else's work. **Diffs and other text files stay read-only.**
 | Follows links | Sibling `.md` / `.diff` files open in Folio; http(s) goes to your browser |
 | **Editing** | Source mode is a real editor — undo, find, line numbers, live syntax colouring — and ⌘S writes the file. Nothing is ever auto-saved |
 | **Git** | The header shows the branch, how far it has drifted, and whether this file has changes. ⌥⌘C commits it; ⌥⌘P pushes. Any file you have open, one file per commit |
+| **Split view** | ⌃⌘S puts two open documents side by side, each with its own scroll, reading mode and outline. The focused pane is outlined and is what ⌘S, ⌘F and git act on |
 | **Groups** | File documents into projects by hand; the dropdown in the title bar filters the tab bar to one. A group can span folders |
 | **Notes** | Select a passage, right-click, add a note or a change request. One button copies them all for an assistant, with file, lines and source |
 | **History** | The sidebar switches from Outline to History: every commit that touched this file, each one opening in the split diff view. Follows renames |

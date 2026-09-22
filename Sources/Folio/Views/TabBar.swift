@@ -44,6 +44,13 @@ struct TabBar: View {
                         }
                         .disabled(state.visibleTabs.count < 2)
                         Divider()
+                        if state.splitTabID == tab.id {
+                            Button("Close Split View") { state.closeSplit() }
+                        } else {
+                            Button("Open Beside") { state.openInSplit(tab.id) }
+                                .disabled(tab.id == state.activeTabID)
+                        }
+                        Divider()
                         TabGroupMenu(tab: tab)
                         Divider()
                         Button("Reveal in Finder") {
