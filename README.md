@@ -72,6 +72,12 @@ whole thing down to one, two or three levels:
 
 ![The outline expanded, at two levels, and at top level only](Docs/outline-folding.png)
 
+The outline also follows you. Whichever section you are reading is marked and kept in
+view as you scroll, in the rendered page and in source mode alike, so a long document
+never leaves you wondering where you are:
+
+![The outline with the section being read marked](Docs/outline-following.png)
+
 ### Editing
 
 Source mode is an editor, not a listing. Type, and the tab shows a dot, the header shows
@@ -91,7 +97,7 @@ someone else's work. **Diffs and other text files stay read-only.**
 | Markdown support | ATX and setext headings, nested ordered/unordered/task lists, pipe tables with alignment, blockquotes, fenced and indented code, thematic breaks, reference links, images, autolinks, emphasis, strikethrough, inline code, hard breaks |
 | Diagrams | Every ` ```mermaid ` fence is drawn by mermaid 11, bundled in the app. One that fails to parse shows mermaid's error next to its own source instead of vanishing |
 | Code fences | Highlighted by the same lexer the diff panels use, across ~30 languages |
-| Outline | Sidebar built from the headings; click to jump, in either mode. **Foldable section by section** — collapse an `H1` and everything under it goes with it, or fold the whole document to one, two or three levels so a long file fits on one screen. ⌥-click a triangle for the whole subtree |
+| Outline | Sidebar built from the headings; click to jump, in either mode. **Follows what you are reading** — the section you are in is marked and scrolled into view. **Foldable section by section** — collapse an `H1` and everything under it goes with it, or fold the whole document to one, two or three levels so a long file fits on one screen. ⌥-click a triangle for the whole subtree |
 | Images | Local ones inlined as `data:` URIs; remote ones reported, never fetched |
 | Follows links | Sibling `.md` / `.diff` files open in Folio; http(s) goes to your browser |
 | **Editing** | Source mode is a real editor — undo, find, line numbers, live syntax colouring — and ⌘S writes the file. Nothing is ever auto-saved |

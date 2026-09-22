@@ -146,6 +146,12 @@ separate WebContent process holding a parsed copy of mermaid, so at most five st
 and the least recently shown are torn down; a torn-down page reports its scroll offset as
 the reader scrolls and is put back in place on reload, re-applied once mermaid reports in.
 
+The outline follows the reader. The rendered page reports the heading at the top of the
+window as it scrolls; source mode has no page to ask, so the editor turns the topmost
+visible line into a heading through `OutlineLayout.heading(atOrAbove:)`. Either way it
+lands in `DocumentTab.visibleAnchor`, which marks the row and scrolls the sidebar the
+least it can to keep it in sight.
+
 **`OutlineLayout`** nests headings by their level relative to their neighbours rather than
 by the number of `#`, so a document that skips levels or starts at `H2` still forms a
 sensible tree. The depth it yields is what the sidebar indents by and what "show two

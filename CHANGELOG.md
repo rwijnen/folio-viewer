@@ -6,6 +6,25 @@ All notable changes to Folio are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **The outline follows what you are reading.** The section you are in is marked with a
+  bar down the edge of the sidebar and scrolled into view as you go, so a long document
+  no longer leaves you hunting for your place. It works in source mode too, which
+  reported nothing at all before — the editor now works out which heading the top of the
+  window is under.
+
+### Fixed
+
+- **The file-watcher tests no longer depend on how busy the machine is.** They slept a
+  fixed 150 ms for the watcher to start listening; a loaded CI runner took longer, the
+  write landed before anything was listening, and the test failed with nothing wrong.
+  They now wait on the watcher's own queue instead of guessing.
+
+- **A heading already at the top of the page no longer freezes the outline.** Clicking one
+  that needed no scrolling left the outline pinned to it, because the release depended on
+  a scroll that never happened.
+
 ## [2.1.1] — 2026-09-18
 
 ### Changed

@@ -37,6 +37,16 @@ final class FileWatcher {
 
     deinit { source?.cancel() }
 
+    /// Waits for anything already queued — arming, cancelling — to have run.
+    ///
+    /// Arming is asynchronous, so a caller cannot otherwise know when the watcher is
+    /// listening. Tests need that: a write that lands before the source is armed is
+    /// genuinely missed, and sleeping a fixed time instead is a race that a loaded
+    /// machine loses. The queue is serial, so a barrier on it is the whole answer.
+    func waitUntilSettled() {
+        queue.sync {}
+    }
+
     func cancel() {
         queue.async { [self] in
             isCancelled = true

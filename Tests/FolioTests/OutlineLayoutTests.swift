@@ -16,6 +16,34 @@ private func layout(_ levels: [Int]) -> OutlineLayout {
 @Suite("Outline tree")
 struct OutlineLayoutTests {
 
+    /// Source mode has no page to ask which section is on screen, so it asks this.
+    @Test func aLineBelongsToTheLastHeadingAtOrAboveIt() {
+        // Headings on lines 0, 1, 2, 3, 4 — one per line, as the helper builds them.
+        let tree = layout([1, 2, 3, 2, 1])
+        #expect(tree.heading(atOrAbove: 0) == "h0")
+        #expect(tree.heading(atOrAbove: 2) == "h2")
+        // Well past the last heading is still inside its section.
+        #expect(tree.heading(atOrAbove: 99) == "h4")
+    }
+
+    /// A document that opens with prose before its first heading. Reporting the first
+    /// heading there would claim the reader is somewhere they are not.
+    @Test func aLineAboveEveryHeadingBelongsToNone() {
+        let tree = OutlineLayout([
+            OutlineItem(id: "intro", level: 1, title: "Intro", lineIndex: 12),
+            OutlineItem(id: "next", level: 1, title: "Next", lineIndex: 40),
+        ])
+        #expect(tree.heading(atOrAbove: 0) == nil)
+        #expect(tree.heading(atOrAbove: 11) == nil)
+        #expect(tree.heading(atOrAbove: 12) == "intro")
+        #expect(tree.heading(atOrAbove: 39) == "intro")
+        #expect(tree.heading(atOrAbove: 40) == "next")
+    }
+
+    @Test func anEmptyOutlineHasNoHeadingForAnyLine() {
+        #expect(OutlineLayout([]).heading(atOrAbove: 5) == nil)
+    }
+
     @Test func nestsHeadingsUnderTheirParents() {
         // H1, H2, H3, H2, H1
         let tree = layout([1, 2, 3, 2, 1])

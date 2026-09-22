@@ -67,8 +67,7 @@ struct FileWatcherTests {
         let counter = Counter()
         let watcher = FileWatcher(url: scratch.url) { counter.bump() }
         defer { watcher.cancel() }
-        // Give the source a moment to arm before touching the file.
-        try await Task.sleep(nanoseconds: 150_000_000)
+        watcher.waitUntilSettled()
 
         try scratch.writeInPlace("two\n")
         await waitFor("the in-place write") { counter.count >= 1 }
@@ -82,7 +81,7 @@ struct FileWatcherTests {
         let counter = Counter()
         let watcher = FileWatcher(url: scratch.url) { counter.bump() }
         defer { watcher.cancel() }
-        try await Task.sleep(nanoseconds: 150_000_000)
+        watcher.waitUntilSettled()
 
         try scratch.writeAtomically("two\n")
         await waitFor("the first replace") { counter.count >= 1 }
@@ -105,7 +104,7 @@ struct FileWatcherTests {
         let counter = Counter()
         let watcher = FileWatcher(url: scratch.url) { counter.bump() }
         defer { watcher.cancel() }
-        try await Task.sleep(nanoseconds: 150_000_000)
+        watcher.waitUntilSettled()
 
         try FileManager.default.removeItem(at: scratch.url)
         await waitFor("the deletion") { counter.count >= 1 }
@@ -117,7 +116,7 @@ struct FileWatcherTests {
         let counter = Counter()
         let watcher = FileWatcher(url: scratch.url) { counter.bump() }
         defer { watcher.cancel() }
-        try await Task.sleep(nanoseconds: 150_000_000)
+        watcher.waitUntilSettled()
 
         for index in 1...8 {
             try scratch.writeInPlace("chunk \(index)\n")
@@ -133,9 +132,9 @@ struct FileWatcherTests {
         let scratch = try Scratch()
         let counter = Counter()
         let watcher = FileWatcher(url: scratch.url) { counter.bump() }
-        try await Task.sleep(nanoseconds: 150_000_000)
+        watcher.waitUntilSettled()
         watcher.cancel()
-        try await Task.sleep(nanoseconds: 150_000_000)
+        watcher.waitUntilSettled()
 
         let before = counter.count
         try scratch.writeAtomically("after cancelling\n")

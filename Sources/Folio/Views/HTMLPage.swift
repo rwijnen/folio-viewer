@@ -262,6 +262,11 @@ enum HTMLPage {
         var element = document.getElementById(anchor);
         if (!element) { return false; }
         pinned = anchor;
+        // Released on a timer as well as by the page going quiet: a heading already at
+        // the top scrolls nowhere, no scroll event ever fires, and the pin would then
+        // hold the outline on that heading for the rest of the session.
+        if (quiet) { clearTimeout(quiet); }
+        quiet = setTimeout(function () { quiet = null; pinned = null; }, 1200);
         element.scrollIntoView({ block: 'start', behavior: 'smooth' });
         return true;
       };

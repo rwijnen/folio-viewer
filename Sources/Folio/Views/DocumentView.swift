@@ -225,6 +225,7 @@ struct OutlineSidebar: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 header
+                ScrollViewReader { outline in
                 List {
                     ForEach(visibleRows) { row in
                         OutlineRow(row: row,
@@ -236,9 +237,20 @@ struct OutlineSidebar: View {
                                    },
                                    onJump: { jump(to: row.item) })
                         .listRowInsets(EdgeInsets(top: 1, leading: 4, bottom: 1, trailing: 4))
+                        .id(row.id)
                     }
                 }
                 .listStyle(.sidebar)
+                // A long document's outline is longer than the sidebar, so marking the
+                // current heading is no use if it is scrolled out of sight. `anchor: nil`
+                // scrolls the least it can, and does nothing at all when the row is
+                // already showing — so reading down a section does not drag the list
+                // about under the reader.
+                .onChange(of: highlighted) { _, current in
+                    guard let current else { return }
+                    withAnimation(.easeOut(duration: 0.18)) { outline.scrollTo(current) }
+                }
+                }
             }
             Divider()
             footer
@@ -389,6 +401,19 @@ struct OutlineRow: View {
         .background {
             RoundedRectangle(cornerRadius: 4, style: .continuous)
                 .fill(isCurrent ? Theme.foldBackground : .clear)
+        }
+        // A tinted row alone was too quiet to find while reading — at a glance the
+        // sidebar looked the same whatever part of the document was on screen. The bar
+        // is in the accent colour and sits outside the indent, so it lines up down the
+        // edge of the sidebar however deeply the heading nests.
+        .overlay(alignment: .leading) {
+            if isCurrent {
+                RoundedRectangle(cornerRadius: 1, style: .continuous)
+                    .fill(Color.accentColor)
+                    .frame(width: 2)
+                    .padding(.vertical, 1)
+                    .offset(x: -CGFloat(row.depth) * 11 - 3)
+            }
         }
     }
 }
