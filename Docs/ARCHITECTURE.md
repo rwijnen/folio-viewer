@@ -61,6 +61,20 @@ tab.
 its history, an incoming change on disk, or what is not yet committed. The last three are
 comparisons and share `ComparisonPane`.
 
+**Source and preview** (`ReadingMode.sideBySide`) is a third reading mode, not a split
+window: one tab drawn twice, so both halves share its text, git status and unsaved state.
+It is the only mode with a live preview — `updateDraft` schedules a rebuild that each
+keystroke cancels, so a burst of typing re-parses once after it stops. Every other mode
+rebuilds when the preview is asked for or on save, and re-parsing behind a preview nobody
+is looking at is work for nothing.
+
+The two halves are kept level through the source line, not the scroll offset: the editor
+already works out the line at its top edge for the outline, and the page answers
+`folioTopLine()` from the `data-line` its blocks carry. `ScrollSync.swift` is the part in
+between, and almost all of it is the loop — moving one half makes it report a new
+position, which would move the other, forever and drifting as each rounds to the nearest
+block. A side therefore ignores reports for a moment after being moved.
+
 **Split view.** Two documents side by side, modelled as two slots rather than a list.
 `activeTabID` is the document being worked in — the one the sidebar, ⌘F, git and every
 menu already follow — and `splitTabID` is its companion. Focusing the companion promotes

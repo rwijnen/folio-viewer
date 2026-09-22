@@ -93,7 +93,7 @@ someone else's work. **Diffs and other text files stay read-only.**
 
 | | |
 |---|---|
-| Rendered / Source | ⌘1 and ⌘2, or the toolbar switch |
+| Rendered / Source / Both | ⌘1, ⌘2 and ⌘3, or the toolbar switch. **Both** writes with the preview beside you: source left, rendered right, the preview following your typing |
 | Markdown support | ATX and setext headings, nested ordered/unordered/task lists, pipe tables with alignment, blockquotes, fenced and indented code, thematic breaks, reference links, images, autolinks, emphasis, strikethrough, inline code, hard breaks |
 | Diagrams | Every ` ```mermaid ` fence is drawn by mermaid 11, bundled in the app. One that fails to parse shows mermaid's error next to its own source instead of vanishing |
 | Code fences | Highlighted by the same lexer the diff panels use, across ~30 languages |

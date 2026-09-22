@@ -27,6 +27,8 @@ struct PaneRendering: Equatable {
         case editor
         /// The rendered page.
         case rendered
+        /// The editor and the page it makes, together.
+        case sourceAndPreview
         /// Anything Folio does not render: plain text, an unknown extension.
         case listing
     }
@@ -55,7 +57,15 @@ extension DocumentTab {
         if readingMode == .source, isEditable {
             return PaneRendering(kind: .editor, html: nil, token: renderedPageToken)
         }
-        guard readingMode == .rendered, let html = renderedPage(isDark: isDark) else {
+        if readingMode == .sideBySide, isEditable {
+            // A document that cannot be rendered falls back to the editor alone rather
+            // than to half a window with nothing in it.
+            guard let html = renderedPage(isDark: isDark) else {
+                return PaneRendering(kind: .editor, html: nil, token: renderedPageToken)
+            }
+            return PaneRendering(kind: .sourceAndPreview, html: html, token: renderedPageToken)
+        }
+        guard readingMode.showsPreview, let html = renderedPage(isDark: isDark) else {
             return PaneRendering(kind: .listing, html: nil, token: renderedPageToken)
         }
         return PaneRendering(kind: .rendered, html: html, token: renderedPageToken)

@@ -13,6 +13,13 @@ struct MarkdownEditorView: NSViewRepresentable {
     /// Bumped when the text should be replaced from outside — a save, a revert, a
     /// reload from disk — as opposed to the reader typing.
     let version: Int
+    /// What ⌘F is looking for, and which hit is the current one. The editor finds the
+    /// ranges in its own text rather than taking them from the search state: those are
+    /// offsets into characters of a tab-expanded line, and an `NSTextView` wants UTF-16
+    /// offsets into what it is actually holding.
+    var query: String = ""
+    var caseSensitive: Bool = false
+    var matchIndex: Int = 0
 
     func makeCoordinator() -> Coordinator {
         Coordinator(tab: tab, state: state)
@@ -71,6 +78,7 @@ struct MarkdownEditorView: NSViewRepresentable {
                 coordinator.applyHighlighting()
             }
         }
+        coordinator.showSearch(query: query, caseSensitive: caseSensitive, current: matchIndex)
     }
 
     // MARK: - Coordinator
@@ -160,6 +168,63 @@ struct MarkdownEditorView: NSViewRepresentable {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.18, execute: work)
         }
 
+        // MARK: Search
+
+        /// What was last drawn, so an unchanged search does not fight the reader's own
+        /// scrolling by dragging the view back to the current hit on every redraw.
+        private var shownSearch: (query: String, caseSensitive: Bool, current: Int)?
+
+        /// Marks every hit and brings the current one into view.
+        ///
+        /// Temporary attributes rather than attributes on the text: `applyHighlighting`
+        /// sets the whole storage's attributes from scratch whenever the text changes, so
+        /// anything written there would be wiped by the next keystroke. Temporary
+        /// attributes sit on the layout manager, above all of that, which is what they
+        /// are for.
+        func showSearch(query: String, caseSensitive: Bool, current: Int) {
+            let asked = (query: query, caseSensitive: caseSensitive, current: current)
+            guard shownSearch == nil || shownSearch! != asked else { return }
+            shownSearch = asked
+            guard let textView, let layoutManager = textView.layoutManager else { return }
+
+            let whole = NSRange(location: 0, length: (textView.string as NSString).length)
+            layoutManager.removeTemporaryAttribute(.backgroundColor, forCharacterRange: whole)
+            guard !query.isEmpty else { return }
+
+            let ranges = Self.ranges(of: query, in: textView.string, caseSensitive: caseSensitive)
+            guard !ranges.isEmpty else { return }
+            for range in ranges {
+                layoutManager.addTemporaryAttributes(
+                    [.backgroundColor: NSColor(Theme.searchMatch)], forCharacterRange: range)
+            }
+            let index = min(max(current, 0), ranges.count - 1)
+            layoutManager.addTemporaryAttributes(
+                [.backgroundColor: NSColor(Theme.currentSearchMatch)],
+                forCharacterRange: ranges[index])
+            // Selecting it as well as scrolling: the reader can then type over the hit,
+            // and ⌘G onwards continues from where they are looking.
+            textView.setSelectedRange(ranges[index])
+            textView.scrollRangeToVisible(ranges[index])
+            textView.showFindIndicator(for: ranges[index])
+        }
+
+        /// Hits in UTF-16 space, which is what an `NSTextView` addresses.
+        static func ranges(of query: String, in text: String,
+                           caseSensitive: Bool) -> [NSRange] {
+            guard !query.isEmpty else { return [] }
+            var found: [NSRange] = []
+            var from = text.startIndex
+            let options: String.CompareOptions = caseSensitive ? [.literal]
+                                                              : [.literal, .caseInsensitive]
+            while from < text.endIndex,
+                  let hit = text.range(of: query, options: options, range: from..<text.endIndex) {
+                found.append(NSRange(hit, in: text))
+                from = hit.upperBound > hit.lowerBound
+                    ? hit.upperBound : text.index(after: hit.lowerBound)
+            }
+            return found
+        }
+
         func applyHighlighting() {
             guard let textView, let storage = textView.textStorage else { return }
             let text = textView.string
@@ -216,7 +281,7 @@ struct MarkdownEditorView: NSViewRepresentable {
         /// The rendered page reports this itself; source mode has nothing to ask, so the
         /// topmost visible line is worked out from the layout and turned into a heading.
         private func reportVisibleHeading() {
-            guard tab.readingMode == .source,
+            guard tab.readingMode.showsEditor,
                   let textView, let layoutManager = textView.layoutManager,
                   let container = textView.textContainer,
                   let clip = scrollView?.contentView else { return }
@@ -239,6 +304,7 @@ struct MarkdownEditorView: NSViewRepresentable {
             if let heading = tab.outlineLayout.heading(atOrAbove: line) {
                 tab.visibleAnchor = heading
             }
+            state.previewFollowed(editorLine: line, for: tab)
         }
 
         func restoreScrollOffset() {

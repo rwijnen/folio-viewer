@@ -154,10 +154,36 @@ enum HistoryState: Equatable {
 enum ReadingMode: String, CaseIterable, Identifiable {
     case rendered
     case source
+    /// The source on the left and the page it makes on the right, one document.
+    ///
+    /// Not the same thing as the window being split, which is two documents in two tabs.
+    /// This is one tab drawn twice, so both halves share its text, its git status and its
+    /// unsaved state — and the preview has to keep up with the typing, which is the only
+    /// part of this that is not already there.
+    case sideBySide
 
     var id: String { rawValue }
-    var label: String { self == .rendered ? "Rendered" : "Source" }
-    var symbol: String { self == .rendered ? "doc.richtext" : "chevron.left.forwardslash.chevron.right" }
+
+    var label: String {
+        switch self {
+        case .rendered: "Rendered"
+        case .source: "Source"
+        case .sideBySide: "Both"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .rendered: "doc.richtext"
+        case .source: "chevron.left.forwardslash.chevron.right"
+        case .sideBySide: "rectangle.split.2x1"
+        }
+    }
+
+    /// Whether the editor is on screen in this mode.
+    var showsEditor: Bool { self == .source || self == .sideBySide }
+    /// Whether the rendered page is on screen in this mode.
+    var showsPreview: Bool { self == .rendered || self == .sideBySide }
 }
 
 /// A Markdown or plain-text document, prepared for both display modes.
@@ -223,6 +249,16 @@ final class DocumentTab: Identifiable {
 
     var textDocument: TextDocument?
     var readingMode: ReadingMode = .rendered
+    /// The source line the preview has been asked to show, and a counter so asking for
+    /// the same line twice still moves it.
+    var previewLine = 0
+    var previewLineRequest = 0
+    /// Until when this document's halves ignore each other's scroll reports. See
+    /// `ScrollSync.swift`.
+    @ObservationIgnored var scrollSyncQuietUntil: Date?
+
+    /// The pending live-preview rebuild, so typing on cancels the one before it.
+    @ObservationIgnored var previewRefresh: Task<Void, Never>?
     /// Bumped when the rendered page must be rebuilt (content or appearance change).
     var pageVersion = 0
     var diagramReport: String?
@@ -458,7 +494,9 @@ final class DocumentTab: Identifiable {
         case .diff:
             return "diff:\(selectedFileID?.uuidString ?? "none")"
         case .markdown:
-            return readingMode == .source ? "markdown-source" : "markdown-rendered"
+            // Side by side keeps the editor's key: the rendered half tracks its own
+            // offset separately, through the web view.
+            return readingMode.showsEditor ? "markdown-source" : "markdown-rendered"
         case .source:
             return "source"
         case .none:

@@ -159,6 +159,9 @@ extension AppState {
                              for: tab.id)
         case "anchor":
             tab.visibleAnchor = payload["anchor"] as? String ?? ""
+            if let line = payload["line"] as? Int {
+                editorFollowed(previewLine: line, for: tab)
+            }
         default:
             break
         }
@@ -250,8 +253,11 @@ extension AppState {
         // Only Markdown has two modes; the menu no longer stops this being asked.
         guard let tab = requested ?? active, tab.isMarkdown, tab.readingMode != mode else { return }
         // The preview should show what you just typed, not what is on disk.
-        if mode == .rendered, tab.isDirty { refreshDocument(for: tab) }
+        if mode.showsPreview, tab.isDirty { refreshDocument(for: tab) }
         tab.readingMode = mode
+        // Leaving the mode that has a live preview leaves nothing pending behind it.
+        tab.previewRefresh?.cancel()
+        tab.previewRefresh = nil
         // The two modes have separate search machinery; re-run for the new one. Only
         // when this is the focused document — the find bar follows that one.
         guard tab.id == activeTabID else {
@@ -267,6 +273,8 @@ extension AppState {
     }
 
     func toggleReadingMode() {
+        // Straight between the two single-pane modes. Side by side is its own
+        // command, so toggling out of it lands somewhere predictable.
         setReadingMode(readingMode == .rendered ? .source : .rendered)
     }
 
@@ -279,7 +287,13 @@ extension AppState {
         }
         let needle = Array(searchCaseSensitive ? searchQuery : searchQuery.lowercased())
         var found: [SearchMatch] = []
-        for (index, line) in document.lines.enumerated() {
+        // What is in the editor, not the last parse: `document.lines` is rebuilt when the
+        // preview is asked for, so it is stale the moment anyone types, and it is
+        // tab-expanded, so a count taken from it can disagree with what the editor finds
+        // in itself. A read-only document has no draft and the two are the same text.
+        let lines = tab.isEditable
+            ? TextNormalizer.splitLines(tab.currentText) : document.lines
+        for (index, line) in lines.enumerated() {
             for range in AppState.occurrences(of: needle, in: line,
                                               caseSensitive: searchCaseSensitive) {
                 found.append(SearchMatch(rowIndex: index, isLeft: true, range: range))

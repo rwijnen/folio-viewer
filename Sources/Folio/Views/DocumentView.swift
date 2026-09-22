@@ -101,8 +101,8 @@ struct DocumentView: View {
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
-                .frame(width: 160)
-                .help("⌘1 rendered · ⌘2 source")
+                .frame(width: 210)
+                .help("⌘1 rendered · ⌘2 source · ⌘3 both")
             }
 
             if tab.isEditable {
@@ -187,10 +187,40 @@ struct DocumentView: View {
         case .workingChanges:
             WorkingChangesView(tab: tab)
         case .editor:
-            MarkdownEditorView(tab: tab, version: tab.editorVersion)
-                .background(Theme.rowBackground)
+            editor
+        case .listing:
+            SourceListingView(tab: tab, document: document)
+        case .sourceAndPreview:
+            HSplitView {
+                editor
+                    .frame(minWidth: 220, maxWidth: .infinity, maxHeight: .infinity)
+                preview(rendering)
+                    .frame(minWidth: 220, maxWidth: .infinity, maxHeight: .infinity)
+            }
         case .rendered:
-            MarkdownWebView(tab: tab,
+            preview(rendering)
+        }
+    }
+
+    /// The editing half. Shared so ⌘F reaches it the same way whether it is the whole
+    /// pane or the left of two.
+    ///
+    /// The query is only handed over when this pane has the focus: the find bar is one
+    /// bar for the window, and marking hits in a document nobody is searching would put
+    /// colour on two documents at once.
+    private var editor: some View {
+        MarkdownEditorView(tab: tab,
+                           version: tab.editorVersion,
+                           query: isFocused ? appState.searchQuery : "",
+                           caseSensitive: appState.searchCaseSensitive,
+                           matchIndex: appState.currentMatchIndex)
+            .background(Theme.rowBackground)
+    }
+
+    /// The rendered half. Shared so the page is wired the same way whether it is the
+    /// whole pane or the right of two.
+    private func preview(_ rendering: PaneRendering) -> some View {
+        MarkdownWebView(tab: tab,
                             html: rendering.html ?? "",
                             token: rendering.token,
                             baseURL: document.folder,
@@ -202,10 +232,9 @@ struct DocumentView: View {
                             focusRequest: tab.renderedFocusRequest,
                             focusTarget: tab.renderedFocusTarget,
                             anchorRequest: tab.anchorRequest,
-                            anchor: tab.pendingAnchor)
-        case .listing:
-            SourceListingView(tab: tab, document: document)
-        }
+                            anchor: tab.pendingAnchor,
+                            lineRequest: tab.previewLineRequest,
+                            line: tab.previewLine)
     }
 
     private func copySource() {
@@ -349,10 +378,13 @@ struct OutlineSidebar: View {
     }
 
     private func jump(to item: OutlineItem) {
-        if document.isMarkdown, state.readingMode == .rendered {
+        // Both halves when both are up: landing in one and leaving the other where it
+        // was is the thing a side-by-side view is supposed to save you from.
+        if document.isMarkdown, state.readingMode.showsPreview {
             state.scrollToAnchor(item.id)
             state.visibleAnchor = item.id
-        } else {
+        }
+        if state.readingMode.showsEditor {
             state.scrollSource(to: item.lineIndex)
         }
     }

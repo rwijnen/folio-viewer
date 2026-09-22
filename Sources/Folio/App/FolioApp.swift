@@ -101,6 +101,8 @@ struct FolioApp: App {
                     .keyboardShortcut("1", modifiers: .command)
                 Button("Source") { state.setReadingMode(.source) }
                     .keyboardShortcut("2", modifiers: .command)
+                Button("Source and Preview") { state.setReadingMode(.sideBySide) }
+                    .keyboardShortcut("3", modifiers: .command)
                 Divider()
                 Button("Next File") { state.selectAdjacentFile(offset: 1) }
                     .keyboardShortcut("]", modifiers: .command)
