@@ -6,6 +6,8 @@ All notable changes to Folio are recorded here. The format follows
 
 ## [Unreleased]
 
+## [2.2.0] — 2026-09-22
+
 ### Added
 
 - **Two documents side by side.** ⌃⌘S splits the window, or right-click a tab and choose
@@ -306,7 +308,8 @@ in one window with tabs, without ever writing to your files or touching the netw
   asking Launch Services which app would open a probe file.
 - 109 tests over the model, tab and scroll layers, run with Swift Testing.
 
-[Unreleased]: https://github.com/rwijnen/folio-viewer/compare/v2.1.1...HEAD
+[Unreleased]: https://github.com/rwijnen/folio-viewer/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/rwijnen/folio-viewer/compare/v2.1.1...v2.2.0
 [2.1.1]: https://github.com/rwijnen/folio-viewer/compare/v2.1.0...v2.1.1
 [2.1.0]: https://github.com/rwijnen/folio-viewer/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/rwijnen/folio-viewer/compare/v1.0.0...v2.0.0
