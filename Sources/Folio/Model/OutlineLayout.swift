@@ -81,6 +81,20 @@ struct OutlineLayout {
         return ancestors(of: id).last { isVisible($0, collapsed: collapsed) }
     }
 
+    /// The heading a source line sits under: the last one at or above it.
+    ///
+    /// Source mode has no page to ask, so the editor reports the topmost line it is
+    /// showing and this says which section that is. nil for a line above the first
+    /// heading, which is a real place to be — the preamble of a document.
+    func heading(atOrAbove line: Int) -> String? {
+        var found: String?
+        for row in rows {
+            guard row.item.lineIndex <= line else { break }
+            found = row.id
+        }
+        return found
+    }
+
     /// Which headings to collapse so that only `levels` levels remain on screen.
     func collapsed(showing levels: Int) -> Set<String> {
         let keep = max(levels, 1)

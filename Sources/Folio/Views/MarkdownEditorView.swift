@@ -206,7 +206,38 @@ struct MarkdownEditorView: NSViewRepresentable {
                     guard let self, !self.isRestoringScroll, let clip = self.scrollView?.contentView
                     else { return }
                     self.tab.scrollOffsets.record(clip.bounds.origin.y, for: "markdown-source")
+                    self.reportVisibleHeading()
                 }
+            }
+        }
+
+        /// Tells the outline which section the editor is showing.
+        ///
+        /// The rendered page reports this itself; source mode has nothing to ask, so the
+        /// topmost visible line is worked out from the layout and turned into a heading.
+        private func reportVisibleHeading() {
+            guard tab.readingMode == .source,
+                  let textView, let layoutManager = textView.layoutManager,
+                  let container = textView.textContainer,
+                  let clip = scrollView?.contentView else { return }
+
+            // The character drawn at the top edge, inset included so the line actually
+            // under the edge is the one reported rather than the one just above it.
+            let top = CGPoint(x: 0, y: clip.bounds.origin.y + textView.textContainerInset.height)
+            let glyph = layoutManager.glyphIndex(for: top, in: container)
+            let character = layoutManager.characterIndexForGlyph(at: glyph)
+
+            let text = textView.string
+            guard character <= text.utf16.count,
+                  let index = String.Index(String.UTF16View.Index(utf16Offset: character,
+                                                                 in: text), within: text)
+            else { return }
+            let line = text[text.startIndex..<index].reduce(into: 0) { count, character in
+                if character == "\n" { count += 1 }
+            }
+
+            if let heading = tab.outlineLayout.heading(atOrAbove: line) {
+                tab.visibleAnchor = heading
             }
         }
 

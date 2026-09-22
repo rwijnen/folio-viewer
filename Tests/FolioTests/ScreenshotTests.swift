@@ -144,6 +144,27 @@ struct ScreenshotTests {
         }
     }
 
+    @Test func outlineFollowing() throws {
+        func row(_ title: String, _ depth: Int, current: Bool) -> OutlineRow {
+            OutlineRow(row: OutlineLayout.Row(
+                            item: OutlineItem(id: title, level: depth + 1,
+                                              title: title, lineIndex: 0),
+                            depth: depth, hasChildren: false, parentID: nil),
+                       isCurrent: current, isCollapsed: false, hiddenCount: 0,
+                       onToggle: { _ in }, onJump: {})
+        }
+        try write("outline-following", width: 240) {
+            VStack(alignment: .leading, spacing: 2) {
+                row("Scope", 0, current: false)
+                row("Data model", 0, current: false)
+                row("Contacts", 1, current: true)
+                row("Roles", 1, current: false)
+                row("Open questions", 0, current: false)
+            }
+            .padding(.leading, 6)
+        }
+    }
+
     @Test func notes() throws {
         func annotation(_ kind: Annotation.Kind, _ quote: String, _ lines: ClosedRange<Int>,
                         _ comment: String) -> Annotation {
