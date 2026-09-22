@@ -70,6 +70,12 @@ records which side the companion is on, so focus changes the outline and the too
 never moves a document out from under the pointer. Both panes are spared when live web
 views are trimmed, since both are on screen.
 
+What a pane draws is decided by `DocumentTab.paneRendering(isDark:)` rather than in the
+view. The app's forwarding accessors (`state.renderedPage`, `state.readingMode`) answer
+for whichever document is in front, which is the wrong question once there are two panes;
+a method on the tab cannot ask it, having no reference to the app. That also puts the
+decision somewhere a test can reach, which a SwiftUI body is not.
+
 **Groups.** `DocumentTab.group` is a name the reader filed the document under, or nil.
 Nothing is inferred from the path. A document opened while a group is selected joins that
 group — `adopt` is the one route new tabs take, so that is the one place it happens, and a

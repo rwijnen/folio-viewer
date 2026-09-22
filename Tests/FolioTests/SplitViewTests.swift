@@ -106,6 +106,85 @@ struct SplitViewTests {
         #expect(Set(scratch.state.panes.map(\.id)).count == 2)
     }
 
+    /// Reported: the two panes showed different names in their headers and the same
+    /// document in their bodies. Every per-pane view read the app's forwarding
+    /// accessors, which resolve to whichever document is in front.
+    @Test func eachPaneRendersItsOwnDocument() throws {
+        let scratch = try Scratch()
+        let one = try scratch.open("one.md")
+        let two = try scratch.open("two.md")
+        scratch.state.openInSplit(one.id)
+
+        let pages = scratch.state.panes.map { $0.renderedPage(isDark: false) }
+        #expect(pages.count == 2)
+        #expect(pages[0] != pages[1])
+        // `two` was in front when the split was made, so it is the left-hand pane.
+        #expect(scratch.state.panes.map(\.id) == [two.id, one.id])
+        #expect(pages[0]?.contains("two.md") == true)
+        #expect(pages[1]?.contains("one.md") == true)
+
+        // And the token the web view reloads on, which is what actually drives it.
+        let tokens = scratch.state.panes.map(\.renderedPageToken)
+        #expect(tokens[0] != tokens[1])
+    }
+
+    /// The decision a pane draws from, asked of the document that is *not* in front.
+    ///
+    /// This is the shape of the bug rather than one instance of it: `paneRendering` is on
+    /// the tab and has no reference to the app, so it cannot ask what is in front even by
+    /// mistake. Putting the bug back means deleting it and reading the forwarding
+    /// accessors in the view again, which is not something anyone does by accident.
+    @Test func aPaneDrawsFromItsOwnDocumentEvenWhenAnotherIsInFront() throws {
+        let scratch = try Scratch()
+        let one = try scratch.open("one.md")
+        let two = try scratch.open("two.md")
+        scratch.state.openInSplit(one.id)
+        #expect(scratch.state.activeTabID == two.id)
+
+        let companion = one.paneRendering(isDark: false)
+        let focused = two.paneRendering(isDark: false)
+        #expect(companion.kind == .rendered)
+        #expect(companion.html?.contains("one.md") == true)
+        #expect(companion.html?.contains("two.md") == false)
+        #expect(companion.token != focused.token)
+
+        // The companion switching to source changes the companion and nothing else.
+        scratch.state.setReadingMode(.source, for: one)
+        #expect(one.paneRendering(isDark: false).kind == .editor)
+        #expect(two.paneRendering(isDark: false).kind == .rendered)
+    }
+
+    /// Each pane carries its own Rendered/Source switch. The one on the right must not
+    /// change the mode of the document on the left.
+    @Test func theReadingModeSwitchBelongsToItsOwnPane() throws {
+        let scratch = try Scratch()
+        let one = try scratch.open("one.md")
+        let two = try scratch.open("two.md")
+        scratch.state.openInSplit(one.id)
+        #expect(two.readingMode == .rendered)
+
+        scratch.state.setReadingMode(.source, for: one)
+        #expect(one.readingMode == .source)
+        #expect(two.readingMode == .rendered)
+    }
+
+    /// Saving from the companion's header must write the companion's file. Writing the
+    /// focused document instead would put one file's text into another.
+    @Test func savingFromAPaneWritesThatPanesFile() throws {
+        let scratch = try Scratch()
+        let one = try scratch.open("one.md")
+        let two = try scratch.open("two.md")
+        scratch.state.openInSplit(one.id)
+        #expect(scratch.state.activeTabID == two.id)
+
+        scratch.state.updateDraft("# edited companion\n", for: one)
+        #expect(scratch.state.save(one, confirmingOverwrite: { _ in true }))
+
+        #expect(try String(contentsOf: one.url, encoding: .utf8) == "# edited companion\n")
+        #expect(try String(contentsOf: two.url, encoding: .utf8).contains("two.md"))
+        #expect(!two.isDirty)
+    }
+
     @Test func swappingMovesThemAndLeavesTheFocusAlone() throws {
         let scratch = try Scratch()
         let one = try scratch.open("one.md")
