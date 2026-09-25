@@ -6,6 +6,15 @@ All notable changes to Folio are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Diagrams can be zoomed and opened full window.** Hover a drawn diagram for controls
+  in its corner: zoom in and out in quarter steps, a level you can type a percentage
+  into, **Fit** to go back to the column, and an arrow that fills the window with it. The full-window view opens at whatever size uses the room
+  there is, zooms further, pans by dragging, and closes with Esc. A diagram has a size of
+  its own and does not reflow, so a wide flowchart arrived shrunk into the reading column
+  and unreadable.
+
 ### Fixed
 
 - **⌘F in the source editor now shows you what it found.** It counted the matches and
