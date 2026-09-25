@@ -37,6 +37,32 @@ struct DiagramControlsTests {
         }
     }
 
+    /// Quarter steps through the range anyone reads at. 100% to 150% in one press is too
+    /// coarse to settle on a size with.
+    @Test func zoomingStepsInQuarters() throws {
+        let html = page(diagrams: 1)
+        #expect(html.contains("[0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4]"))
+    }
+
+    /// The level is a field, not a caption: stepping is for nudging, typing is for going
+    /// somewhere. Anything unreadable puts the current level back.
+    @Test func theLevelCanBeTypedInto() {
+        let html = page(diagrams: 1)
+        #expect(html.contains("field.type = 'text'"))
+        #expect(html.contains("parseFloat(field.value.replace('%', '').trim())"))
+        #expect(html.contains("if (!state.set(typed / 100)) { field.value = label(state); }"))
+        // Out of range is clamped rather than refused.
+        #expect(html.contains("Math.min(Math.max(scale, smallest), largest)"))
+    }
+
+    /// The full-window view treats + and - as zoom, which would otherwise eat them as
+    /// they are typed into the level field. Its handler captures, so it has to look at
+    /// what the key was aimed at.
+    @Test func typingAPercentageIsNotTakenAsAShortcut() {
+        #expect(page(diagrams: 1)
+            .contains("if (event.target && event.target.className === 'diagram-zoom-level') { return; }"))
+    }
+
     /// Mermaid draws asynchronously, so there is no SVG to put controls on until it has
     /// finished. They are attached where the count is reported, which is that moment.
     @Test func theControlsGoOnWhenTheDiagramsHaveBeenDrawn() throws {

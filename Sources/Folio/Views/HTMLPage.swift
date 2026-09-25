@@ -171,8 +171,13 @@ enum HTMLPage {
     .diagram-controls button:hover { background: var(--table-stripe); }
     .diagram-controls button:disabled { opacity: .35; cursor: default; }
     .diagram-zoom-level {
-      font-size: 11px; color: var(--muted); padding: 5px 2px; min-width: 38px;
+      font: inherit; font-size: 11px; color: var(--muted); padding: 5px 2px; width: 46px;
       text-align: center; font-variant-numeric: tabular-nums;
+      background: none; border: 1px solid transparent; border-radius: 5px;
+    }
+    .diagram-zoom-level:hover { border-color: var(--border); }
+    .diagram-zoom-level:focus {
+      outline: none; color: var(--fg); border-color: var(--link); background: var(--bg);
     }
     .folio-fullscreen {
       position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column;
@@ -456,7 +461,11 @@ enum HTMLPage {
     /// to multiply.
     static let diagramControlsScript = """
     (function () {
-      var steps = [0.5, 0.75, 1, 1.5, 2, 3, 4];
+      // Quarter steps through the range anyone reads at, widening once the diagram is
+      // already bigger than the window and a step means less. A jump from 100% to 150%
+      // is too coarse to settle on a size with.
+      var steps = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4];
+      var smallest = steps[0], largest = steps[steps.length - 1];
 
       function naturalWidth(svg) {
         if (svg.viewBox && svg.viewBox.baseVal && svg.viewBox.baseVal.width) {
@@ -521,6 +530,14 @@ enum HTMLPage {
             this.apply();
           },
           fit: function () { this.value = this.resting(); this.apply(); },
+          /// Any scale, not only the ones on the ladder — this is what typing a
+          /// percentage arrives through.
+          set: function (scale) {
+            if (!isFinite(scale) || scale <= 0) { return false; }
+            this.value = Math.min(Math.max(scale, smallest), largest);
+            this.apply();
+            return true;
+          },
           atStart: function () { return this.value <= steps[0] + 0.001; },
           atEnd: function () { return this.value >= steps[steps.length - 1] - 0.001; },
           scale: function () { return this.value; }
@@ -528,6 +545,33 @@ enum HTMLPage {
       }
 
       function label(state) { return Math.round(state.scale() * 100) + '%'; }
+
+      /// The zoom level, as a field rather than a caption.
+      ///
+      /// Stepping is for nudging; typing is for going somewhere. Anything unreadable
+      /// puts the current level back rather than guessing at what was meant.
+      function levelField(state) {
+        var field = document.createElement('input');
+        field.type = 'text';
+        field.className = 'diagram-zoom-level';
+        field.setAttribute('aria-label', 'Zoom level');
+        field.title = 'Zoom level — type a percentage';
+        field.spellcheck = false;
+
+        function commit() {
+          var typed = parseFloat(field.value.replace('%', '').trim());
+          if (!state.set(typed / 100)) { field.value = label(state); }
+        }
+        field.addEventListener('keydown', function (event) {
+          if (event.key === 'Enter') { event.preventDefault(); commit(); field.blur(); }
+          if (event.key === 'Escape') { field.value = label(state); field.blur(); }
+          // Stepping while the caret is in the field, without the page also acting on it.
+          event.stopPropagation();
+        });
+        field.addEventListener('blur', commit);
+        field.addEventListener('focus', function () { field.select(); });
+        return field;
+      }
 
       function attach(container) {
         if (container.querySelector('.diagram-controls')) { return; }
@@ -549,14 +593,13 @@ enum HTMLPage {
         bar.className = 'diagram-controls';
 
         var out = button('−', 'Zoom out');
-        var level = document.createElement('span');
-        level.className = 'diagram-zoom-level';
+        var level = levelField(state);
         var into = button('+', 'Zoom in');
         var fit = button('Fit', 'Fit to the column');
         var full = button('↗', 'Fill the window');
 
         state.onChange = function () {
-          level.textContent = label(state);
+          level.value = label(state);
           out.disabled = state.atStart();
           into.disabled = state.atEnd();
           fit.disabled = state.scale() === 1;
@@ -587,14 +630,28 @@ enum HTMLPage {
 
         var overlay = document.createElement('div');
         overlay.className = 'folio-fullscreen';
+        var stage = document.createElement('div');
+        stage.className = 'folio-fullscreen-stage';
+        // Before the bar, because the level field is bound to the state and the state
+        // measures the stage to work out what filling the window means.
+        var state = controller(svg, null);
+        state.resting = function () {
+            var box = stage.getBoundingClientRect();
+            var width = naturalWidth(svg);
+            var height = (svg.viewBox && svg.viewBox.baseVal && svg.viewBox.baseVal.height)
+                ? svg.viewBox.baseVal.height : svg.getBoundingClientRect().height;
+            if (!width || !height) { return 1; }
+            var room = Math.min((box.width - 40) / width, (box.height - 40) / height);
+            return Math.max(smallest, Math.min(room, largest));
+        };
+
         var bar = document.createElement('div');
         bar.className = 'folio-fullscreen-bar';
         var title = document.createElement('span');
         title.className = 'folio-fullscreen-title';
         title.textContent = 'Esc to close';
         var out = button('−', 'Zoom out');
-        var level = document.createElement('span');
-        level.className = 'diagram-zoom-level';
+        var level = levelField(state);
         var into = button('+', 'Zoom in');
         var fit = button('Fit', 'Fit to the window');
         var close = button('✕', 'Close');
@@ -605,30 +662,15 @@ enum HTMLPage {
         bar.appendChild(fit);
         bar.appendChild(close);
 
-        var stage = document.createElement('div');
-        stage.className = 'folio-fullscreen-stage';
         stage.appendChild(svg);
         overlay.appendChild(bar);
         overlay.appendChild(stage);
         document.body.appendChild(overlay);
         overlay.classList.add('is-open');
 
-        var state = controller(svg, null);
-        // Fill the window: the size the diagram would be if it used the room there is,
-        // which is what someone asks for by opening this. Bounded so a tiny diagram is
-        // not blown up past the point where its lines go soft.
-        state.resting = function () {
-            var box = stage.getBoundingClientRect();
-            var width = naturalWidth(svg);
-            var height = (svg.viewBox && svg.viewBox.baseVal && svg.viewBox.baseVal.height)
-                ? svg.viewBox.baseVal.height : svg.getBoundingClientRect().height;
-            if (!width || !height) { return 1; }
-            var room = Math.min((box.width - 40) / width, (box.height - 40) / height);
-            return Math.max(0.5, Math.min(room, 4));
-        };
         state.value = state.resting();
         state.onChange = function () {
-          level.textContent = label(state);
+          level.value = label(state);
           out.disabled = state.atStart();
           into.disabled = state.atEnd();
         };
@@ -649,6 +691,9 @@ enum HTMLPage {
         }
         close.onclick = done;
         function onKey(event) {
+          // Typing a percentage is not a shortcut. Capture runs before the field's own
+          // handler, so stopping propagation there would be too late; this has to look.
+          if (event.target && event.target.className === 'diagram-zoom-level') { return; }
           if (event.key === 'Escape') { event.preventDefault(); done(); return; }
           if (event.key === '+' || event.key === '=') { state.zoom(1); }
           if (event.key === '-') { state.zoom(-1); }
