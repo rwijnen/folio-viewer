@@ -42,6 +42,7 @@ enum HTMLPage {
         scripts += "<script nonce=\"\(nonce)\">\(selectionScript)</script>"
         scripts += "<script nonce=\"\(nonce)\">\(annotationScript(annotated))</script>"
         if needsDiagrams {
+            scripts += "<script nonce=\"\(nonce)\">\(diagramControlsScript)</script>"
             scripts += mermaid.isEmpty
                 ? "<script nonce=\"\(nonce)\">\(missingMermaidScript)</script>"
                 : "<script nonce=\"\(nonce)\">\(diagramScript(isDark: isDark))</script>"
@@ -145,8 +146,50 @@ enum HTMLPage {
     .diagram {
       margin: 0 0 1.2em; padding: 14px; border: 1px solid var(--border);
       border-radius: 8px; background: var(--code-bg); overflow-x: auto;
+      position: relative;
     }
+    /* With controls, the scrolling moves to an inner element so the bar can stay put
+       while the diagram is panned under it, and the padding keeps the two apart. */
+    .diagram.has-controls { overflow: visible; padding-top: 42px; }
+    .diagram.has-controls .diagram-scroll { overflow: auto; }
     .diagram-rendered svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+    /* Zoomed past the width of the column, the diagram stops being centred — centring it
+       would push the left edge out of reach of the scrollbar. */
+    .diagram.is-zoomed .diagram-rendered svg { margin: 0; }
+    .diagram-controls {
+      position: absolute; top: 8px; right: 10px; z-index: 2; display: flex; gap: 1px;
+      padding: 2px; border-radius: 7px; border: 1px solid var(--border);
+      background: var(--bg); opacity: 0; transition: opacity .12s ease;
+    }
+    .diagram:hover .diagram-controls,
+    .diagram-controls:focus-within { opacity: 1; }
+    .diagram-controls button {
+      font: inherit; font-size: 12px; line-height: 1; color: var(--fg);
+      background: none; border: 0; border-radius: 5px; padding: 5px 7px;
+      cursor: pointer; min-width: 26px;
+    }
+    .diagram-controls button:hover { background: var(--table-stripe); }
+    .diagram-controls button:disabled { opacity: .35; cursor: default; }
+    .diagram-zoom-level {
+      font-size: 11px; color: var(--muted); padding: 5px 2px; min-width: 38px;
+      text-align: center; font-variant-numeric: tabular-nums;
+    }
+    .folio-fullscreen {
+      position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column;
+      background: var(--bg);
+    }
+    .folio-fullscreen-bar {
+      display: flex; align-items: center; gap: 1px; padding: 6px 10px;
+      border-bottom: 1px solid var(--border); background: var(--bg);
+    }
+    .folio-fullscreen-title {
+      font-size: 11px; color: var(--muted); margin-right: auto;
+    }
+    .folio-fullscreen-stage {
+      flex: 1; overflow: auto; padding: 16px; cursor: grab;
+    }
+    .folio-fullscreen-stage.is-panning { cursor: grabbing; }
+    .folio-fullscreen-stage svg { display: block; margin: 0 auto; }
     .diagram-source { display: none; }
     .diagram.diagram-error { background: var(--error-bg); border-color: var(--error-fg); }
     .diagram.diagram-error .diagram-source {
@@ -390,12 +433,260 @@ enum HTMLPage {
               if (stray) { stray.remove(); }
             }).finally(function () {
               pending -= 1;
-              if (!pending) { post({ type: 'diagrams', total: blocks.length, failed: failed }); }
+              if (!pending) {
+                if (window.folioAttachDiagramControls) { window.folioAttachDiagramControls(); }
+                post({ type: 'diagrams', total: blocks.length, failed: failed });
+              }
             });
           });
         })();
         """
     }
+
+    /// Zoom and full-window controls for a drawn diagram.
+    ///
+    /// A diagram is the one thing in a document that a reading column is too narrow for:
+    /// it has a size of its own and does not reflow, so a wide flowchart arrives shrunk
+    /// to fit and unreadable. These controls are per diagram rather than a setting,
+    /// because it is usually one diagram in a document that needs it.
+    ///
+    /// Zooming sets an explicit width on the SVG rather than transforming it: a transform
+    /// does not affect layout, so the container would not know the content had grown and
+    /// there would be nothing to scroll. Width does, and mermaid's viewBox gives the size
+    /// to multiply.
+    static let diagramControlsScript = """
+    (function () {
+      var steps = [0.5, 0.75, 1, 1.5, 2, 3, 4];
+
+      function naturalWidth(svg) {
+        if (svg.viewBox && svg.viewBox.baseVal && svg.viewBox.baseVal.width) {
+          return svg.viewBox.baseVal.width;
+        }
+        return svg.getBoundingClientRect().width || 600;
+      }
+
+      function setZoom(svg, scale) {
+        if (scale === 1) {
+          // Back to the stylesheet's own sizing rather than a width that happens to
+          // match it, so the diagram resizes with the window again.
+          svg.style.maxWidth = '';
+          svg.style.width = '';
+          svg.style.height = '';
+          return;
+        }
+        svg.style.maxWidth = 'none';
+        svg.style.width = (naturalWidth(svg) * scale) + 'px';
+        svg.style.height = 'auto';
+      }
+
+      function button(label, title) {
+        var element = document.createElement('button');
+        element.type = 'button';
+        element.textContent = label;
+        element.title = title;
+        element.setAttribute('aria-label', title);
+        return element;
+      }
+
+      /// One diagram's state, shared between its inline controls and the full-window view.
+      ///
+      /// Holds a scale rather than a position in `steps`, because the full-window view's
+      /// resting scale is whatever fills the window and is not one of them. The steps are
+      /// what + and − move between, from wherever the scale happens to be.
+      function controller(svg, container) {
+        return {
+          svg: svg,
+          value: 1,
+          /// What Fit returns to: the column's own sizing inline, and the window's size
+          /// in the full-window view, which is the whole point of going there.
+          resting: function () { return 1; },
+          apply: function () {
+            setZoom(svg, this.value);
+            if (container) { container.classList.toggle('is-zoomed', this.value > 1); }
+            if (this.scroller) { this.scroller.scrollLeft = 0; }
+            if (this.onChange) { this.onChange(this.value); }
+          },
+          zoom: function (by) {
+            var next = this.value;
+            if (by > 0) {
+              for (var i = 0; i < steps.length; i++) {
+                if (steps[i] > this.value + 0.001) { next = steps[i]; break; }
+              }
+            } else {
+              for (var j = steps.length - 1; j >= 0; j--) {
+                if (steps[j] < this.value - 0.001) { next = steps[j]; break; }
+              }
+            }
+            this.value = next;
+            this.apply();
+          },
+          fit: function () { this.value = this.resting(); this.apply(); },
+          atStart: function () { return this.value <= steps[0] + 0.001; },
+          atEnd: function () { return this.value >= steps[steps.length - 1] - 0.001; },
+          scale: function () { return this.value; }
+        };
+      }
+
+      function label(state) { return Math.round(state.scale() * 100) + '%'; }
+
+      function attach(container) {
+        if (container.querySelector('.diagram-controls')) { return; }
+        var holder = container.querySelector('.diagram-rendered');
+        var svg = holder ? holder.querySelector('svg') : null;
+        if (!svg) { return; }
+
+        // The bar is positioned against the container, so the container must not be the
+        // thing that scrolls — otherwise the bar slides away with the diagram.
+        var scroller = document.createElement('div');
+        scroller.className = 'diagram-scroll';
+        holder.parentNode.insertBefore(scroller, holder);
+        scroller.appendChild(holder);
+        container.classList.add('has-controls');
+
+        var state = controller(svg, container);
+        state.scroller = scroller;
+        var bar = document.createElement('div');
+        bar.className = 'diagram-controls';
+
+        var out = button('−', 'Zoom out');
+        var level = document.createElement('span');
+        level.className = 'diagram-zoom-level';
+        var into = button('+', 'Zoom in');
+        var fit = button('Fit', 'Fit to the column');
+        var full = button('↗', 'Fill the window');
+
+        state.onChange = function () {
+          level.textContent = label(state);
+          out.disabled = state.atStart();
+          into.disabled = state.atEnd();
+          fit.disabled = state.scale() === 1;
+        };
+        out.onclick = function () { state.zoom(-1); };
+        into.onclick = function () { state.zoom(1); };
+        fit.onclick = function () { state.fit(); };
+        full.onclick = function () { openFullscreen(state, holder); };
+
+        bar.appendChild(out);
+        bar.appendChild(level);
+        bar.appendChild(into);
+        bar.appendChild(fit);
+        bar.appendChild(full);
+        container.insertBefore(bar, container.firstChild);
+        state.apply();
+      }
+
+      function openFullscreen(inlineState, holder) {
+        var svg = inlineState.svg;
+        // Moved rather than copied, so whatever mermaid bound to it still works and
+        // there is only ever one of it. Put back exactly where it came from on close.
+        var placeholder = document.createComment('folio-diagram');
+        svg.parentNode.insertBefore(placeholder, svg);
+        var previousWidth = svg.style.width;
+        var previousMax = svg.style.maxWidth;
+        var previousHeight = svg.style.height;
+
+        var overlay = document.createElement('div');
+        overlay.className = 'folio-fullscreen';
+        var bar = document.createElement('div');
+        bar.className = 'folio-fullscreen-bar';
+        var title = document.createElement('span');
+        title.className = 'folio-fullscreen-title';
+        title.textContent = 'Esc to close';
+        var out = button('−', 'Zoom out');
+        var level = document.createElement('span');
+        level.className = 'diagram-zoom-level';
+        var into = button('+', 'Zoom in');
+        var fit = button('Fit', 'Fit to the window');
+        var close = button('✕', 'Close');
+        bar.appendChild(title);
+        bar.appendChild(out);
+        bar.appendChild(level);
+        bar.appendChild(into);
+        bar.appendChild(fit);
+        bar.appendChild(close);
+
+        var stage = document.createElement('div');
+        stage.className = 'folio-fullscreen-stage';
+        stage.appendChild(svg);
+        overlay.appendChild(bar);
+        overlay.appendChild(stage);
+        document.body.appendChild(overlay);
+        overlay.classList.add('is-open');
+
+        var state = controller(svg, null);
+        // Fill the window: the size the diagram would be if it used the room there is,
+        // which is what someone asks for by opening this. Bounded so a tiny diagram is
+        // not blown up past the point where its lines go soft.
+        state.resting = function () {
+            var box = stage.getBoundingClientRect();
+            var width = naturalWidth(svg);
+            var height = (svg.viewBox && svg.viewBox.baseVal && svg.viewBox.baseVal.height)
+                ? svg.viewBox.baseVal.height : svg.getBoundingClientRect().height;
+            if (!width || !height) { return 1; }
+            var room = Math.min((box.width - 40) / width, (box.height - 40) / height);
+            return Math.max(0.5, Math.min(room, 4));
+        };
+        state.value = state.resting();
+        state.onChange = function () {
+          level.textContent = label(state);
+          out.disabled = state.atStart();
+          into.disabled = state.atEnd();
+        };
+        out.onclick = function () { state.zoom(-1); };
+        into.onclick = function () { state.zoom(1); };
+        fit.onclick = function () { state.fit(); };
+        state.apply();
+
+        function done() {
+          document.removeEventListener('keydown', onKey, true);
+          // Back where it was, with the sizing the page had given it.
+          placeholder.parentNode.insertBefore(svg, placeholder);
+          placeholder.remove();
+          svg.style.width = previousWidth;
+          svg.style.maxWidth = previousMax;
+          svg.style.height = previousHeight;
+          overlay.remove();
+        }
+        close.onclick = done;
+        function onKey(event) {
+          if (event.key === 'Escape') { event.preventDefault(); done(); return; }
+          if (event.key === '+' || event.key === '=') { state.zoom(1); }
+          if (event.key === '-') { state.zoom(-1); }
+          if (event.key === '0') { state.fit(); }
+        }
+        // Capturing, so Escape closes this before anything else in the page sees it.
+        document.addEventListener('keydown', onKey, true);
+
+        // Drag to pan, which is how anyone moves around something larger than the window.
+        var panning = false, fromX = 0, fromY = 0, leftAt = 0, topAt = 0;
+        stage.addEventListener('mousedown', function (event) {
+          if (event.button !== 0) { return; }
+          panning = true;
+          fromX = event.clientX; fromY = event.clientY;
+          leftAt = stage.scrollLeft; topAt = stage.scrollTop;
+          stage.classList.add('is-panning');
+          event.preventDefault();
+        });
+        document.addEventListener('mousemove', function (event) {
+          if (!panning) { return; }
+          stage.scrollLeft = leftAt - (event.clientX - fromX);
+          stage.scrollTop = topAt - (event.clientY - fromY);
+        });
+        document.addEventListener('mouseup', function () {
+          panning = false;
+          stage.classList.remove('is-panning');
+        });
+      }
+
+      window.folioAttachDiagramControls = function () {
+        var containers = document.querySelectorAll('.diagram');
+        for (var i = 0; i < containers.length; i++) {
+          if (!containers[i].classList.contains('diagram-error')) { attach(containers[i]); }
+        }
+        return containers.length;
+      };
+    })();
+    """
 
     /// Shown when the vendored mermaid bundle is missing from the app bundle.
     private static let missingMermaidScript = """
