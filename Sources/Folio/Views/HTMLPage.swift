@@ -159,8 +159,11 @@ enum HTMLPage {
     .diagram-controls {
       position: absolute; top: 8px; right: 10px; z-index: 2; display: flex; gap: 1px;
       padding: 2px; border-radius: 7px; border: 1px solid var(--border);
-      background: var(--bg); opacity: 0; transition: opacity .12s ease;
+      background: var(--bg); opacity: .5; transition: opacity .12s ease;
     }
+    /* Visible at rest rather than only on hover. Controls that appear when the pointer
+       happens to be over the right element are controls most people never find, and a
+       diagram is exactly the thing someone looks at without moving the mouse onto. */
     .diagram:hover .diagram-controls,
     .diagram-controls:focus-within { opacity: 1; }
     .diagram-controls button {

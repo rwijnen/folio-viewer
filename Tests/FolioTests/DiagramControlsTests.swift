@@ -101,6 +101,15 @@ struct DiagramControlsTests {
         #expect(html.contains(".diagram-controls"))
         #expect(html.contains(".folio-fullscreen"))
         // Colours come from the palette, so dark mode needs nothing of its own.
-        #expect(html.contains("background: var(--bg); opacity: 0"))
+        #expect(html.contains("background: var(--bg); opacity: .5"))
+    }
+
+    /// Controls that appear only when the pointer is over the right element are controls
+    /// most people never find — and a diagram is exactly the thing someone looks at
+    /// without moving the mouse onto it.
+    @Test func theControlsAreVisibleWithoutHovering() {
+        let html = page(diagrams: 1)
+        #expect(html.contains("opacity: .5"))
+        #expect(!html.contains(".diagram-controls {\n      position: absolute; top: 8px; right: 10px; z-index: 2; display: flex; gap: 1px;\n      padding: 2px; border-radius: 7px; border: 1px solid var(--border);\n      background: var(--bg); opacity: 0;"))
     }
 }
