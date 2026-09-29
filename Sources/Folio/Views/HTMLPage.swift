@@ -152,6 +152,11 @@ enum HTMLPage {
        while the diagram is panned under it, and the padding keeps the two apart. */
     .diagram.has-controls { overflow: visible; padding-top: 42px; }
     .diagram.has-controls .diagram-scroll { overflow: auto; }
+    /* Zoomed in, the diagram becomes a window onto itself rather than growing until it
+       pushes the rest of the document off the screen. */
+    .diagram.is-zoomed .diagram-scroll { max-height: 70vh; }
+    .diagram-scroll.can-pan { cursor: grab; }
+    .diagram-scroll.is-panning { cursor: grabbing; }
     .diagram-rendered svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
     /* Zoomed past the width of the column, the diagram stops being centred — centring it
        would push the left edge out of reach of the scrollbar. */
@@ -516,6 +521,14 @@ enum HTMLPage {
             setZoom(svg, this.value);
             if (container) { container.classList.toggle('is-zoomed', this.value > 1); }
             if (this.scroller) { this.scroller.scrollLeft = 0; }
+            // After the layout has caught up with the new width, or it is measured
+            // against the size the diagram was a moment ago.
+            if (this.scroller && this.pan) {
+              var scroller = this.scroller, pan = this.pan;
+              requestAnimationFrame(function () {
+                scroller.classList.toggle('can-pan', pan.overflows());
+              });
+            }
             if (this.onChange) { this.onChange(this.value); }
           },
           zoom: function (by) {
@@ -548,6 +561,40 @@ enum HTMLPage {
       }
 
       function label(state) { return Math.round(state.scale() * 100) + '%'; }
+
+      /// Drag to move around a diagram larger than the space it is in.
+      ///
+      /// Only while there is somewhere to go. Swallowing the drag when everything is
+      /// already visible would take away selecting the labels, which is an ordinary
+      /// thing to want to do with an ER diagram.
+      function enablePanning(scroller) {
+        var panning = false, fromX = 0, fromY = 0, leftAt = 0, topAt = 0;
+
+        function overflows() {
+          return scroller.scrollWidth > scroller.clientWidth + 1
+              || scroller.scrollHeight > scroller.clientHeight + 1;
+        }
+
+        scroller.addEventListener('mousedown', function (event) {
+          if (event.button !== 0 || !overflows()) { return; }
+          panning = true;
+          fromX = event.clientX; fromY = event.clientY;
+          leftAt = scroller.scrollLeft; topAt = scroller.scrollTop;
+          scroller.classList.add('is-panning');
+          event.preventDefault();
+        });
+        document.addEventListener('mousemove', function (event) {
+          if (!panning) { return; }
+          scroller.scrollLeft = leftAt - (event.clientX - fromX);
+          scroller.scrollTop = topAt - (event.clientY - fromY);
+        });
+        document.addEventListener('mouseup', function () {
+          if (!panning) { return; }
+          panning = false;
+          scroller.classList.remove('is-panning');
+        });
+        return { overflows: overflows };
+      }
 
       /// The zoom level, as a field rather than a caption.
       ///
@@ -590,8 +637,10 @@ enum HTMLPage {
         scroller.appendChild(holder);
         container.classList.add('has-controls');
 
+        var pan = enablePanning(scroller);
         var state = controller(svg, container);
         state.scroller = scroller;
+        state.pan = pan;
         var bar = document.createElement('div');
         bar.className = 'diagram-controls';
 
@@ -705,25 +754,7 @@ enum HTMLPage {
         // Capturing, so Escape closes this before anything else in the page sees it.
         document.addEventListener('keydown', onKey, true);
 
-        // Drag to pan, which is how anyone moves around something larger than the window.
-        var panning = false, fromX = 0, fromY = 0, leftAt = 0, topAt = 0;
-        stage.addEventListener('mousedown', function (event) {
-          if (event.button !== 0) { return; }
-          panning = true;
-          fromX = event.clientX; fromY = event.clientY;
-          leftAt = stage.scrollLeft; topAt = stage.scrollTop;
-          stage.classList.add('is-panning');
-          event.preventDefault();
-        });
-        document.addEventListener('mousemove', function (event) {
-          if (!panning) { return; }
-          stage.scrollLeft = leftAt - (event.clientX - fromX);
-          stage.scrollTop = topAt - (event.clientY - fromY);
-        });
-        document.addEventListener('mouseup', function () {
-          panning = false;
-          stage.classList.remove('is-panning');
-        });
+        enablePanning(stage);
       }
 
       window.folioAttachDiagramControls = function () {

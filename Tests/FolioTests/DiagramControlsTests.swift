@@ -96,6 +96,31 @@ struct DiagramControlsTests {
         #expect(!html.contains("transform: scale("))
     }
 
+    /// A zoomed diagram is bigger than the space it is in, and reaching for a scrollbar
+    /// to move around it is not how anyone expects to. The full-window view had this from
+    /// the start; the one in the page did not.
+    @Test func aZoomedDiagramCanBeDragged() {
+        let html = page(diagrams: 1)
+        #expect(html.contains("function enablePanning(scroller)"))
+        // Both views, from the same implementation.
+        #expect(html.contains("enablePanning(stage)"))
+        #expect(html.contains("enablePanning(scroller)"))
+    }
+
+    /// Only while there is somewhere to go. Swallowing the drag when the whole diagram is
+    /// already visible would take away selecting its labels.
+    @Test func draggingIsIgnoredWhenThereIsNothingToPan() {
+        let html = page(diagrams: 1)
+        #expect(html.contains("if (event.button !== 0 || !overflows()) { return; }"))
+        #expect(html.contains("scroller.scrollWidth > scroller.clientWidth + 1"))
+    }
+
+    /// Zoomed in, the diagram becomes a window onto itself rather than growing until it
+    /// pushes the rest of the document off the screen.
+    @Test func aZoomedDiagramDoesNotTakeOverThePage() {
+        #expect(page(diagrams: 1).contains(".diagram.is-zoomed .diagram-scroll { max-height: 70vh; }"))
+    }
+
     @Test func theControlsAreStyledForBothThemes() {
         let html = page(diagrams: 1)
         #expect(html.contains(".diagram-controls"))
