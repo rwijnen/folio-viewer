@@ -92,7 +92,7 @@ struct DiagramControlsTests {
     /// the container would not know the diagram had grown and nothing would scroll.
     @Test func zoomingResizesRatherThanTransforms() {
         let html = page(diagrams: 1)
-        #expect(html.contains("svg.style.width = (naturalWidth(svg) * scale)"))
+        #expect(html.contains("svg.style.width = (base.width * scale) + 'px'"))
         #expect(!html.contains("transform: scale("))
     }
 
@@ -119,6 +119,25 @@ struct DiagramControlsTests {
     /// pushes the rest of the document off the screen.
     @Test func aZoomedDiagramDoesNotTakeOverThePage() {
         #expect(page(diagrams: 1).contains(".diagram.is-zoomed .diagram-scroll { max-height: 70vh; }"))
+    }
+
+    /// 105% has to be 105% of what is on screen. A wide diagram is shrunk to fit the
+    /// column, so counting from the viewBox made one press a near-tripling.
+    @Test func thePercentageCountsFromTheDrawnSize() {
+        let html = page(diagrams: 1)
+        #expect(html.contains("function measureBase(svg, original)"))
+        #expect(html.contains("svg.style.width = (base.width * scale) + 'px'"))
+        // The intrinsic size is no longer what anything scales from.
+        #expect(!html.contains("naturalWidth"))
+    }
+
+    /// mermaid writes its own max-width onto the SVG. Clearing it is not the same as
+    /// leaving it alone, so Fit used to return to something subtly different.
+    @Test func fitRestoresTheStylesTheDiagramArrivedWith() {
+        let html = page(diagrams: 1)
+        #expect(html.contains("function originalStyles(svg)"))
+        #expect(html.contains("restore(svg, original)"))
+        #expect(!html.contains("svg.style.maxWidth = '';"))
     }
 
     @Test func theControlsAreStyledForBothThemes() {

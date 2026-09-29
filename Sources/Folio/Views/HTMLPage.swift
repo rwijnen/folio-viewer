@@ -475,24 +475,43 @@ enum HTMLPage {
       var steps = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4];
       var smallest = steps[0], largest = steps[steps.length - 1];
 
-      function naturalWidth(svg) {
-        if (svg.viewBox && svg.viewBox.baseVal && svg.viewBox.baseVal.width) {
-          return svg.viewBox.baseVal.width;
-        }
-        return svg.getBoundingClientRect().width || 600;
+      /// The inline styles the diagram arrived with.
+      ///
+      /// Not empty strings: mermaid writes its own `max-width` onto the SVG, and
+      /// clearing that is not the same as leaving it alone. Going back to 100% has to
+      /// put back what was there, or Fit quietly changes the diagram it restores.
+      function originalStyles(svg) {
+        return { width: svg.style.width, maxWidth: svg.style.maxWidth,
+                 height: svg.style.height };
       }
 
-      function setZoom(svg, scale) {
-        if (scale === 1) {
-          // Back to the stylesheet's own sizing rather than a width that happens to
-          // match it, so the diagram resizes with the window again.
-          svg.style.maxWidth = '';
-          svg.style.width = '';
-          svg.style.height = '';
+      function restore(svg, original) {
+        svg.style.width = original.width;
+        svg.style.maxWidth = original.maxWidth;
+        svg.style.height = original.height;
+      }
+
+      /// The size the diagram is on screen when nothing has been done to it.
+      ///
+      /// This, not the viewBox, is what a percentage counts from. A wide diagram is
+      /// shrunk to fit the column by `max-width`, so its drawn width can be a third of
+      /// its intrinsic one — counting from the viewBox made 105% a near-tripling, which
+      /// is not what anyone means by five per cent.
+      function measureBase(svg, original) {
+        var held = originalStyles(svg);
+        restore(svg, original);
+        var box = svg.getBoundingClientRect();
+        restore(svg, held);
+        return { width: box.width, height: box.height };
+      }
+
+      function setZoom(svg, scale, original, base) {
+        if (scale === 1 || !base || !base.width) {
+          restore(svg, original);
           return;
         }
         svg.style.maxWidth = 'none';
-        svg.style.width = (naturalWidth(svg) * scale) + 'px';
+        svg.style.width = (base.width * scale) + 'px';
         svg.style.height = 'auto';
       }
 
@@ -510,15 +529,26 @@ enum HTMLPage {
       /// Holds a scale rather than a position in `steps`, because the full-window view's
       /// resting scale is whatever fills the window and is not one of them. The steps are
       /// what + and − move between, from wherever the scale happens to be.
-      function controller(svg, container) {
+      function controller(svg, container, original) {
+        var base = null;
         return {
           svg: svg,
           value: 1,
+          original: original,
+          /// Measured once, the first time it is needed, with the diagram in the state it
+          /// arrived in. A document that is not on screen measures zero, so that is not
+          /// kept and the next call tries again.
+          base: function () {
+            if (base && base.width) { return base; }
+            var measured = measureBase(svg, original);
+            if (measured.width) { base = measured; }
+            return measured;
+          },
           /// What Fit returns to: the column's own sizing inline, and the window's size
           /// in the full-window view, which is the whole point of going there.
           resting: function () { return 1; },
           apply: function () {
-            setZoom(svg, this.value);
+            setZoom(svg, this.value, original, this.base());
             if (container) { container.classList.toggle('is-zoomed', this.value > 1); }
             if (this.scroller) { this.scroller.scrollLeft = 0; }
             // After the layout has caught up with the new width, or it is measured
@@ -638,7 +668,7 @@ enum HTMLPage {
         container.classList.add('has-controls');
 
         var pan = enablePanning(scroller);
-        var state = controller(svg, container);
+        var state = controller(svg, container, originalStyles(svg));
         state.scroller = scroller;
         state.pan = pan;
         var bar = document.createElement('div');
@@ -686,14 +716,14 @@ enum HTMLPage {
         stage.className = 'folio-fullscreen-stage';
         // Before the bar, because the level field is bound to the state and the state
         // measures the stage to work out what filling the window means.
-        var state = controller(svg, null);
+        // The styles it arrived with, not the ones an inline zoom left on it.
+        var state = controller(svg, null, inlineState.original);
         state.resting = function () {
             var box = stage.getBoundingClientRect();
-            var width = naturalWidth(svg);
-            var height = (svg.viewBox && svg.viewBox.baseVal && svg.viewBox.baseVal.height)
-                ? svg.viewBox.baseVal.height : svg.getBoundingClientRect().height;
-            if (!width || !height) { return 1; }
-            var room = Math.min((box.width - 40) / width, (box.height - 40) / height);
+            var size = this.base();
+            if (!size.width || !size.height) { return 1; }
+            var room = Math.min((box.width - 40) / size.width,
+                                (box.height - 40) / size.height);
             return Math.max(smallest, Math.min(room, largest));
         };
 
