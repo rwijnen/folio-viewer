@@ -267,7 +267,13 @@ the old answer, which produced a convincing false negative before the retries ex
 1. Update `CHANGELOG.md` — move items out of *Unreleased* into the new version.
 2. Bump `CFBundleShortVersionString` and `CFBundleVersion` in `Resources/Info.plist`.
 3. `swift test && ./build.sh` one more time.
-4. Tag and push: `git tag -a v2.1.0 -m "Folio 2.1.0" && git push origin v2.1.0`.
+4. Merge it. **Landing a version bump on `main` publishes the release** — the workflow
+   reads the version out of the bundle, sees there is no tag for it yet, and builds,
+   tags and publishes. Anything else on `main` publishes nothing, so a README fix does
+   not become a version.
+
+Tagging by hand still works — `git tag -a v2.1.0 -m "Folio 2.1.0" && git push origin
+v2.1.0` — and is the way to publish a version whose bump has already landed.
 
 Pushing a `v*` tag is the only thing that publishes a release; merging to `main` runs CI
 and stops there. The workflow refuses to publish unless the tag matches

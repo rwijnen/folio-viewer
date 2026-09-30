@@ -6,16 +6,34 @@ All notable changes to Folio are recorded here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- **A release is published by landing a version bump on `main`.** The workflow reads the
+  version out of the bundle rather than being told by a tag: if there is no release for
+  it yet, it builds, tags and publishes. Anything else on `main` publishes nothing, so a
+  README fix does not become a version. Tagging by hand still works.
+
+## [2.3.0] — 2026-09-30
+
 ### Added
 
-- **Diagrams can be zoomed and opened full window.** Hover a drawn diagram for controls
-  in its corner: zoom in and out in quarter steps, a level you can type a percentage
-  into, **Fit** to go back to the column, and an arrow that fills the window with it.
-  A zoomed diagram is dragged around with the mouse, in the page as well as full window,
-  and becomes a window onto itself rather than pushing the rest of the document down. The full-window view opens at whatever size uses the room
-  there is, zooms further, pans by dragging, and closes with Esc. A diagram has a size of
-  its own and does not reflow, so a wide flowchart arrived shrunk into the reading column
-  and unreadable.
+- **Write with the preview beside you.** ⌘3, or **Both** in the header switch, puts the
+  Markdown source on the left and the page it makes on the right. The preview follows
+  what you type, catching up a moment after you stop, and nothing is written to disk to
+  make it happen. It is one document, not a split window — the same tab drawn twice, so
+  it keeps one set of unsaved edits and one git status.
+
+- **The two halves scroll together.** Move either one and the other follows, matched by
+  the line of source rather than by how far down the window is, so they stay level
+  through a long code fence or a drawn diagram. Clicking a heading in the outline moves
+  both halves.
+
+- **Diagrams can be zoomed and opened full window.** A diagram has a size of its own and
+  does not reflow, so a wide flowchart arrived shrunk into the reading column and
+  unreadable. Hover one for controls in its corner: zoom in quarter steps, a level you
+  can type a percentage into, **Fit** to go back to the column, and an arrow that fills
+  the window. A zoomed diagram is dragged around with the mouse, in the page as well as
+  full window, and becomes a window onto itself rather than pushing the document down.
 
 ### Fixed
 
@@ -23,19 +41,6 @@ All notable changes to Folio are recorded here. The format follows
   highlighted none of them, so the count was all you got. Every hit is now marked, the
   current one is selected and scrolled to, and the count is taken from the text in the
   editor rather than from the last parse — which was stale as soon as you typed.
-
-### Added
-
-- **The two halves scroll together.** Move either one and the other follows, matched by
-  the line of source rather than by how far down the window is, so they stay level
-  through a long code fence or a drawn diagram.
-
-- **Write with the preview beside you.** ⌘3, or **Both** in the header switch, puts the
-  Markdown source on the left and the page it makes on the right. The preview follows
-  what you type, catching up a moment after you stop, and nothing is written to disk to
-  make it happen. Clicking a heading in the outline moves both halves. It is one
-  document, not a split window — the same tab drawn twice, so it keeps one set of unsaved
-  edits and one git status.
 
 ## [2.2.0] — 2026-09-22
 
@@ -339,7 +344,8 @@ in one window with tabs, without ever writing to your files or touching the netw
   asking Launch Services which app would open a probe file.
 - 109 tests over the model, tab and scroll layers, run with Swift Testing.
 
-[Unreleased]: https://github.com/rwijnen/folio-viewer/compare/v2.2.0...HEAD
+[Unreleased]: https://github.com/rwijnen/folio-viewer/compare/v2.3.0...HEAD
+[2.3.0]: https://github.com/rwijnen/folio-viewer/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/rwijnen/folio-viewer/compare/v2.1.1...v2.2.0
 [2.1.1]: https://github.com/rwijnen/folio-viewer/compare/v2.1.0...v2.1.1
 [2.1.0]: https://github.com/rwijnen/folio-viewer/compare/v2.0.0...v2.1.0
