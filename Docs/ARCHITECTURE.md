@@ -181,6 +181,14 @@ visible line into a heading through `OutlineLayout.heading(atOrAbove:)`. Either 
 lands in `DocumentTab.visibleAnchor`, which marks the row and scrolls the sidebar the
 least it can to keep it in sight.
 
+A drawn diagram gets zoom and full-window controls, attached by `diagramControlsScript`
+once mermaid reports that every diagram has settled — there is no SVG to put them on
+before that. Zooming sets an explicit width on the SVG rather than transforming it: a
+transform does not affect layout, so the container would not know the diagram had grown
+and there would be nothing to scroll. The full-window view moves the SVG rather than
+copying it, so whatever mermaid bound to it still works, and puts it back where it came
+from on close.
+
 **`OutlineLayout`** nests headings by their level relative to their neighbours rather than
 by the number of `#`, so a document that skips levels or starts at `H2` still forms a
 sensible tree. The depth it yields is what the sidebar indents by and what "show two

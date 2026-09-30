@@ -95,7 +95,7 @@ someone else's work. **Diffs and other text files stay read-only.**
 |---|---|
 | Rendered / Source / Both | ⌘1, ⌘2 and ⌘3, or the toolbar switch. **Both** writes with the preview beside you: source left, rendered right, the preview following your typing |
 | Markdown support | ATX and setext headings, nested ordered/unordered/task lists, pipe tables with alignment, blockquotes, fenced and indented code, thematic breaks, reference links, images, autolinks, emphasis, strikethrough, inline code, hard breaks |
-| Diagrams | Every ` ```mermaid ` fence is drawn by mermaid 11, bundled in the app. One that fails to parse shows mermaid's error next to its own source instead of vanishing |
+| Diagrams | Every ` ```mermaid ` fence is drawn by mermaid 11, bundled in the app. **Zoom a diagram or fill the window with it** — hover for the controls, Esc to come back.  One that fails to parse shows mermaid's error next to its own source instead of vanishing |
 | Code fences | Highlighted by the same lexer the diff panels use, across ~30 languages |
 | Outline | Sidebar built from the headings; click to jump, in either mode. **Follows what you are reading** — the section you are in is marked and scrolled into view. **Foldable section by section** — collapse an `H1` and everything under it goes with it, or fold the whole document to one, two or three levels so a long file fits on one screen. ⌥-click a triangle for the whole subtree |
 | Images | Local ones inlined as `data:` URIs; remote ones reported, never fetched |
