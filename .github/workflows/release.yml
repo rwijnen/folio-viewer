@@ -1,7 +1,11 @@
 name: Release
 
+# A release follows the version in the bundle, not a tag typed by hand. Landing a
+# version bump on main publishes it; everything else on main publishes nothing, so a
+# README fix does not become a version. Tag pushes still work for cutting one by hand.
 on:
   push:
+    branches: [main]
     tags: ["v*"]
   workflow_dispatch:
 
@@ -14,51 +18,77 @@ jobs:
     runs-on: macos-15
 
     steps:
-      # Pinned by commit, with the version beside it. A floating major tag is
-      # what broke this workflow: `action-gh-release@v2` declares node20, the
-      # runners stopped providing it, and the forced move to node24 made the
-      # asset upload fail — on a tag push, which is the one run that matters
-      # and the one nobody sees until they go looking for the zip.
+      # Pinned by commit, with the version beside it. A floating major tag is what broke
+      # this workflow once: `action-gh-release@v2` declares node20, the runners stopped
+      # providing it, and the forced move to node24 made the asset upload fail — on a
+      # tag push, the one run nobody sees until they go looking for the zip.
+      #
+      # The whole history, because whether this version has already been released is the
+      # question this job exists to answer and a shallow clone has no tags to answer it.
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          fetch-depth: 0
 
-      # A tag is the only thing that publishes a release, and nothing else checks that
-      # the bundle agrees with it. Without this, pushing v1.2.0 over a stale Info.plist
-      # ships an app that reports 1.1.0 and nobody notices until someone asks a user
-      # which version they are running.
-      - name: The tag must match the version in the bundle
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Work out whether there is a release to make
+        id: decide
         run: |
-          tagged="${GITHUB_REF_NAME#v}"
           bundled=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" \
             Resources/Info.plist)
-          echo "tag=$tagged  Info.plist=$bundled"
-          if [[ "$tagged" != "$bundled" ]]; then
-            echo "::error::Tag $GITHUB_REF_NAME does not match Info.plist ($bundled). Bump Resources/Info.plist, or retag."
-            exit 1
+          echo "version=$bundled" >> "$GITHUB_OUTPUT"
+
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            # Cut by hand. Nothing else checks that the bundle agrees with the tag, and
+            # without this, pushing v1.2.0 over a stale Info.plist ships an app that
+            # reports 1.1.0 — noticed only when someone asks a user what they are running.
+            tagged="${GITHUB_REF_NAME#v}"
+            echo "tag=$tagged  Info.plist=$bundled"
+            if [[ "$tagged" != "$bundled" ]]; then
+              echo "::error::Tag $GITHUB_REF_NAME does not match Info.plist ($bundled). Bump Resources/Info.plist, or retag."
+              exit 1
+            fi
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # On main: publish only a version that has not been published before, so the
+          # bump is what ships a release and everything else lands quietly.
+          if git rev-parse --verify --quiet "refs/tags/v$bundled" > /dev/null; then
+            echo "v$bundled is already released. Nothing to publish."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Info.plist says $bundled and there is no v$bundled yet — publishing."
+            echo "publish=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: The changelog must mention this version
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: steps.decide.outputs.publish == 'true'
         run: |
-          if ! grep -q "^## \[${GITHUB_REF_NAME#v}\]" CHANGELOG.md; then
-            echo "::error::CHANGELOG.md has no heading for ${GITHUB_REF_NAME#v}."
+          if ! grep -q "^## \[${{ steps.decide.outputs.version }}\]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no heading for ${{ steps.decide.outputs.version }}."
             exit 1
           fi
 
       - name: Build the app
+        if: steps.decide.outputs.publish == 'true'
         run: ./build.sh
 
       - name: Test before publishing
+        if: steps.decide.outputs.publish == 'true'
         run: swift test
 
       - name: Package
+        if: steps.decide.outputs.publish == 'true'
         run: |
           ditto -c -k --keepParent build/Folio.app Folio.app.zip
           shasum -a 256 Folio.app.zip | tee Folio.app.zip.sha256
 
       - name: Publish the release
+        if: steps.decide.outputs.publish == 'true'
         uses: softprops/action-gh-release@e598afbe1493e6b1bafb1f389cabb956eab91231  # v3.0.3
         with:
+          # Named rather than taken from the ref, since on main there is no tag yet —
+          # the action creates it at this commit.
+          tag_name: v${{ steps.decide.outputs.version }}
           files: |
             Folio.app.zip
             Folio.app.zip.sha256
