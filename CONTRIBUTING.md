@@ -275,10 +275,10 @@ the old answer, which produced a convincing false negative before the retries ex
 Tagging by hand still works — `git tag -a v2.1.0 -m "Folio 2.1.0" && git push origin
 v2.1.0` — and is the way to publish a version whose bump has already landed.
 
-Pushing a `v*` tag is the only thing that publishes a release; merging to `main` runs CI
-and stops there. The workflow refuses to publish unless the tag matches
-`CFBundleShortVersionString` and `CHANGELOG.md` has a heading for it, so steps 1 and 2 are
-checked rather than trusted. Actions are pinned by commit rather than by a major tag: a
+Merging to `main` without a bump runs CI and the Release workflow, which sees the version
+is already tagged and stops before building. The workflow refuses to publish unless
+`CHANGELOG.md` has a heading for the version (and, for a hand-pushed tag, unless the tag
+matches `CFBundleShortVersionString`), so steps 1 and 2 are checked rather than trusted. Actions are pinned by commit rather than by a major tag: a
 floating tag moving is not visible in any diff, and the run it breaks is the tag push,
 which nobody watches. It then builds, runs the tests, and attaches a zip plus its
 SHA-256. The artifact is ad-hoc signed and not notarised, and the release notes say so.
