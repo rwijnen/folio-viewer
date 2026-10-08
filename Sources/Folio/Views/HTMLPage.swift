@@ -75,6 +75,9 @@ enum HTMLPage {
       --tk-string: #0a3069; --tk-number: #0550ae; --tk-comment: #6e7781;
       --tk-annotation: #8250df; --error-bg: #fff1e5; --error-fg: #9a3412;
       --annotated: #fff4e5; --annotated-edge: #e8a33d;
+      --fm-tag-bg: #ddf4ff; --fm-neutral-bg: #eaeef2; --fm-info-bg: #ddf4ff;
+      --fm-good: #1a7f37; --fm-good-bg: #dafbe1; --fm-warn: #9a6700; --fm-warn-bg: #fff8c5;
+      --fm-bad: #cf222e; --fm-bad-bg: #ffebe9;
     }
     html[data-theme="dark"] {
       --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --border: #3d444d;
@@ -84,6 +87,9 @@ enum HTMLPage {
       --annotated: rgba(232,163,61,.16); --annotated-edge: #b1760f;
       --tk-string: #a5d6ff; --tk-number: #79c0ff; --tk-comment: #8b949e;
       --tk-annotation: #d2a8ff; --error-bg: #3b2300; --error-fg: #ffb77c;
+      --fm-tag-bg: rgba(56,139,253,.15); --fm-neutral-bg: #262c36; --fm-info-bg: rgba(56,139,253,.15);
+      --fm-good: #3fb950; --fm-good-bg: rgba(46,160,67,.15); --fm-warn: #d29922;
+      --fm-warn-bg: rgba(187,128,9,.15); --fm-bad: #f85149; --fm-bad-bg: rgba(248,81,73,.15);
     }
     * { box-sizing: border-box; }
     body {
@@ -141,6 +147,61 @@ enum HTMLPage {
     th { background: var(--table-stripe); font-weight: 600; }
     tbody tr:nth-child(2n) { background: var(--table-stripe); }
     img { max-width: 100%; border-radius: 6px; }
+    /* Frontmatter: a properties card instead of the run-on paragraph that YAML between
+       `---` fences would otherwise render as. Collapsible, open by default. */
+    details.frontmatter {
+      margin: 0 0 1.6em; border: 1px solid var(--border); border-radius: 10px;
+      background: var(--code-bg); font-size: .92em;
+    }
+    details.frontmatter > summary {
+      display: flex; align-items: center; gap: 8px; padding: 8px 14px;
+      cursor: pointer; user-select: none; color: var(--muted);
+      font-size: .82em; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+    }
+    details.frontmatter[open] > summary { border-bottom: 1px solid var(--border); }
+    details.frontmatter > summary::marker { color: var(--muted); }
+    .fm-count {
+      font-weight: 500; letter-spacing: 0; padding: 0 7px; border-radius: 9px;
+      border: 1px solid var(--border); font-variant-numeric: tabular-nums;
+    }
+    dl.fm-grid {
+      display: grid; grid-template-columns: minmax(96px, max-content) 1fr;
+      column-gap: 18px; margin: 0; padding: 6px 14px;
+    }
+    dl.fm-grid dl.fm-grid { padding: 0; border-left: 2px solid var(--border); padding-left: 10px; }
+    .fm-grid > dt {
+      color: var(--muted); font-weight: 500; padding: 5px 0; white-space: nowrap;
+      text-transform: capitalize;
+    }
+    .fm-grid > dd { margin: 0; padding: 5px 0; min-width: 0; overflow-wrap: anywhere; }
+    .fm-grid > dt:not(:first-of-type), .fm-grid > dt:not(:first-of-type) + dd {
+      border-top: 1px dashed var(--border);
+    }
+    .fm-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+    .fm-chip {
+      display: inline-block; padding: 1px 9px; border-radius: 11px; line-height: 1.6;
+      background: var(--bg); border: 1px solid var(--border); font-size: .92em;
+    }
+    .fm-tag { color: var(--link); border-color: transparent; background: var(--fm-tag-bg); }
+    .fm-tag::before { content: "#"; opacity: .55; margin-right: 1px; }
+    .fm-link { color: var(--link); }
+    ul.fm-list { margin: 0; padding-left: 1.2em; }
+    ul.fm-list li { margin: .1em 0; }
+    .fm-empty { color: var(--muted); }
+    .fm-date, .fm-number { font-variant-numeric: tabular-nums; }
+    .fm-date::before { content: "📅"; margin-right: 6px; font-size: .85em; }
+    .fm-bool { font-weight: 500; }
+    .fm-true { color: var(--fm-good); } .fm-false { color: var(--muted); }
+    .fm-detail { color: var(--muted); }
+    .fm-status {
+      display: inline-block; padding: 0 9px; border-radius: 11px; font-weight: 600;
+      font-size: .9em; line-height: 1.7; margin-right: 4px;
+      background: var(--fm-neutral-bg); color: var(--fg);
+    }
+    .fm-status.fm-good { background: var(--fm-good-bg); color: var(--fm-good); }
+    .fm-status.fm-warn { background: var(--fm-warn-bg); color: var(--fm-warn); }
+    .fm-status.fm-info { background: var(--fm-info-bg); color: var(--link); }
+    .fm-status.fm-bad { background: var(--fm-bad-bg); color: var(--fm-bad); }
     .missing-image { color: var(--muted); font-size: .92em; }
     .missing-image .hint { font-size: .85em; opacity: .8; }
     .diagram {

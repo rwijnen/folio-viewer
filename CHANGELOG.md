@@ -6,6 +6,14 @@ All notable changes to Folio are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Frontmatter renders as a Properties card.** The YAML block between `---` fences at
+  the top of a Markdown file used to run together into one paragraph. It is now a
+  collapsible card of key/value rows: tags as chips, `[[wiki links]]` as note chips,
+  dates written out, `true`/`false` marked, a coloured badge for `status`, and lists of
+  sentences as lists. Values are escaped like the rest of the page.
+
 ### Changed
 
 - **A release is published by landing a version bump on `main`.** The workflow reads the

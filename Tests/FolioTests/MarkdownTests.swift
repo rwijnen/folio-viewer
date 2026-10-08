@@ -357,3 +357,79 @@ struct SampleMarkdownTests {
         #expect(!AppState.markdownExtensions.contains("swift"))
     }
 }
+
+// MARK: - Frontmatter
+
+@Suite("Frontmatter")
+struct FrontmatterTests {
+
+    private let sample = """
+    ---
+    tags: [miele, solution-design, "quoted, with comma"]
+    type: Design plan for a solution design
+    status: for approval — P0 complete (graph 2026-10-07)
+    related: "[[Miele]] | [[SD-PRIC Design Plan|SD-PRIC]]"
+    sources:
+      - WP-SAPB / RQ-SAPB (25 rows, §3 NFR) — the register leads
+      - "Graph (generated 2026-10-07): by-package/WP-SAPB.md"
+    owner:
+      name: Robin
+      role: architect
+    notes: |
+      first line
+      second line
+    draft: false
+    created: 2026-10-07
+    ---
+    # Title
+
+    Body text.
+    """
+
+    @Test func parsesTheCommonYAMLShapes() throws {
+        let frontmatter = try #require(Frontmatter.extract(from: TextNormalizer.splitLines(sample)))
+        let values = Dictionary(uniqueKeysWithValues: frontmatter.entries.map { ($0.key, $0.value) })
+        #expect(frontmatter.lineCount == 17)
+        #expect(values["tags"] == .list([.scalar("miele"), .scalar("solution-design"), .scalar("quoted, with comma")]))
+        #expect(values["related"] == .scalar("[[Miele]] | [[SD-PRIC Design Plan|SD-PRIC]]"))
+        #expect(values["sources"] == .list([
+            .scalar("WP-SAPB / RQ-SAPB (25 rows, §3 NFR) — the register leads"),
+            .scalar("Graph (generated 2026-10-07): by-package/WP-SAPB.md"),
+        ]))
+        #expect(values["owner"] == .map([.init(key: "name", value: .scalar("Robin")),
+                                         .init(key: "role", value: .scalar("architect"))]))
+        #expect(values["notes"] == .scalar("first line\nsecond line"))
+        #expect(values["created"] == .scalar("2026-10-07"))
+    }
+
+    @Test func rendersAPropertiesCardInsteadOfAParagraph() {
+        let output = convert(sample)
+        let body = output.bodyHTML
+        #expect(body.hasPrefix("<details class=\"frontmatter\" open"))
+        #expect(body.contains("<span class=\"fm-chip fm-tag\">miele</span>"))
+        #expect(body.contains("<span class=\"fm-status fm-info\">for approval</span>"))
+        #expect(body.contains("<span class=\"fm-chip fm-link\" title=\"SD-PRIC Design Plan\">SD-PRIC</span>"))
+        #expect(body.contains("<time class=\"fm-date\" datetime=\"2026-10-07\""))
+        #expect(body.contains("fm-bool fm-false"))
+        #expect(!body.contains("<hr>"))
+        #expect(!body.contains("tags: ["))
+    }
+
+    @Test func keepsBodyLineNumbersPointingAtTheFile() {
+        let output = convert(sample)
+        #expect(output.outline.first?.lineIndex == 17)
+        #expect(output.bodyHTML.contains("<p data-line=\"19\">Body text.</p>"))
+    }
+
+    @Test func escapesMarkupInValues() {
+        let body = html("---\ntitle: <script>alert(1)</script>\n---\n")
+        #expect(!body.contains("<script>"))
+        #expect(body.contains("&lt;script&gt;"))
+    }
+
+    @Test func leavesALeadingThematicBreakAlone() {
+        #expect(Frontmatter.extract(from: ["---", "", "Just prose here.", ""]) == nil)
+        #expect(Frontmatter.extract(from: ["---", "title: never closed"]) == nil)
+        #expect(html("---\n\nText\n").contains("<hr>"))
+    }
+}
