@@ -118,14 +118,23 @@ struct FileWatcherTests {
         defer { watcher.cancel() }
         watcher.waitUntilSettled()
 
+        // Gaps are measured rather than assumed: on a loaded CI runner a 10 ms sleep has
+        // been seen to take well over the 120 ms window, and a gap that long rightly
+        // closes the window. Each such gap may add one report; the burst itself may not.
+        let clock = ContinuousClock()
+        var slowGaps = 0
+        var last = clock.now
         for index in 1...8 {
+            let now = clock.now
+            if index > 1, now - last >= .milliseconds(100) { slowGaps += 1 }
+            last = now
             try scratch.writeInPlace("chunk \(index)\n")
             try await Task.sleep(nanoseconds: 10_000_000)
         }
         await waitFor("the coalesced report") { counter.count >= 1 }
         try await Task.sleep(nanoseconds: 400_000_000)
         // Eight writes 10 ms apart, well inside the coalescing window.
-        #expect(counter.count <= 2)
+        #expect(counter.count <= 2 + slowGaps)
     }
 
     @Test func nothingIsReportedAfterCancelling() async throws {
