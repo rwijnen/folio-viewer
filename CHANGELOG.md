@@ -6,6 +6,21 @@ All notable changes to Folio are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Updates, on your terms.** **Folio ▸ Check for Updates…** looks for a newer release on
+  GitHub and offers to install it: Install and Relaunch, Later, or Skip This Version. On
+  first launch Folio asks once whether to check automatically at every start; until you
+  say yes it stays offline, and **Folio ▸ Check for Updates at Launch** changes your mind
+  later. An update is installed only after it matches its published SHA-256, is Folio at
+  the promised version and passes `codesign --verify`; the old copy goes to the Trash, and
+  unsaved edits are asked about before the relaunch.
+
+### Changed
+
+- **The "online only on Push" rule now has a second, opt-in exception: the update
+  check.** README, CONTRIBUTING, SECURITY, INSTALL and ARCHITECTURE say so.
+
 ## [2.4.0] — 2026-10-08
 
 ### Added

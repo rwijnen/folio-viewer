@@ -20,7 +20,7 @@ Gatekeeper entirely.
 | macOS | 14 (Sonoma) or later |
 | Toolchain | Swift 6 — the **Command Line Tools are enough**, Xcode is not needed |
 | Disk | ~6 MB for the installed app |
-| Network | None, ever — not to build, not to run |
+| Network | None to build. At run time only for Push, and for the update check if you ask for it |
 
 If you do not have a toolchain yet:
 

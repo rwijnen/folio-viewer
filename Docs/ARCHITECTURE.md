@@ -224,8 +224,8 @@ widen it:
 - **push the current branch** to the upstream it already tracks, spelled
   `HEAD:refs/heads/<name>` so `push.default` cannot redirect it.
 
-Nothing forces, pulls, merges, rebases, resets or checks out. Push is the one place Folio
-uses the network.
+Nothing forces, pulls, merges, rebases, resets or checks out. Push is one of the two places
+Folio uses the network; the other is the update check, below.
 
 `GitSnapshot` carries the commit `HEAD` points at, so a refresh can tell the repository
 moved underneath the reader — a pull, a commit made in a terminal, a branch switch. When it
@@ -272,6 +272,27 @@ re-presents the window scene. Every open once the app is running arrives through
 
 **`FileAssociation`** claims the default-handler role, with `Sources/Register` as a
 fallback for when the modern API is unavailable outside a registered bundle.
+
+## Updates
+
+`Model/Updates.swift` is pure: version comparison, decoding GitHub's latest-release
+response, deciding whether a release is newer and installable (not a draft or prerelease,
+both `Folio.app.zip` and `Folio.app.zip.sha256` present, both served from under
+`github.com/rwijnen/folio-viewer/releases/download/`), the checksum, validating an unpacked
+bundle's identifier and version, and the swap. `State/Updating.swift` is the flow around
+it: the requests (through an injectable fetcher), the alerts, `ditto` and `codesign`.
+
+At launch, `checksForUpdatesAtLaunch` is nil until the reader answers the one-time
+question, and nil means ask, not check — the default never opens a connection. A launch
+check is silent unless there is something to install; a manual check reports every
+outcome. "Skip This Version" only quiets launch checks.
+
+The swap moves the running bundle aside, moves the new one into its place, and only then
+trashes the old one, putting it back if the second move fails. A running process keeps its
+open files, so this is safe mid-run. Relaunching is a flag that `applicationWillTerminate`
+honours by starting a small shell that waits for this PID to exit and then `open`s the
+bundle; if the reader cancels the quit over unsaved edits, `terminate` returns, the flag is
+cleared, and the new copy simply starts next time.
 
 ## Search
 

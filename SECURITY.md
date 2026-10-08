@@ -27,8 +27,12 @@ is therefore **hostile file contents**, and the app is built around three rules:
    nothing is written on quit without asking, saving goes through a temporary file so an
    interrupted write cannot truncate your document, and no content of a document can
    cause a write on its own.
-2. **It never uses the network.** Not at build time (mermaid is vendored), not at run
-   time. The rendered page runs under a `Content-Security-Policy` of
+2. **It uses the network only when you ask.** Not at build time (mermaid is vendored).
+   At run time only for Push, and for the update check — from the menu, or at launch once
+   you have opted in. The check asks GitHub's API for the latest release of
+   `rwijnen/folio-viewer`; an update is downloaded only from that repository's release
+   assets and installed only after you choose to, once it matches its published SHA-256,
+   is Folio at the promised version, and passes `codesign --verify`. The rendered page runs under a `Content-Security-Policy` of
    `default-src 'none'; connect-src 'none'`, with images restricted to `data:` URIs
    that the converter inlined itself.
 3. **It does not execute what it renders.** Raw HTML in Markdown is escaped except for a
@@ -51,6 +55,11 @@ Findings that would be especially valuable:
 - **Release builds are ad-hoc signed, not notarised.** There is no paid Apple Developer
   certificate behind this project, so downloaded builds carry no verifiable publisher
   identity. If that matters to you, build from source — see [INSTALL.md](INSTALL.md).
+- **An update is only as trustworthy as the GitHub release it comes from.** The SHA-256
+  is published beside the zip in the same release, so it proves the download is intact,
+  not who made it — and the build is ad-hoc signed, so there is no publisher identity
+  either. What an update trusts is TLS to github.com and the repository's release
+  process. If that is not enough, leave the launch check off and build from source.
 - **The app is not sandboxed.** It needs to read arbitrary files you point it at,
   including the originals referenced from a diff.
 - **The code was written by an AI and has not been independently audited.** Folio was

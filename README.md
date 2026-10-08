@@ -5,7 +5,7 @@
 **A native macOS viewer for diffs and Markdown, with a Markdown editor when you want one.**
 Patches side by side with the original, Markdown rendered with its mermaid diagrams drawn,
 and a source editor that saves when you tell it to — one window, with tabs, and offline
-unless you press Push.
+unless you press Push or ask it to look for an update.
 
 [![CI](https://github.com/rwijnen/folio-viewer/actions/workflows/ci.yml/badge.svg)](https://github.com/rwijnen/folio-viewer/actions/workflows/ci.yml)
 [![Licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
@@ -300,6 +300,21 @@ expand a collapsed fold to reveal a hit.
 | ⌥⌘↑ / ⌥⌘↓ | Newer / older commit in history | ⌥⌘D | What is not yet committed |
 | ⌥⌘U | Everything uncommitted, whole repository | | |
 
+## Updates
+
+**Folio ▸ Check for Updates…** looks for a newer release on GitHub. The first time a
+version with updates starts, Folio asks once whether it may do that at every launch;
+until you answer yes, it stays offline. Change your mind with **Folio ▸ Check for Updates
+at Launch**.
+
+When there is a newer version, Folio offers to install it: **Install and Relaunch**,
+**Later**, or **Skip This Version** (a skipped version is not brought up again at launch,
+but a manual check still shows it). The **?** button opens the release page. Installing
+downloads `Folio.app.zip` from the project's releases, checks it against the published
+SHA-256, confirms it is Folio at the version promised and that its code signature
+verifies, swaps it in for the running copy (the old one goes to the Trash), and
+relaunches. Unsaved edits are asked about first, as on any quit.
+
 ## Why it is safe to point at a file someone sent you
 
 Folio is built on three rules, and they are tested:
@@ -309,11 +324,13 @@ Folio is built on three rules, and they are tested:
    no save path for them at all. Markdown you have opened can be edited and saved to that
    same file with ⌘S — explicitly, never automatically, never anywhere else. A commit
    records that one file and nothing else.
-2. **It goes online only when you press Push.** Nothing else in Folio opens a connection:
-   no telemetry, no update check, no remote images, no fonts, nothing at build time.
-   mermaid is vendored so diagrams work offline. Push is the single exception, it is
-   always a button you pressed, and it sends your branch to the remote your repository
-   already points at.
+2. **It goes online only when you ask it to.** Two things open a connection, and both
+   are your choice: **Push**, which is always a button you pressed and sends your branch
+   to the remote your repository already points at; and **the update check**, which runs
+   from Folio ▸ Check for Updates…, or at launch only if you said yes when Folio asked.
+   It is one request to GitHub for the latest release, carrying nothing about you or your
+   documents. Nothing else: no telemetry, no remote images, no fonts, nothing at build
+   time. mermaid is vendored so diagrams work offline.
 3. **It does not execute what it renders.** Raw HTML in Markdown is escaped except a
    whitelist of attribute-free formatting tags, `javascript:` URLs are stripped, and the
    rendered page runs under `default-src 'none'; connect-src 'none'` with a per-load nonce
@@ -365,7 +382,7 @@ This is stated plainly because you should know what you are reading before you t
 It does not lower the bar the code has to clear:
 
 - The 398 tests are real tests over real fixtures, and CI runs them on every push.
-- The three rules above — writes only where you ask, online only on Push, never executes
+- The three rules above — writes only where you ask, online only when you ask, never executes
   what it renders — are the ones under test, not just claims in a README. The git tests
   build throwaway repositories and push between them on disk, so the narrowness is
   measured rather than asserted: one of them stages a second file by hand and checks the
