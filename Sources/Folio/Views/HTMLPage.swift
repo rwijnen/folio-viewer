@@ -78,6 +78,7 @@ enum HTMLPage {
       --fm-tag-bg: #ddf4ff; --fm-neutral-bg: #eaeef2; --fm-info-bg: #ddf4ff;
       --fm-good: #1a7f37; --fm-good-bg: #dafbe1; --fm-warn: #9a6700; --fm-warn-bg: #fff8c5;
       --fm-bad: #cf222e; --fm-bad-bg: #ffebe9;
+      --callout-cyan: #1b7c83; --callout-purple: #8250df;
     }
     html[data-theme="dark"] {
       --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --border: #3d444d;
@@ -90,6 +91,7 @@ enum HTMLPage {
       --fm-tag-bg: rgba(56,139,253,.15); --fm-neutral-bg: #262c36; --fm-info-bg: rgba(56,139,253,.15);
       --fm-good: #3fb950; --fm-good-bg: rgba(46,160,67,.15); --fm-warn: #d29922;
       --fm-warn-bg: rgba(187,128,9,.15); --fm-bad: #f85149; --fm-bad-bg: rgba(248,81,73,.15);
+      --callout-cyan: #39c5cf; --callout-purple: #ab7df8;
     }
     * { box-sizing: border-box; }
     body {
@@ -147,6 +149,37 @@ enum HTMLPage {
     th { background: var(--table-stripe); font-weight: 600; }
     tbody tr:nth-child(2n) { background: var(--table-stripe); }
     img { max-width: 100%; border-radius: 6px; }
+    /* Callouts (`> [!note] Title`, Obsidian and GitHub): a tinted box with a coloured
+       edge and a title row. Each family sets --callout; the rest follows from it. */
+    .callout {
+      --callout: var(--link);
+      margin: 0 0 1em; padding: 0; border-radius: 8px;
+      border-left: 4px solid var(--callout);
+      background: color-mix(in srgb, var(--callout) 8%, var(--bg));
+    }
+    .callout-title {
+      display: flex; align-items: baseline; gap: 8px; padding: 8px 14px;
+      font-weight: 600; color: var(--callout);
+    }
+    summary.callout-title { cursor: pointer; list-style: none; }
+    summary.callout-title::-webkit-details-marker { display: none; }
+    summary.callout-title::after {
+      content: "›"; margin-left: auto; transition: transform .12s ease; opacity: .7;
+    }
+    details.callout[open] > summary.callout-title::after { transform: rotate(90deg); }
+    .callout-icon { width: 1.1em; text-align: center; flex: none; }
+    .callout-title-text { color: var(--fg); }
+    .callout-title-text code { font-weight: 500; }
+    .callout-body { padding: 0 14px 4px 14px; }
+    .callout-title + .callout-body { margin-top: -4px; }
+    .callout-body > :last-child { margin-bottom: 10px; }
+    .callout code { background: color-mix(in srgb, var(--callout) 14%, var(--bg)); }
+    .callout-abstract, .callout-tip { --callout: var(--callout-cyan); }
+    .callout-success { --callout: var(--fm-good); }
+    .callout-question, .callout-warning { --callout: var(--fm-warn); }
+    .callout-failure, .callout-danger, .callout-bug { --callout: var(--fm-bad); }
+    .callout-example { --callout: var(--callout-purple); }
+    .callout-quote { --callout: var(--muted); }
     /* Frontmatter: a properties card instead of the run-on paragraph that YAML between
        `---` fences would otherwise render as. Collapsible, open by default. */
     details.frontmatter {

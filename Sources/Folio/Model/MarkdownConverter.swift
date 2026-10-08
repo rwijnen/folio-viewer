@@ -138,8 +138,14 @@ enum MarkdownConverter {
                         quoted.append(stripBlockquoteMarker(lines[index]))
                         index += 1
                     }
-                    html += "<blockquote>\n" + blocks(quoted, lineOffset: lineOffset + index - quoted.count)
-                        + "</blockquote>\n"
+                    let quoteStart = lineOffset + index - quoted.count
+                    if let callout = Callout(firstLine: quoted[0]) {
+                        html += calloutHTML(callout, body: Array(quoted.dropFirst()),
+                                            lineIndex: quoteStart)
+                    } else {
+                        html += "<blockquote>\n" + blocks(quoted, lineOffset: quoteStart)
+                            + "</blockquote>\n"
+                    }
                     continue
                 }
 
@@ -218,6 +224,26 @@ enum MarkdownConverter {
             }
 
             return html
+        }
+
+        // MARK: Callouts
+
+        /// An Obsidian / GitHub callout: a titled, coloured box instead of a plain quote.
+        /// `-` after the marker starts it folded, `+` starts it open but foldable.
+        private func calloutHTML(_ callout: Callout, body: [String], lineIndex: Int) -> String {
+            let title = callout.title.isEmpty ? callout.defaultTitle : inline(callout.title)
+            let classes = "callout callout-\(callout.family)"
+            let attributes = " data-callout=\"\(MarkdownConverter.escapeHTML(callout.type))\" data-line=\"\(lineIndex)\""
+            let heading = "<span class=\"callout-icon\" aria-hidden=\"true\">\(callout.icon)</span>"
+                + "<span class=\"callout-title-text\">\(title)</span>"
+            let content = blocks(body, lineOffset: lineIndex + 1)
+            let bodyHTML = content.isEmpty ? "" : "<div class=\"callout-body\">\n\(content)</div>\n"
+            if let open = callout.foldedOpen {
+                return "<details class=\"\(classes)\"\(attributes)\(open ? " open" : "")>"
+                    + "<summary class=\"callout-title\">\(heading)</summary>\n\(bodyHTML)</details>\n"
+            }
+            return "<div class=\"\(classes)\"\(attributes)><div class=\"callout-title\">\(heading)</div>\n"
+                + bodyHTML + "</div>\n"
         }
 
         // MARK: Frontmatter
@@ -950,6 +976,71 @@ enum MarkdownConverter {
 
     static func isBlockquote(_ line: String) -> Bool {
         line.prefix(while: { $0 == " " }).count <= 3 && line.drop(while: { $0 == " " }).hasPrefix(">")
+    }
+
+    /// The `[!type] Title` line that turns a blockquote into a callout.
+    struct Callout {
+        var type: String
+        var title: String
+        /// nil when the callout cannot fold; otherwise whether it starts open.
+        var foldedOpen: Bool?
+
+        init?(firstLine: String) {
+            let line = firstLine.trimmingCharacters(in: .whitespaces)
+            guard line.hasPrefix("[!"), let close = line.firstIndex(of: "]") else { return nil }
+            let name = line[line.index(line.startIndex, offsetBy: 2)..<close]
+            guard !name.isEmpty, name.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" })
+            else { return nil }
+            type = name.lowercased()
+            var rest = line[line.index(after: close)...]
+            switch rest.first {
+            case "-": foldedOpen = false; rest = rest.dropFirst()
+            case "+": foldedOpen = true; rest = rest.dropFirst()
+            default: foldedOpen = nil
+            }
+            title = rest.trimmingCharacters(in: .whitespaces)
+        }
+
+        /// Obsidian's aliases collapse onto one look each; anything unknown looks like a note.
+        var family: String {
+            switch type {
+            case "abstract", "summary", "tldr": return "abstract"
+            case "info": return "info"
+            case "todo": return "todo"
+            case "tip", "hint", "important": return "tip"
+            case "success", "check", "done": return "success"
+            case "question", "help", "faq": return "question"
+            case "warning", "caution", "attention": return "warning"
+            case "failure", "fail", "missing": return "failure"
+            case "danger", "error": return "danger"
+            case "bug": return "bug"
+            case "example": return "example"
+            case "quote", "cite": return "quote"
+            default: return "note"
+            }
+        }
+
+        var icon: String {
+            switch family {
+            case "abstract": return "☰"
+            case "info": return "ℹ"
+            case "todo": return "☑"
+            case "tip": return "✦"
+            case "success": return "✓"
+            case "question": return "?"
+            case "warning": return "⚠"
+            case "failure": return "✕"
+            case "danger": return "‼"
+            case "bug": return "✱"
+            case "example": return "≡"
+            case "quote": return "❝"
+            default: return "✎"
+            }
+        }
+
+        var defaultTitle: String {
+            MarkdownConverter.escapeHTML(type.prefix(1).uppercased() + type.dropFirst())
+        }
     }
 
     static func stripBlockquoteMarker(_ line: String) -> String {

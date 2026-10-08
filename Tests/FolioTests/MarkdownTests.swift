@@ -433,3 +433,53 @@ struct FrontmatterTests {
         #expect(html("---\n\nText\n").contains("<hr>"))
     }
 }
+
+// MARK: - Callouts
+
+@Suite("Callouts")
+struct CalloutTests {
+
+    @Test func turnsAMarkedQuoteIntoATitledBox() {
+        let body = html("> [!INFO] What this is\n> The **plan**, not the design.\n")
+        #expect(body.contains("<div class=\"callout callout-info\" data-callout=\"info\" data-line=\"0\">"))
+        #expect(body.contains("<span class=\"callout-title-text\">What this is</span>"))
+        #expect(body.contains("<p data-line=\"1\">The <strong>plan</strong>, not the design.</p>"))
+        #expect(!body.contains("[!INFO]"))
+        #expect(!body.contains("<blockquote>"))
+    }
+
+    @Test func fallsBackToTheTypeAsTitle() {
+        let body = html("> [!tip]\n> Body.\n")
+        #expect(body.contains("callout-tip"))
+        #expect(body.contains("<span class=\"callout-title-text\">Tip</span>"))
+    }
+
+    @Test func groupsAliasesAndDefaultsUnknownTypesToNote() {
+        #expect(html("> [!caution] Careful\n").contains("callout callout-warning"))
+        #expect(html("> [!faq] Why\n").contains("callout callout-question"))
+        #expect(html("> [!whatever] Hm\n").contains("callout callout-note"))
+        #expect(html("> [!whatever] Hm\n").contains("data-callout=\"whatever\""))
+    }
+
+    @Test func foldMarkersMakeItCollapsible() {
+        let folded = html("> [!note]- Hidden\n> Inside.\n")
+        #expect(folded.contains("<details class=\"callout callout-note\""))
+        #expect(!folded.contains(" open>"))
+        #expect(folded.contains("<summary class=\"callout-title\">"))
+        let open = html("> [!note]+ Shown\n> Inside.\n")
+        #expect(open.contains(" open><summary"))
+    }
+
+    @Test func nestsAndKeepsMarkdownInside() {
+        let body = html("> [!warning] Outer\n> - one\n> - two\n>\n> > [!bug] Inner\n> > Deep.\n")
+        #expect(body.contains("callout callout-warning"))
+        #expect(body.contains("callout callout-bug"))
+        #expect(body.contains("<li>one</li>") || body.contains(">one</"))
+    }
+
+    @Test func plainQuotesAndLinksStayQuotes() {
+        #expect(html("> just a quote\n").contains("<blockquote>"))
+        #expect(html("> [link](x.md) in a quote\n").contains("<blockquote>"))
+        #expect(html("> [!not a type] text\n").contains("<blockquote>"))
+    }
+}
