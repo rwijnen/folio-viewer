@@ -6,6 +6,8 @@ All notable changes to Folio are recorded here. The format follows
 
 ## [Unreleased]
 
+## [2.4.0] — 2026-10-08
+
 ### Added
 
 - **Frontmatter renders as a Properties card.** The YAML block between `---` fences at
@@ -358,7 +360,8 @@ in one window with tabs, without ever writing to your files or touching the netw
   asking Launch Services which app would open a probe file.
 - 109 tests over the model, tab and scroll layers, run with Swift Testing.
 
-[Unreleased]: https://github.com/rwijnen/folio-viewer/compare/v2.3.0...HEAD
+[Unreleased]: https://github.com/rwijnen/folio-viewer/compare/v2.4.0...HEAD
+[2.4.0]: https://github.com/rwijnen/folio-viewer/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/rwijnen/folio-viewer/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/rwijnen/folio-viewer/compare/v2.1.1...v2.2.0
 [2.1.1]: https://github.com/rwijnen/folio-viewer/compare/v2.1.0...v2.1.1
