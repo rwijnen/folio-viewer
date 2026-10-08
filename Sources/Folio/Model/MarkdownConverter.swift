@@ -39,7 +39,13 @@ enum MarkdownConverter {
     static func convert(lines: [String], baseURL: URL? = nil) -> Output {
         let builder = Builder(baseURL: baseURL)
         builder.collectLinkDefinitions(lines)
-        let body = builder.blocks(lines, lineOffset: 0)
+        var body = ""
+        var offset = 0
+        if let frontmatter = Frontmatter.extract(from: lines) {
+            body += builder.frontmatterHTML(frontmatter)
+            offset = frontmatter.lineCount
+        }
+        body += builder.blocks(Array(lines[offset...]), lineOffset: offset)
         return Output(bodyHTML: body, outline: builder.outline, diagramCount: builder.diagramCount)
     }
 
@@ -132,8 +138,14 @@ enum MarkdownConverter {
                         quoted.append(stripBlockquoteMarker(lines[index]))
                         index += 1
                     }
-                    html += "<blockquote>\n" + blocks(quoted, lineOffset: lineOffset + index - quoted.count)
-                        + "</blockquote>\n"
+                    let quoteStart = lineOffset + index - quoted.count
+                    if let callout = Callout(firstLine: quoted[0]) {
+                        html += calloutHTML(callout, body: Array(quoted.dropFirst()),
+                                            lineIndex: quoteStart)
+                    } else {
+                        html += "<blockquote>\n" + blocks(quoted, lineOffset: quoteStart)
+                            + "</blockquote>\n"
+                    }
                     continue
                 }
 
@@ -212,6 +224,174 @@ enum MarkdownConverter {
             }
 
             return html
+        }
+
+        // MARK: Callouts
+
+        /// An Obsidian / GitHub callout: a titled, coloured box instead of a plain quote.
+        /// `-` after the marker starts it folded, `+` starts it open but foldable.
+        private func calloutHTML(_ callout: Callout, body: [String], lineIndex: Int) -> String {
+            let title = callout.title.isEmpty ? callout.defaultTitle : inline(callout.title)
+            let classes = "callout callout-\(callout.family)"
+            let attributes = " data-callout=\"\(MarkdownConverter.escapeHTML(callout.type))\" data-line=\"\(lineIndex)\""
+            let heading = "<span class=\"callout-icon\" aria-hidden=\"true\">\(callout.icon)</span>"
+                + "<span class=\"callout-title-text\">\(title)</span>"
+            let content = blocks(body, lineOffset: lineIndex + 1)
+            let bodyHTML = content.isEmpty ? "" : "<div class=\"callout-body\">\n\(content)</div>\n"
+            if let open = callout.foldedOpen {
+                return "<details class=\"\(classes)\"\(attributes)\(open ? " open" : "")>"
+                    + "<summary class=\"callout-title\">\(heading)</summary>\n\(bodyHTML)</details>\n"
+            }
+            return "<div class=\"\(classes)\"\(attributes)><div class=\"callout-title\">\(heading)</div>\n"
+                + bodyHTML + "</div>\n"
+        }
+
+        // MARK: Frontmatter
+
+        /// The properties block, as a card of key/value rows rather than the run-on
+        /// paragraph a `---` fenced YAML block would otherwise turn into.
+        func frontmatterHTML(_ frontmatter: Frontmatter) -> String {
+            let count = frontmatter.entries.count
+            return "<details class=\"frontmatter\" open data-line=\"0\">\n"
+                + "<summary><span class=\"fm-title\">Properties</span>"
+                + "<span class=\"fm-count\">\(count)</span></summary>\n"
+                + propertiesHTML(frontmatter.entries) + "</details>\n"
+        }
+
+        private func propertiesHTML(_ entries: [Frontmatter.Entry]) -> String {
+            var html = "<dl class=\"fm-grid\">\n"
+            for entry in entries {
+                let key = MarkdownConverter.escapeHTML(entry.key)
+                let label = MarkdownConverter.escapeHTML(
+                    entry.key.replacingOccurrences(of: "_", with: " ").replacingOccurrences(of: "-", with: " "))
+                html += "<dt title=\"\(key)\">\(label)</dt><dd>"
+                    + valueHTML(entry.value, key: entry.key.lowercased()) + "</dd>\n"
+            }
+            return html + "</dl>\n"
+        }
+
+        private func valueHTML(_ value: Frontmatter.Value, key: String) -> String {
+            switch value {
+            case .map(let entries):
+                return propertiesHTML(entries)
+            case .list(let items):
+                if items.isEmpty { return "<span class=\"fm-empty\">—</span>" }
+                let scalars = items.compactMap { item -> String? in
+                    if case .scalar(let text) = item { return text }
+                    return nil
+                }
+                let isTags = ["tags", "tag", "keywords", "categories", "aliases"].contains(key)
+                // Short items read best as chips; sentences need a list.
+                if scalars.count == items.count, isTags || scalars.allSatisfy({ $0.count <= 32 && !$0.contains("[[") }) {
+                    return "<div class=\"fm-chips\">" + scalars.map {
+                        "<span class=\"fm-chip\(isTags ? " fm-tag" : "")\">\(MarkdownConverter.escapeHTML($0))</span>"
+                    }.joined() + "</div>"
+                }
+                return "<ul class=\"fm-list\">" + items.map { "<li>" + valueHTML($0, key: key) + "</li>" }.joined()
+                    + "</ul>"
+            case .scalar(let text):
+                return scalarHTML(text, key: key)
+            }
+        }
+
+        private static let wikiLinkPattern = "\\[\\[([^\\]|]+)(?:\\|([^\\]]+))?\\]\\]"
+
+        private func scalarHTML(_ text: String, key: String) -> String {
+            let trimmed = text.trimmingCharacters(in: .whitespaces)
+            if trimmed.isEmpty || trimmed == "~" || trimmed == "null" {
+                return "<span class=\"fm-empty\">—</span>"
+            }
+            switch trimmed.lowercased() {
+            case "true", "yes": return "<span class=\"fm-bool fm-true\">✓ \(trimmed)</span>"
+            case "false", "no": return "<span class=\"fm-bool fm-false\">✕ \(trimmed)</span>"
+            default: break
+            }
+            if let date = Self.dateHTML(trimmed) { return date }
+            if trimmed.hasPrefix("http://") || trimmed.hasPrefix("https://"), !trimmed.contains(" ") {
+                return linkHTML(text: MarkdownConverter.escapeHTML(trimmed), target: trimmed, title: nil)
+            }
+            if Double(trimmed) != nil { return "<span class=\"fm-number\">\(trimmed)</span>" }
+
+            // Nothing but wiki links (separated by `|`, commas or spaces): a row of chips.
+            let withoutLinks = replaceMatches(in: trimmed, pattern: Self.wikiLinkPattern) { _ in "" }
+            if withoutLinks != trimmed, withoutLinks.allSatisfy({ " |,;".contains($0) }) {
+                var chips = ""
+                _ = replaceMatches(in: MarkdownConverter.escapeHTML(trimmed), pattern: Self.wikiLinkPattern) { groups in
+                    chips += Self.wikiChip(target: groups[0] ?? "", alias: groups[1])
+                    return nil
+                }
+                return "<div class=\"fm-chips\">\(chips)</div>"
+            }
+
+            let rendered = wikiLinks(inline(trimmed)).replacingOccurrences(of: "\n", with: "<br>")
+            if ["status", "state", "stage"].contains(key) {
+                // `for approval — P0 complete (…)`: the first part is the status itself.
+                for separator in [" — ", " – ", " - ", ": "] {
+                    if let range = trimmed.range(of: separator) {
+                        let head = String(trimmed[..<range.lowerBound])
+                        let tail = String(trimmed[range.upperBound...])
+                        return Self.statusBadge(head) + " <span class=\"fm-detail\">"
+                            + wikiLinks(inline(tail)) + "</span>"
+                    }
+                }
+                return Self.statusBadge(trimmed)
+            }
+            return rendered
+        }
+
+        private func wikiLinks(_ html: String) -> String {
+            replaceMatches(in: html, pattern: Self.wikiLinkPattern) { groups in
+                Self.wikiChip(target: groups[0] ?? "", alias: groups[1])
+            }
+        }
+
+        /// Expects already-escaped text. Not a link: a vault note can live anywhere, so
+        /// there is no path to send it to.
+        private static func wikiChip(target: String, alias: String?) -> String {
+            "<span class=\"fm-chip fm-link\" title=\"\(target)\">\(alias ?? target)</span>"
+        }
+
+        private static func statusBadge(_ text: String) -> String {
+            let lower = text.lowercased()
+            let tone: String
+            if ["done", "complete", "approved", "final", "published", "accepted", "active", "closed"]
+                .contains(where: lower.contains) {
+                tone = "good"
+            } else if ["draft", "wip", "progress", "todo", "open", "pending", "proposed"]
+                .contains(where: lower.contains) {
+                tone = "warn"
+            } else if ["review", "approval", "submitted"].contains(where: lower.contains) {
+                tone = "info"
+            } else if ["blocked", "rejected", "deprecated", "superseded", "cancel"]
+                .contains(where: lower.contains) {
+                tone = "bad"
+            } else {
+                tone = "neutral"
+            }
+            return "<span class=\"fm-status fm-\(tone)\">\(MarkdownConverter.escapeHTML(text))</span>"
+        }
+
+        private static let isoDay: DateFormatter = {
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.timeZone = TimeZone(identifier: "UTC")
+            formatter.dateFormat = "yyyy-MM-dd"
+            return formatter
+        }()
+
+        private static let displayDay: DateFormatter = {
+            let formatter = DateFormatter()
+            formatter.timeZone = TimeZone(identifier: "UTC")
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .none
+            return formatter
+        }()
+
+        /// `2026-10-07` shown as a date, keeping the ISO form as the tooltip.
+        private static func dateHTML(_ text: String) -> String? {
+            guard text.count == 10, let date = isoDay.date(from: text) else { return nil }
+            return "<time class=\"fm-date\" datetime=\"\(text)\" title=\"\(text)\">"
+                + "\(displayDay.string(from: date))</time>"
         }
 
         // MARK: Headings
@@ -796,6 +976,71 @@ enum MarkdownConverter {
 
     static func isBlockquote(_ line: String) -> Bool {
         line.prefix(while: { $0 == " " }).count <= 3 && line.drop(while: { $0 == " " }).hasPrefix(">")
+    }
+
+    /// The `[!type] Title` line that turns a blockquote into a callout.
+    struct Callout {
+        var type: String
+        var title: String
+        /// nil when the callout cannot fold; otherwise whether it starts open.
+        var foldedOpen: Bool?
+
+        init?(firstLine: String) {
+            let line = firstLine.trimmingCharacters(in: .whitespaces)
+            guard line.hasPrefix("[!"), let close = line.firstIndex(of: "]") else { return nil }
+            let name = line[line.index(line.startIndex, offsetBy: 2)..<close]
+            guard !name.isEmpty, name.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" })
+            else { return nil }
+            type = name.lowercased()
+            var rest = line[line.index(after: close)...]
+            switch rest.first {
+            case "-": foldedOpen = false; rest = rest.dropFirst()
+            case "+": foldedOpen = true; rest = rest.dropFirst()
+            default: foldedOpen = nil
+            }
+            title = rest.trimmingCharacters(in: .whitespaces)
+        }
+
+        /// Obsidian's aliases collapse onto one look each; anything unknown looks like a note.
+        var family: String {
+            switch type {
+            case "abstract", "summary", "tldr": return "abstract"
+            case "info": return "info"
+            case "todo": return "todo"
+            case "tip", "hint", "important": return "tip"
+            case "success", "check", "done": return "success"
+            case "question", "help", "faq": return "question"
+            case "warning", "caution", "attention": return "warning"
+            case "failure", "fail", "missing": return "failure"
+            case "danger", "error": return "danger"
+            case "bug": return "bug"
+            case "example": return "example"
+            case "quote", "cite": return "quote"
+            default: return "note"
+            }
+        }
+
+        var icon: String {
+            switch family {
+            case "abstract": return "☰"
+            case "info": return "ℹ"
+            case "todo": return "☑"
+            case "tip": return "✦"
+            case "success": return "✓"
+            case "question": return "?"
+            case "warning": return "⚠"
+            case "failure": return "✕"
+            case "danger": return "‼"
+            case "bug": return "✱"
+            case "example": return "≡"
+            case "quote": return "❝"
+            default: return "✎"
+            }
+        }
+
+        var defaultTitle: String {
+            MarkdownConverter.escapeHTML(type.prefix(1).uppercased() + type.dropFirst())
+        }
     }
 
     static func stripBlockquoteMarker(_ line: String) -> String {

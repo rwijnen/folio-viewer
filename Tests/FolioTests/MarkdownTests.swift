@@ -357,3 +357,129 @@ struct SampleMarkdownTests {
         #expect(!AppState.markdownExtensions.contains("swift"))
     }
 }
+
+// MARK: - Frontmatter
+
+@Suite("Frontmatter")
+struct FrontmatterTests {
+
+    private let sample = """
+    ---
+    tags: [miele, solution-design, "quoted, with comma"]
+    type: Design plan for a solution design
+    status: for approval — P0 complete (graph 2026-10-07)
+    related: "[[Miele]] | [[SD-PRIC Design Plan|SD-PRIC]]"
+    sources:
+      - WP-SAPB / RQ-SAPB (25 rows, §3 NFR) — the register leads
+      - "Graph (generated 2026-10-07): by-package/WP-SAPB.md"
+    owner:
+      name: Robin
+      role: architect
+    notes: |
+      first line
+      second line
+    draft: false
+    created: 2026-10-07
+    ---
+    # Title
+
+    Body text.
+    """
+
+    @Test func parsesTheCommonYAMLShapes() throws {
+        let frontmatter = try #require(Frontmatter.extract(from: TextNormalizer.splitLines(sample)))
+        let values = Dictionary(uniqueKeysWithValues: frontmatter.entries.map { ($0.key, $0.value) })
+        #expect(frontmatter.lineCount == 17)
+        #expect(values["tags"] == .list([.scalar("miele"), .scalar("solution-design"), .scalar("quoted, with comma")]))
+        #expect(values["related"] == .scalar("[[Miele]] | [[SD-PRIC Design Plan|SD-PRIC]]"))
+        #expect(values["sources"] == .list([
+            .scalar("WP-SAPB / RQ-SAPB (25 rows, §3 NFR) — the register leads"),
+            .scalar("Graph (generated 2026-10-07): by-package/WP-SAPB.md"),
+        ]))
+        #expect(values["owner"] == .map([.init(key: "name", value: .scalar("Robin")),
+                                         .init(key: "role", value: .scalar("architect"))]))
+        #expect(values["notes"] == .scalar("first line\nsecond line"))
+        #expect(values["created"] == .scalar("2026-10-07"))
+    }
+
+    @Test func rendersAPropertiesCardInsteadOfAParagraph() {
+        let output = convert(sample)
+        let body = output.bodyHTML
+        #expect(body.hasPrefix("<details class=\"frontmatter\" open"))
+        #expect(body.contains("<span class=\"fm-chip fm-tag\">miele</span>"))
+        #expect(body.contains("<span class=\"fm-status fm-info\">for approval</span>"))
+        #expect(body.contains("<span class=\"fm-chip fm-link\" title=\"SD-PRIC Design Plan\">SD-PRIC</span>"))
+        #expect(body.contains("<time class=\"fm-date\" datetime=\"2026-10-07\""))
+        #expect(body.contains("fm-bool fm-false"))
+        #expect(!body.contains("<hr>"))
+        #expect(!body.contains("tags: ["))
+    }
+
+    @Test func keepsBodyLineNumbersPointingAtTheFile() {
+        let output = convert(sample)
+        #expect(output.outline.first?.lineIndex == 17)
+        #expect(output.bodyHTML.contains("<p data-line=\"19\">Body text.</p>"))
+    }
+
+    @Test func escapesMarkupInValues() {
+        let body = html("---\ntitle: <script>alert(1)</script>\n---\n")
+        #expect(!body.contains("<script>"))
+        #expect(body.contains("&lt;script&gt;"))
+    }
+
+    @Test func leavesALeadingThematicBreakAlone() {
+        #expect(Frontmatter.extract(from: ["---", "", "Just prose here.", ""]) == nil)
+        #expect(Frontmatter.extract(from: ["---", "title: never closed"]) == nil)
+        #expect(html("---\n\nText\n").contains("<hr>"))
+    }
+}
+
+// MARK: - Callouts
+
+@Suite("Callouts")
+struct CalloutTests {
+
+    @Test func turnsAMarkedQuoteIntoATitledBox() {
+        let body = html("> [!INFO] What this is\n> The **plan**, not the design.\n")
+        #expect(body.contains("<div class=\"callout callout-info\" data-callout=\"info\" data-line=\"0\">"))
+        #expect(body.contains("<span class=\"callout-title-text\">What this is</span>"))
+        #expect(body.contains("<p data-line=\"1\">The <strong>plan</strong>, not the design.</p>"))
+        #expect(!body.contains("[!INFO]"))
+        #expect(!body.contains("<blockquote>"))
+    }
+
+    @Test func fallsBackToTheTypeAsTitle() {
+        let body = html("> [!tip]\n> Body.\n")
+        #expect(body.contains("callout-tip"))
+        #expect(body.contains("<span class=\"callout-title-text\">Tip</span>"))
+    }
+
+    @Test func groupsAliasesAndDefaultsUnknownTypesToNote() {
+        #expect(html("> [!caution] Careful\n").contains("callout callout-warning"))
+        #expect(html("> [!faq] Why\n").contains("callout callout-question"))
+        #expect(html("> [!whatever] Hm\n").contains("callout callout-note"))
+        #expect(html("> [!whatever] Hm\n").contains("data-callout=\"whatever\""))
+    }
+
+    @Test func foldMarkersMakeItCollapsible() {
+        let folded = html("> [!note]- Hidden\n> Inside.\n")
+        #expect(folded.contains("<details class=\"callout callout-note\""))
+        #expect(!folded.contains(" open>"))
+        #expect(folded.contains("<summary class=\"callout-title\">"))
+        let open = html("> [!note]+ Shown\n> Inside.\n")
+        #expect(open.contains(" open><summary"))
+    }
+
+    @Test func nestsAndKeepsMarkdownInside() {
+        let body = html("> [!warning] Outer\n> - one\n> - two\n>\n> > [!bug] Inner\n> > Deep.\n")
+        #expect(body.contains("callout callout-warning"))
+        #expect(body.contains("callout callout-bug"))
+        #expect(body.contains("<li>one</li>") || body.contains(">one</"))
+    }
+
+    @Test func plainQuotesAndLinksStayQuotes() {
+        #expect(html("> just a quote\n").contains("<blockquote>"))
+        #expect(html("> [link](x.md) in a quote\n").contains("<blockquote>"))
+        #expect(html("> [!not a type] text\n").contains("<blockquote>"))
+    }
+}
