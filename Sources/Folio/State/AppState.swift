@@ -42,6 +42,18 @@ final class AppState {
             Preferences.automaticReload = reloadsChangedFilesAutomatically
         }
     }
+    /// Whether Folio looks for a newer release when it starts. Nil until the reader has
+    /// been asked: their answer, not a default, decides whether Folio goes online.
+    var checksForUpdatesAtLaunch: Bool? = Preferences.checksForUpdatesAtLaunch {
+        didSet {
+            guard sessionRestoreEnabled else { return }
+            Preferences.checksForUpdatesAtLaunch = checksForUpdatesAtLaunch
+        }
+    }
+    /// What the updater is doing, while it is doing it.
+    var updateActivity: String?
+    /// Set by an installed update so quitting reopens the new copy.
+    var relaunchAfterUpdate = false
     var showOutline = true
     /// Mirrors the window's appearance so rendered pages can match it.
     var isDarkAppearance = false {
@@ -642,6 +654,23 @@ enum Preferences {
 
     private static let baseFolderKey = "baseFolders"
     private static let automaticReloadKey = "reloadChangedFilesAutomatically"
+    private static let updateCheckKey = "checkForUpdatesAtLaunch"
+    private static let skippedUpdateKey = "skippedUpdateVersion"
+
+    /// Nil until the reader has answered whether to check for updates at launch.
+    static var checksForUpdatesAtLaunch: Bool? {
+        get { UserDefaults.standard.object(forKey: updateCheckKey) as? Bool }
+        set {
+            if let newValue { UserDefaults.standard.set(newValue, forKey: updateCheckKey) }
+            else { UserDefaults.standard.removeObject(forKey: updateCheckKey) }
+        }
+    }
+
+    /// A version the reader chose to skip; a launch check stays quiet about it.
+    static var skippedUpdateVersion: String? {
+        get { UserDefaults.standard.string(forKey: skippedUpdateKey) }
+        set { UserDefaults.standard.set(newValue, forKey: skippedUpdateKey) }
+    }
 
     /// Whether a document with no unsaved edits is brought up to date on its own when
     /// something else writes the file. Defaults to on — a stale document that looks

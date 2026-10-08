@@ -149,6 +149,15 @@ struct ContentView: View {
         ToolbarItem(placement: .navigation) {
             GroupPicker()
         }
+        if let activity = state.updateActivity {
+            ToolbarItem(placement: .status) {
+                HStack(spacing: 6) {
+                    ProgressView().controlSize(.small)
+                    Text(activity).font(.callout).foregroundStyle(.secondary)
+                }
+                .help(activity)
+            }
+        }
         ToolbarItemGroup {
             if state.content == .diff {
                 Button {

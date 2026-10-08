@@ -25,11 +25,13 @@ merged:
    auto-save, no writing anywhere else. Committing is offered for *any* file the reader
    has open, not only the ones Folio can edit — but it follows the same rule: one file per
    commit, named in the pathspec, leaving anything else the reader has staged alone.
-2. **It goes online only when the reader presses Push.** Nothing at build time, and
-   nothing else at run time: no telemetry, no update check, no remote images or fonts.
-   mermaid is vendored for exactly this reason. Push is the single exception and must
-   stay a deliberate, visible action; a feature that opens a connection on its own will
-   not be merged.
+2. **It goes online only when the reader asks.** Nothing at build time, and at run time
+   only two things: **Push**, a deliberate, visible action; and **the update check**,
+   from the menu or at launch once the reader has opted in — Folio asks once, and stays
+   offline until the answer is yes. The check is one request to GitHub's API, and an
+   update is installed only when the reader chooses to. No telemetry, no remote images or
+   fonts; mermaid is vendored for exactly this reason. A feature that opens a connection
+   the reader did not ask for will not be merged.
 3. **It does not execute what it renders.** Markdown is escaped except for a whitelist of
    attribute-free formatting tags, and the rendered page runs under a strict CSP.
 

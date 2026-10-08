@@ -18,6 +18,16 @@ struct FolioApp: App {
         }
         .defaultSize(width: 1440, height: 900)
         .commands {
+            CommandGroup(after: .appInfo) {
+                Button("Check for Updates…") {
+                    Task { await state.checkForUpdates(manual: true) }
+                }
+                Button(state.checksForUpdatesAtLaunch == true
+                       ? "Stop Checking for Updates at Launch"
+                       : "Check for Updates at Launch") {
+                    state.checksForUpdatesAtLaunch = !(state.checksForUpdatesAtLaunch ?? false)
+                }
+            }
             CommandGroup(replacing: .newItem) {
                 Button("Open…") { state.presentOpenPanel() }
                     .keyboardShortcut("o", modifiers: .command)
@@ -164,6 +174,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         for url in launchQueue.launchFinished() { AppState.shared.open(at: url) }
 
         takeOverOpenDocumentEvents()
+
+        // Asks once whether to look for updates at launch; offline until answered.
+        AppState.shared.updatesAtLaunch()
     }
 
     /// Re-reads the document and its repository whenever Folio comes back to the front.
@@ -260,6 +273,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Scroll positions move constantly and are only captured when the session is
         // written, so take one final snapshot.
         AppState.shared.saveSession()
+        AppState.shared.relaunchIfUpdated()
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
