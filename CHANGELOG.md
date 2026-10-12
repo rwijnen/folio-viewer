@@ -8,6 +8,12 @@ All notable changes to Folio are recorded here. The format follows
 
 ### Fixed
 
+- **A heading renamed while the document is open can be clicked in the outline again.**
+  When something else rewrote the file and changed a heading's title, the outline kept
+  the old title, and clicking it did nothing: its anchor no longer existed in the page.
+  The outline was only rebuilt when the number of headings or the first heading changed;
+  it now rebuilds whenever any heading does.
+
 - **The outline no longer loses your place below a diagram.** Reading just past a mermaid
   diagram, the outline's highlight disappeared until the next heading scrolled by. The
   page was reporting the last element with any id above the window, and every diagram
