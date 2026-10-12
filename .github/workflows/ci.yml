@@ -12,6 +12,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # A PR that changes the app is a release, or merging it publishes nothing — the Release
+  # workflow only acts on a version without a tag. Fails the PR when the bump or its
+  # CHANGELOG heading is missing. Docs, tests and CI changes are exempt.
+  version-bump:
+    name: Version bump
+    if: github.event_name == 'pull_request'
+    runs-on: macos-15
+    steps:
+      # Full history and tags: the check diffs against the base branch and refuses a
+      # version that is already tagged.
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          fetch-depth: 0
+
+      - name: Check the PR bumps the version when it changes the app
+        run: .github/scripts/check-version-bump.sh "origin/${{ github.base_ref }}"
+
   build-and-test:
     name: Build and test
     runs-on: macos-15

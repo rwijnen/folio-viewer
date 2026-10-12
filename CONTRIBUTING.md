@@ -266,13 +266,17 @@ the old answer, which produced a convincing false negative before the retries ex
 
 ## Releasing
 
-1. Update `CHANGELOG.md` — move items out of *Unreleased* into the new version.
+**A pull request that changes the app is a release.** If it touches `Sources/` or
+`Resources/`, it carries its own version bump, and CI's *Version bump* check fails it
+otherwise. Docs, tests and CI changes need none, so a README fix does not become a version.
+
+1. Update `CHANGELOG.md`: this PR's entries go under a new `## [X.Y.Z]` heading below
+   *Unreleased* (fix → patch, feature → minor), with the compare links updated.
 2. Bump `CFBundleShortVersionString` and `CFBundleVersion` in `Resources/Info.plist`.
-3. `swift test && ./build.sh` one more time.
-4. Merge it. **Landing a version bump on `main` publishes the release** — the workflow
+3. `.github/scripts/check-version-bump.sh main`, then `swift test && ./build.sh`.
+4. Merge it. **Landing a version bump on `main` publishes the release**: the workflow
    reads the version out of the bundle, sees there is no tag for it yet, and builds,
-   tags and publishes. Anything else on `main` publishes nothing, so a README fix does
-   not become a version.
+   tags and publishes. Anything else on `main` publishes nothing.
 
 Tagging by hand still works — `git tag -a v2.1.0 -m "Folio 2.1.0" && git push origin
 v2.1.0` — and is the way to publish a version whose bump has already landed.

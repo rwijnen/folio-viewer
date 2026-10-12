@@ -6,18 +6,7 @@ All notable changes to Folio are recorded here. The format follows
 
 ## [Unreleased]
 
-### Fixed
-
-- **A heading renamed while the document is open can be clicked in the outline again.**
-  When something else rewrote the file and changed a heading's title, the outline kept
-  the old title, and clicking it did nothing: its anchor no longer existed in the page.
-  The outline was only rebuilt when the number of headings or the first heading changed;
-  it now rebuilds whenever any heading does.
-
-- **The outline no longer loses your place below a diagram.** Reading just past a mermaid
-  diagram, the outline's highlight disappeared until the next heading scrolled by. The
-  page was reporting the last element with any id above the window, and every diagram
-  carries a couple of dozen ids of its own; it now reports headings only.
+## [2.5.0] — 2026-10-12
 
 ### Added
 
@@ -33,6 +22,25 @@ All notable changes to Folio are recorded here. The format follows
 
 - **The "online only on Push" rule now has a second, opt-in exception: the update
   check.** README, CONTRIBUTING, SECURITY, INSTALL and ARCHITECTURE say so.
+
+- **A pull request that changes the app now has to be a release.** Three in a row were
+  merged without the version bump, so the Release workflow published nothing for any of
+  them. A CI check now fails a PR that touches `Sources/` or `Resources/` without raising
+  the version above `main`'s, raising the build number and giving the version a
+  CHANGELOG heading. Docs-, test- and CI-only PRs are exempt.
+
+### Fixed
+
+- **A heading renamed while the document is open can be clicked in the outline again.**
+  When something else rewrote the file and changed a heading's title, the outline kept
+  the old title, and clicking it did nothing: its anchor no longer existed in the page.
+  The outline was only rebuilt when the number of headings or the first heading changed;
+  it now rebuilds whenever any heading does.
+
+- **The outline no longer loses your place below a diagram.** Reading just past a mermaid
+  diagram, the outline's highlight disappeared until the next heading scrolled by. The
+  page was reporting the last element with any id above the window, and every diagram
+  carries a couple of dozen ids of its own; it now reports headings only.
 
 ## [2.4.0] — 2026-10-08
 
@@ -388,7 +396,8 @@ in one window with tabs, without ever writing to your files or touching the netw
   asking Launch Services which app would open a probe file.
 - 109 tests over the model, tab and scroll layers, run with Swift Testing.
 
-[Unreleased]: https://github.com/rwijnen/folio-viewer/compare/v2.4.0...HEAD
+[Unreleased]: https://github.com/rwijnen/folio-viewer/compare/v2.5.0...HEAD
+[2.5.0]: https://github.com/rwijnen/folio-viewer/compare/v2.4.0...v2.5.0
 [2.4.0]: https://github.com/rwijnen/folio-viewer/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/rwijnen/folio-viewer/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/rwijnen/folio-viewer/compare/v2.1.1...v2.2.0
