@@ -456,11 +456,19 @@ enum HTMLPage {
         window.scrollTo(0, y);
         return window.scrollY;
       };
+      // Headings only. `[id]` alone also matched the ids mermaid puts inside every
+      // diagram (markers, filters, nodes — over twenty a diagram), so with the top of
+      // the window just below one the page reported an id the outline has no row for,
+      // and the highlight vanished until the next heading scrolled past.
       window.folioTopAnchor = function () {
-        var headings = document.querySelectorAll('#content [id]');
+        var headings = document.querySelectorAll(
+          '#content h1[id], #content h2[id], #content h3[id], '
+          + '#content h4[id], #content h5[id], #content h6[id]');
         var best = '';
         for (var i = 0; i < headings.length; i++) {
-          if (headings[i].getBoundingClientRect().top <= 24) { best = headings[i].id; }
+          if (headings[i].closest('.diagram')) { continue; }
+          if (headings[i].getBoundingClientRect().top > 24) { break; }
+          best = headings[i].id;
         }
         return best;
       };

@@ -6,6 +6,13 @@ All notable changes to Folio are recorded here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- **The outline no longer loses your place below a diagram.** Reading just past a mermaid
+  diagram, the outline's highlight disappeared until the next heading scrolled by. The
+  page was reporting the last element with any id above the window, and every diagram
+  carries a couple of dozen ids of its own; it now reports headings only.
+
 ### Added
 
 - **Updates, on your terms.** **Folio ▸ Check for Updates…** looks for a newer release on

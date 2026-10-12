@@ -246,3 +246,25 @@ struct OutlineFoldingTests {
         #expect(next.active?.collapsedOutline == folded)
     }
 }
+
+/// The page tells the outline which heading the reader is in. It used to pick the last
+/// element with any `id` above the top of the window, and mermaid puts over twenty ids
+/// inside every diagram — so just below a diagram the page named one of those, the
+/// outline had no row for it, and the highlight disappeared. WebKit does not run in
+/// these tests; the behaviour was checked by running the generated page with mermaid in
+/// WebKit, where the top of the window below a diagram now reports its section.
+@Suite("Outline following in the rendered page")
+struct OutlineFollowingPageTests {
+
+    private let html = HTMLPage.wrap(body: "<h2 id=\"a\">A</h2>", title: "t", isDark: false,
+                                     mermaidScript: nil, diagramCount: 0)
+
+    @Test func onlyHeadingsCanBeTheCurrentPlace() {
+        #expect(html.contains("'#content h1[id], #content h2[id], #content h3[id], '"))
+        #expect(!html.contains("document.querySelectorAll('#content [id]')"))
+    }
+
+    @Test func idsInsideADiagramAreNeverTheCurrentPlace() {
+        #expect(html.contains("if (headings[i].closest('.diagram')) { continue; }"))
+    }
+}
