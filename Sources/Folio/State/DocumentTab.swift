@@ -349,8 +349,7 @@ final class DocumentTab: Identifiable {
     /// The wrapped page is ~3.5 MB with mermaid inlined, so build it only when it changes.
     @ObservationIgnored var pageCache: (version: Int, html: String)?
     @ObservationIgnored private var cachedOutlineLayout: OutlineLayout?
-    @ObservationIgnored private var cachedOutlineCount = -1
-    @ObservationIgnored private var cachedOutlineFirst: String?
+    @ObservationIgnored private var cachedOutline: [OutlineItem]?
     @ObservationIgnored var loadTask: Task<Void, Never>?
 
     init(url: URL, content: DocumentContent) {
@@ -457,18 +456,22 @@ final class DocumentTab: Identifiable {
         return "\(id.uuidString)|\(document.url.path)|\(document.contentVersion)|\(pageVersion)"
     }
 
-    /// The outline as a tree. Rebuilt only when the document changes, since the sidebar
+    /// The outline as a tree. Rebuilt only when the outline changes, since the sidebar
     /// asks for it on every redraw.
+    ///
+    /// Compared in full. It used to be keyed on the heading count and the first id, so a
+    /// heading renamed in the middle of a document — same count, same first heading —
+    /// kept its old row: the old title, and an anchor the page no longer had, so
+    /// clicking it went nowhere. Comparing a few hundred small values per redraw costs
+    /// nothing next to drawing the list.
     var outlineLayout: OutlineLayout {
         let outline = textDocument?.outline ?? []
-        if let cached = cachedOutlineLayout, cachedOutlineCount == outline.count,
-           cachedOutlineFirst == outline.first?.id {
+        if let cached = cachedOutlineLayout, cachedOutline == outline {
             return cached
         }
         let layout = OutlineLayout(outline)
         cachedOutlineLayout = layout
-        cachedOutlineCount = outline.count
-        cachedOutlineFirst = outline.first?.id
+        cachedOutline = outline
         return layout
     }
 

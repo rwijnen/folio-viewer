@@ -268,3 +268,44 @@ struct OutlineFollowingPageTests {
         #expect(html.contains("if (headings[i].closest('.diagram')) { continue; }"))
     }
 }
+
+/// Renaming a heading in the middle of a document — what an editor or another tool does
+/// to a file Folio has open — keeps the heading count and the first heading. The outline
+/// used to be cached on exactly those two, so the renamed row kept its old title and an
+/// anchor the page no longer had, and clicking it did nothing.
+@Suite("Outline after the file changes")
+@MainActor
+struct OutlineRefreshTests {
+
+    @Test func aRenamedHeadingIsANewRow() throws {
+        let folder = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("folio-outline-rename-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let url = folder.appendingPathComponent("design.md")
+        func write(_ middle: String) throws {
+            try Data("# Design\n\n## 6.2 What enforces each separation\n\nBody.\n\n## \(middle)\n\nBody.\n\n## 6.4 Public groups\n\nBody.\n".utf8)
+                .write(to: url, options: .atomic)
+        }
+        try write("6.3 What the separations need from the role hierarchy")
+
+        let state = AppState()
+        state.reloadsChangedFilesAutomatically = true
+        state.open(at: url)
+        let tab = try #require(state.active)
+        let before = tab.outlineLayout.rows.map(\.id)   // primes the cache
+        #expect(before.contains("6-3-what-the-separations-need-from-the-role-hierarchy"))
+
+        try write("6.3 The role hierarchy")
+        state.fileChangedOnDisk(tabID: tab.id)
+
+        let after = tab.outlineLayout.rows
+        #expect(after.count == before.count)
+        #expect(after.map(\.id).contains("6-3-the-role-hierarchy"))
+        #expect(!after.map(\.id).contains("6-3-what-the-separations-need-from-the-role-hierarchy"))
+        #expect(after.map(\.item.title).contains("6.3 The role hierarchy"))
+        // Every row the outline offers is a heading the rendered page actually has.
+        let html = try #require(tab.textDocument?.bodyHTML)
+        for row in after { #expect(html.contains("id=\"\(row.id)\"")) }
+    }
+}
