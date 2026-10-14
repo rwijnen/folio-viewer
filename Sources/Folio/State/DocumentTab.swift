@@ -329,6 +329,10 @@ final class DocumentTab: Identifiable {
     var renderedFocusTarget = 0
     var pendingAnchor: String?
     var anchorRequest = 0
+    /// A note clicked in the sidebar, for the page to bring into view.
+    var noteRevealRequest = 0
+    var noteRevealID = ""
+    var noteRevealLine = 0
     var sourceScrollLine: Int?
     var sourceScrollRequest = 0
 
@@ -443,7 +447,8 @@ final class DocumentTab: Identifiable {
                                  mermaidScript: WebResources.mermaid,
                                  diagramCount: document.diagramCount,
                                  annotated: annotations.map {
-                                    HTMLPage.AnnotatedPassage(lines: $0.startLine...$0.endLine,
+                                    HTMLPage.AnnotatedPassage(id: $0.id.uuidString,
+                                                              lines: $0.startLine...$0.endLine,
                                                               quote: $0.quote)
                                  })
         pageCache = (pageVersion, html)

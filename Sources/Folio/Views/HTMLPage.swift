@@ -108,6 +108,12 @@ enum HTMLPage {
     }
     /* Only when the words cannot be found in the rendered page — an annotation left
        against source that renders to something else, say a table cell reflowed away. */
+    /* The note the sidebar was just clicked for, pulsed once so the eye finds it. */
+    @keyframes folio-note-flash {
+      0%, 100% { box-shadow: 0 1px 0 0 var(--annotated-edge); }
+      30% { box-shadow: 0 0 0 4px var(--annotated-edge); }
+    }
+    .folio-note-flash { animation: folio-note-flash 1.2s ease-in-out 1; }
     .folio-annotated-block {
       background: var(--annotated); border-radius: 3px;
       box-shadow: -4px 0 0 0 var(--annotated-edge);
@@ -965,6 +971,8 @@ extension HTMLPage {
     /// One passage the reader marked up: where it is in the source, and the words as
     /// the page renders them.
     struct AnnotatedPassage: Equatable {
+        /// The annotation's id, so the sidebar can ask the page to show this one.
+        var id: String = ""
         var lines: ClosedRange<Int>
         /// The selection as it was made, which is the rendered text rather than the
         /// Markdown behind it — `see them` where the source says `[see them](./x.md)`.
@@ -983,7 +991,7 @@ extension HTMLPage {
     static func annotationScript(_ passages: [AnnotatedPassage]) -> String {
         guard !passages.isEmpty else { return "" }
         let payload = passages.map {
-            [$0.lines.lowerBound, $0.lines.upperBound, $0.quote] as [Any]
+            [$0.lines.lowerBound, $0.lines.upperBound, $0.quote, $0.id] as [Any]
         }
         // Slashes unescaped: a quote can contain a path or a URL, and `\/` throughout
         // makes the script unreadable when anyone comes to look at it.
@@ -1030,7 +1038,7 @@ extension HTMLPage {
             return null;
           }
 
-          function mark(block, needle) {
+          function mark(block, needle, id) {
             var ix = index(block);
             var found = ix.flat.indexOf(needle);
             if (found === -1 || !needle) { return false; }
@@ -1045,6 +1053,7 @@ extension HTMLPage {
             } catch (e) { return false; }
             var element = document.createElement('mark');
             element.className = 'folio-annotated';
+            if (id) { element.setAttribute('data-note', id); }
             try {
               range.surroundContents(element);
             } catch (e) {
@@ -1061,22 +1070,51 @@ extension HTMLPage {
           for (var p = 0; p < passages.length; p++) {
             var from = passages[p][0], to = passages[p][1];
             var needle = flatten(passages[p][2]);
-            var candidates = [];
+            var id = passages[p][3];
+            // Blocks that start inside the passage's lines, then the block that covers its
+            // first line — the last one starting at or before it. A paragraph only records
+            // the line it starts on, so a note on its third line is found from there; a
+            // note in a list item or a table cell is found from the item or the row.
+            var candidates = [], covering = null;
             for (var b = 0; b < blocks.length; b++) {
               var line = parseInt(blocks[b].getAttribute('data-line'), 10);
-              if (!isNaN(line) && line >= from && line <= to) { candidates.push(blocks[b]); }
+              if (isNaN(line)) { continue; }
+              if (line >= from && line <= to) { candidates.push(blocks[b]); }
+              if (line <= from) { covering = blocks[b]; }
             }
+            var inRange = candidates.slice();
+            if (covering && candidates.indexOf(covering) === -1) { candidates.push(covering); }
             var done = false;
             for (var c = 0; c < candidates.length && !done; c++) {
-              done = mark(candidates[c], needle);
+              done = mark(candidates[c], needle, id);
             }
             if (!done) {
-              // Say something rather than nothing: the note exists either way.
-              for (var f = 0; f < candidates.length; f++) {
-                candidates[f].classList.add('folio-annotated-block');
+              // Say something rather than nothing: the note exists either way. The blocks
+              // inside its lines if there are any — the covering block only stands in when
+              // the note sits wholly inside one, or it would outline its neighbour.
+              var fallback = inRange.length ? inRange : (covering ? [covering] : []);
+              for (var f = 0; f < fallback.length; f++) {
+                fallback[f].classList.add('folio-annotated-block');
+                if (f === 0 && id) { fallback[f].setAttribute('data-note', id); }
               }
             }
           }
+
+          // The sidebar's way to a note: the marked words if they were found, the block
+          // that stands in for them if not, and failing both the line itself.
+          window.folioRevealNote = function (id, line) {
+            var target = null;
+            var all = document.querySelectorAll('[data-note]');
+            for (var i = 0; i < all.length; i++) {
+              if (all[i].getAttribute('data-note') === id) { target = all[i]; break; }
+            }
+            if (!target) { return window.folioScrollToLine ? window.folioScrollToLine(line) : false; }
+            target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            target.classList.remove('folio-note-flash');
+            void target.offsetWidth;   // restart the animation on a second click
+            target.classList.add('folio-note-flash');
+            return true;
+          };
         })();
         """
     }
