@@ -105,6 +105,7 @@ enum MarkdownConverter {
 
                 // Fenced code / mermaid
                 if let fence = Fence(opening: line) {
+                    let fenceLine = lineOffset + index
                     var body: [String] = []
                     index += 1
                     while index < lines.count, !fence.closes(lines[index]) {
@@ -112,7 +113,7 @@ enum MarkdownConverter {
                         index += 1
                     }
                     if index < lines.count { index += 1 }  // consume the closing fence
-                    html += codeBlockHTML(body: body, info: fence.info)
+                    html += codeBlockHTML(body: body, info: fence.info, lineIndex: fenceLine)
                     continue
                 }
 
@@ -143,7 +144,7 @@ enum MarkdownConverter {
                         html += calloutHTML(callout, body: Array(quoted.dropFirst()),
                                             lineIndex: quoteStart)
                     } else {
-                        html += "<blockquote>\n" + blocks(quoted, lineOffset: quoteStart)
+                        html += "<blockquote data-line=\"\(quoteStart)\">\n" + blocks(quoted, lineOffset: quoteStart)
                             + "</blockquote>\n"
                     }
                     continue
@@ -151,7 +152,7 @@ enum MarkdownConverter {
 
                 // Pipe table: header row followed by a delimiter row.
                 if index + 1 < lines.count, line.contains("|"), isTableDelimiter(lines[index + 1]) {
-                    let (table, consumed) = tableHTML(lines, start: index)
+                    let (table, consumed) = tableHTML(lines, start: index, lineOffset: lineOffset)
                     html += table
                     index += consumed
                     continue
@@ -167,6 +168,7 @@ enum MarkdownConverter {
 
                 // Indented code block (4 spaces), but only outside lists.
                 if line.hasPrefix("    ") {
+                    let codeLine = lineOffset + index
                     var body: [String] = []
                     while index < lines.count,
                           lines[index].hasPrefix("    ") || lines[index].trimmingCharacters(in: .whitespaces).isEmpty {
@@ -177,7 +179,7 @@ enum MarkdownConverter {
                         body.append(String(lines[index].dropFirst(4)))
                         index += 1
                     }
-                    html += codeBlockHTML(body: body, info: "")
+                    html += codeBlockHTML(body: body, info: "", lineIndex: codeLine)
                     continue
                 }
 
@@ -436,18 +438,18 @@ enum MarkdownConverter {
 
         // MARK: Code blocks
 
-        private func codeBlockHTML(body: [String], info: String) -> String {
+        private func codeBlockHTML(body: [String], info: String, lineIndex: Int) -> String {
             let language = info.split(separator: " ").first.map(String.init)?.lowercased() ?? ""
             if language == "mermaid" {
                 diagramCount += 1
                 let source = body.joined(separator: "\n")
-                return "<div class=\"diagram\"><pre class=\"mermaid\">\(escapeHTML(source))</pre>"
+                return "<div class=\"diagram\" data-line=\"\(lineIndex)\"><pre class=\"mermaid\">\(escapeHTML(source))</pre>"
                     + "<pre class=\"diagram-source\">\(escapeHTML(source))</pre></div>\n"
             }
             let spec = LanguageCatalog.spec(forFenceInfo: language)
             let highlighted = Self.highlightedHTML(lines: body, spec: spec)
             let label = language.isEmpty ? "" : " data-language=\"\(escapeHTML(language))\""
-            return "<pre class=\"code\"\(label)><code>\(highlighted)</code></pre>\n"
+            return "<pre class=\"code\"\(label) data-line=\"\(lineIndex)\"><code>\(highlighted)</code></pre>\n"
         }
 
         /// Reuses the app's lexer so fenced code looks like the diff panels do.
@@ -498,7 +500,7 @@ enum MarkdownConverter {
 
         // MARK: Tables
 
-        private func tableHTML(_ lines: [String], start: Int) -> (String, Int) {
+        private func tableHTML(_ lines: [String], start: Int, lineOffset: Int) -> (String, Int) {
             let headerCells = splitTableRow(lines[start])
             let alignments = splitTableRow(lines[start + 1]).map { cell -> String in
                 let trimmed = cell.trimmingCharacters(in: .whitespaces)
@@ -513,7 +515,9 @@ enum MarkdownConverter {
                 alignments.indices.contains(column) ? alignments[column] : ""
             }
 
-            var html = "<table>\n<thead>\n<tr>"
+            // Each row is one source line, so each row says which — a note left in a cell
+            // is found from its row, and the editor beside the page lines up row by row.
+            var html = "<table>\n<thead>\n<tr data-line=\"\(lineOffset + start)\">"
             for (column, cell) in headerCells.enumerated() {
                 html += "<th\(alignment(column))>\(inline(cell))</th>"
             }
@@ -524,7 +528,7 @@ enum MarkdownConverter {
                 let line = lines[index]
                 if line.trimmingCharacters(in: .whitespaces).isEmpty || !line.contains("|") { break }
                 let cells = splitTableRow(line)
-                html += "<tr>"
+                html += "<tr data-line=\"\(lineOffset + index)\">"
                 for column in 0..<max(cells.count, headerCells.count) {
                     let value = column < cells.count ? cells[column] : ""
                     html += "<td\(alignment(column))>\(inline(value))</td>"
@@ -571,7 +575,9 @@ enum MarkdownConverter {
             guard let first = ListMarker(line: lines[start]) else { return ("", 1) }
             let ordered = first.ordered
             var items: [[String]] = []
+            var itemStarts: [Int] = []
             var current: [String] = []
+            var currentStart = start
             var index = start
             var loose = false
             var sawBlank = false
@@ -597,10 +603,11 @@ enum MarkdownConverter {
                 }
 
                 if let marker = ListMarker(line: line), marker.indent <= first.indent {
-                    if !current.isEmpty { items.append(current) }
+                    if !current.isEmpty { items.append(current); itemStarts.append(currentStart) }
                     if sawBlank { loose = true }
                     sawBlank = false
                     current = [marker.content]
+                    currentStart = index
                     index += 1
                     continue
                 }
@@ -615,12 +622,15 @@ enum MarkdownConverter {
                 }
                 break
             }
-            if !current.isEmpty { items.append(current) }
+            if !current.isEmpty { items.append(current); itemStarts.append(currentStart) }
 
             var html = ordered ? "<ol\(first.startAttribute)>\n" : "<ul>\n"
-            for item in items {
-                html += "<li\(taskClass(item.first ?? ""))>"
-                html += itemHTML(item, loose: loose, lineOffset: lineOffset)
+            for (item, itemStart) in zip(items, itemStarts) {
+                // Every source line of an item is one entry in `item` (blank ones too),
+                // so the item's own line is exact and its nested blocks count from it.
+                let itemLine = lineOffset + itemStart
+                html += "<li\(taskClass(item.first ?? "")) data-line=\"\(itemLine)\">"
+                html += itemHTML(item, loose: loose, lineOffset: itemLine + 1)
                 html += "</li>\n"
             }
             html += ordered ? "</ol>\n" : "</ul>\n"

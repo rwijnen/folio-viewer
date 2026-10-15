@@ -150,8 +150,9 @@ struct AnnotationPageTests {
     }
 
     @Test func theMarkingScriptCarriesTheLinesAndTheWords() {
-        let html = page([passage(2...4, "editing is open")])
-        #expect(html.contains("[2,4,\"editing is open\"]"))
+        let html = page([HTMLPage.AnnotatedPassage(id: "n1", lines: 2...4, quote: "editing is open")])
+        // The id too, so the sidebar can ask the page for this passage.
+        #expect(html.contains("[2,4,\"editing is open\",\"n1\"]"))
         #expect(html.contains("folio-annotated"))
 
         // No annotations, no marking script at all — nothing to paint. The style rule

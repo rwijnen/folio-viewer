@@ -17,7 +17,11 @@ struct NotesSidebar: View {
                         AnnotationRow(annotation: annotation)
                             .listRowInsets(EdgeInsets(top: 2, leading: 4, bottom: 2, trailing: 4))
                             .contentShape(Rectangle())
+                            // Clicking a note goes to it, as clicking a heading does in
+                            // the outline. It used to do nothing at all.
+                            .onTapGesture { state.revealAnnotation(annotation, for: tab) }
                             .contextMenu {
+                                Button("Go to Note") { state.revealAnnotation(annotation, for: tab) }
                                 Button("Delete") { state.removeAnnotation(annotation, for: tab) }
                             }
                     }
@@ -105,7 +109,7 @@ struct AnnotationRow: View {
                     .lineLimit(3)
                     .multilineTextAlignment(.leading)
 
-                // The passage, so a note can be told from its neighbours without jumping
+                // The passage, so a note can be told from its neighbours before jumping
                 // to it.
                 Text("“\(annotation.quote)”")
                     .font(.system(size: 10))

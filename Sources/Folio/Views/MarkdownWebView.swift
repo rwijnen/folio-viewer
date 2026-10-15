@@ -25,6 +25,10 @@ struct MarkdownWebView: NSViewRepresentable {
     /// Where the editor beside this page has scrolled to, when there is one.
     var lineRequest: Int = 0
     var line: Int = 0
+    /// A note clicked in the sidebar.
+    var noteRequest: Int = 0
+    var noteID: String = ""
+    var noteLine: Int = 0
 
     @Environment(AppState.self) private var state
 
@@ -49,6 +53,7 @@ struct MarkdownWebView: NSViewRepresentable {
         controller.apply(query: query, caseSensitive: caseSensitive,
                          focusRequest: focusRequest, focusTarget: focusTarget,
                          anchorRequest: anchorRequest, anchor: anchor,
-                         lineRequest: lineRequest, line: line)
+                         lineRequest: lineRequest, line: line,
+                         noteRequest: noteRequest, noteID: noteID, noteLine: noteLine)
     }
 }

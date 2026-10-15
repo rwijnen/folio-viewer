@@ -70,17 +70,20 @@ struct MarkdownBlockTests {
     @Test func rendersUnorderedAndOrderedLists() {
         let unordered = html("- one\n- two\n")
         #expect(unordered.contains("<ul>"))
-        #expect(unordered.contains("<li>one</li>"))
+        #expect(unordered.contains("<li data-line=\"0\">one</li>"))
+        #expect(unordered.contains("<li data-line=\"1\">two</li>"))
         let ordered = html("3. three\n4. four\n")
         #expect(ordered.contains("<ol start=\"3\">"))
-        #expect(ordered.contains("<li>three</li>"))
+        #expect(ordered.contains("<li data-line=\"0\">three</li>"))
     }
 
     @Test func nestsLists() {
         let result = html("- outer\n  - inner\n")
         #expect(result.contains("<ul>"))
         // The nested list must live inside the outer item, not after it.
-        let outerItem = try? #require(result.range(of: "<li>outer"))
+        let outerItem = try? #require(result.range(of: "<li data-line=\"0\">outer"))
+        // The inner item counts from its own line, not the list's.
+        #expect(result.contains("<li data-line=\"1\">inner"))
         let nested = try? #require(result.range(of: "<ul>", options: .backwards))
         #expect(outerItem != nil && nested != nil)
         #expect(result.filter { $0 == "<" } .count > 6)
@@ -96,7 +99,7 @@ struct MarkdownBlockTests {
 
     @Test func rendersBlockquotes() {
         let result = html("> quoted **text**\n")
-        #expect(result.contains("<blockquote>"))
+        #expect(result.contains("<blockquote data-line=\"0\">"))
         #expect(result.contains("<strong>text</strong>"))
     }
 
@@ -111,20 +114,20 @@ struct MarkdownBlockTests {
 
     @Test func highlightsFencedCode() {
         let result = html("```swift\nlet x = 1\n```\n")
-        #expect(result.contains("<pre class=\"code\" data-language=\"swift\">"))
+        #expect(result.contains("<pre class=\"code\" data-language=\"swift\" data-line=\"0\">"))
         #expect(result.contains("tk-keyword"))   // `let`
         #expect(result.contains("tk-number"))    // `1`
     }
 
     @Test func leavesUnknownFenceLanguagesUnhighlighted() {
         let result = html("```\nplain text\n```\n")
-        #expect(result.contains("<pre class=\"code\"><code>plain text</code></pre>"))
+        #expect(result.contains("<pre class=\"code\" data-line=\"0\"><code>plain text</code></pre>"))
     }
 
     @Test func turnsMermaidFencesIntoDiagramContainers() {
         let output = convert("```mermaid\nflowchart TD\n  A --> B\n```\n")
         #expect(output.diagramCount == 1)
-        #expect(output.bodyHTML.contains("<div class=\"diagram\">"))
+        #expect(output.bodyHTML.contains("<div class=\"diagram\" data-line=\"0\">"))
         #expect(output.bodyHTML.contains("<pre class=\"mermaid\">flowchart TD"))
         // The source is kept alongside so a failed diagram can still be read.
         #expect(output.bodyHTML.contains("class=\"diagram-source\""))
@@ -345,7 +348,7 @@ struct SampleMarkdownTests {
         #expect(output.bodyHTML.contains("<table>"))
         #expect(output.bodyHTML.contains("<input type=\"checkbox\""))
         #expect(output.bodyHTML.contains("tk-keyword"))
-        #expect(output.bodyHTML.contains("<blockquote>"))
+        #expect(output.bodyHTML.contains("<blockquote data-line="))
         // Nothing executable survives conversion.
         #expect(!output.bodyHTML.lowercased().contains("<script"))
     }
@@ -478,8 +481,8 @@ struct CalloutTests {
     }
 
     @Test func plainQuotesAndLinksStayQuotes() {
-        #expect(html("> just a quote\n").contains("<blockquote>"))
-        #expect(html("> [link](x.md) in a quote\n").contains("<blockquote>"))
-        #expect(html("> [!not a type] text\n").contains("<blockquote>"))
+        #expect(html("> just a quote\n").contains("<blockquote data-line=\"0\">"))
+        #expect(html("> [link](x.md) in a quote\n").contains("<blockquote data-line=\"0\">"))
+        #expect(html("> [!not a type] text\n").contains("<blockquote data-line=\"0\">"))
     }
 }

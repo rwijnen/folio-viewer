@@ -67,6 +67,23 @@ extension AppState {
 
     func cancelAnnotationDraft() { annotationDraft = nil }
 
+    // MARK: - Going to one
+
+    /// Brings a note into view: the marked words in the rendered page, and the lines it
+    /// sits on in the editor — both when both are showing, as the outline does.
+    func revealAnnotation(_ annotation: Annotation, for requested: DocumentTab? = nil) {
+        guard let tab = requested ?? active else { return }
+        if tab.readingMode.showsPreview {
+            tab.noteRevealID = annotation.id.uuidString
+            tab.noteRevealLine = annotation.startLine
+            tab.noteRevealRequest += 1
+        }
+        if tab.readingMode.showsEditor {
+            tab.sourceScrollLine = annotation.startLine
+            tab.sourceScrollRequest += 1
+        }
+    }
+
     func removeAnnotation(_ annotation: Annotation, for requested: DocumentTab? = nil) {
         guard let tab = requested ?? active else { return }
         tab.annotations.removeAll { $0.id == annotation.id }

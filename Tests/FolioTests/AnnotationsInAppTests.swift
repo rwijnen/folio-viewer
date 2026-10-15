@@ -182,3 +182,96 @@ struct AnnotationsInAppTests {
         #expect(try JSONDecoder().decode(Session.self, from: data).entries[0].annotations == nil)
     }
 }
+
+/// Notes were sometimes not highlighted, and clicking one in the sidebar did nothing.
+///
+/// The highlight is found from the source lines of the rendered blocks, and only
+/// paragraphs, headings and callouts said which line they were on — so a note in a
+/// bullet or a table cell had nowhere to be looked for, and nor did one on the third line
+/// of a wrapped paragraph, which records only its first. WebKit does not run in these
+/// tests; with the generated page run in WebKit, the old code marked one of five such
+/// notes and this marks all five.
+@Suite("Finding and going to a note")
+@MainActor
+struct NoteNavigationTests {
+
+    private let source = """
+    # Design
+
+    This paragraph is wrapped
+    so the words to mark
+    sit on its third line.
+
+    | Separation | Field |
+    |---|---|
+    | Brand | the source company |
+
+    - First bullet
+    - Second bullet
+      - Nested bullet
+    """
+
+    private func html(_ text: String) -> String {
+        MarkdownConverter.convert(lines: TextNormalizer.splitLines(text)).bodyHTML
+    }
+
+    @Test func listItemsTableRowsCodeAndQuotesSayWhichLineTheyAreOn() {
+        let body = html(source + "\n\n> quoted\n\n```\ncode\n```\n")
+        #expect(body.contains("<tr data-line=\"6\">"))             // header row
+        #expect(body.contains("<tr data-line=\"8\">"))             // body row
+        #expect(body.contains("<li data-line=\"10\">First bullet"))
+        #expect(body.contains("<li data-line=\"11\">Second bullet"))
+        #expect(body.contains("<blockquote data-line=\"14\">"))
+        #expect(body.contains("<pre class=\"code\" data-line=\"16\">"))
+    }
+
+    /// A sub-list used to be numbered from the start of its parent list.
+    @Test func aNestedItemCountsFromItsOwnLine() {
+        #expect(html(source).contains("<li data-line=\"12\">Nested bullet"))
+    }
+
+    @Test func thePageLooksInTheBlockThatCoversTheNote() {
+        let page = HTMLPage.wrap(body: "<p data-line=\"2\">x</p>", title: "t", isDark: false,
+                                 mermaidScript: nil, diagramCount: 0,
+                                 annotated: [.init(id: "n1", lines: 4...4, quote: "x")])
+        #expect(page.contains("if (line <= from) { covering = blocks[b]; }"))
+        #expect(page.contains("\"n1\""))
+        #expect(page.contains("element.setAttribute('data-note', id)"))
+        #expect(page.contains("window.folioRevealNote = function (id, line)"))
+    }
+
+    @Test func clickingANoteAsksThePageAndTheEditorToGoThere() throws {
+        let folder = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("folio-note-nav-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let url = folder.appendingPathComponent("design.md")
+        try source.write(to: url, atomically: true, encoding: .utf8)
+        let state = AppState()
+        state.open(at: url)
+        let tab = try #require(state.active)
+        let note = Annotation(kind: .note, quote: "Second bullet", startLine: 11, endLine: 11,
+                              comment: "check")
+        tab.annotations = [note]
+
+        // Rendered: the page is asked for this note, and the editor is left alone.
+        state.setReadingMode(.rendered, for: tab)
+        let editorBefore = tab.sourceScrollRequest
+        state.revealAnnotation(note, for: tab)
+        #expect(tab.noteRevealRequest == 1)
+        #expect(tab.noteRevealID == note.id.uuidString)
+        #expect(tab.noteRevealLine == 11)
+        #expect(tab.sourceScrollRequest == editorBefore)
+
+        // Both halves: the editor goes to the note's line as well.
+        state.setReadingMode(.sideBySide, for: tab)
+        state.revealAnnotation(note, for: tab)
+        #expect(tab.noteRevealRequest == 2)
+        #expect(tab.sourceScrollLine == 11)
+        #expect(tab.sourceScrollRequest == editorBefore + 1)
+
+        // The page it is asked of carries the note's id on the passage.
+        let page = try #require(tab.renderedPage(isDark: false))
+        #expect(page.contains(note.id.uuidString))
+    }
+}

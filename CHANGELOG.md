@@ -6,6 +6,26 @@ All notable changes to Folio are recorded here. The format follows
 
 ## [Unreleased]
 
+## [2.5.1] — 2026-10-14
+
+### Fixed
+
+- **Every note is highlighted in the text again.** A note left in a bullet, a table cell,
+  a quote or a code block got no highlight at all, and nor did one on a later line of a
+  paragraph wrapped over several source lines. The highlight is found from the source
+  line each rendered block records, and only paragraphs, headings and callouts recorded
+  one — a paragraph only its first. List items, table rows, quotes and code blocks now
+  say which line they are on, and the search also looks in the block covering the note's
+  first line. Checked in WebKit: of five such notes, one was highlighted before and all
+  five are now.
+- **Clicking a note in the Notes list goes to it.** It did nothing. It now scrolls the
+  page to the highlighted words and flashes them once, and in Source or both-halves mode
+  the editor goes to the note's line as well. **Go to Note** is also on the right-click
+  menu.
+- **Blocks nested in a list item know their own line.** A sub-list or a code block inside
+  a bullet was numbered from the start of the whole list, which put notes, selections and
+  side-by-side scrolling there a few lines out.
+
 ## [2.5.0] — 2026-10-12
 
 ### Added
@@ -396,7 +416,8 @@ in one window with tabs, without ever writing to your files or touching the netw
   asking Launch Services which app would open a probe file.
 - 109 tests over the model, tab and scroll layers, run with Swift Testing.
 
-[Unreleased]: https://github.com/rwijnen/folio-viewer/compare/v2.5.0...HEAD
+[Unreleased]: https://github.com/rwijnen/folio-viewer/compare/v2.5.1...HEAD
+[2.5.1]: https://github.com/rwijnen/folio-viewer/compare/v2.5.0...v2.5.1
 [2.5.0]: https://github.com/rwijnen/folio-viewer/compare/v2.4.0...v2.5.0
 [2.4.0]: https://github.com/rwijnen/folio-viewer/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/rwijnen/folio-viewer/compare/v2.2.0...v2.3.0

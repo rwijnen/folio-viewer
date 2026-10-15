@@ -234,7 +234,10 @@ struct DocumentView: View {
                             anchorRequest: tab.anchorRequest,
                             anchor: tab.pendingAnchor,
                             lineRequest: tab.previewLineRequest,
-                            line: tab.previewLine)
+                            line: tab.previewLine,
+                            noteRequest: tab.noteRevealRequest,
+                            noteID: tab.noteRevealID,
+                            noteLine: tab.noteRevealLine)
     }
 
     private func copySource() {
