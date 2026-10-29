@@ -83,7 +83,7 @@ struct WorkingChangesView: View {
 
     var body: some View {
         ComparisonPane(tab: tab,
-                       leftTitle: isNew ? "Not in the repository" : "Last commit",
+                       leftTitle: isNew ? "Not in the repository" : lastCommitTitle,
                        rightTitle: tab.isDirty ? "Yours, including unsaved" : "Yours",
                        loadingMessage: "Reading the last commit…",
                        failureTitle: "Could not compare with the last commit",
@@ -102,6 +102,11 @@ struct WorkingChangesView: View {
     }
 
     private var isNew: Bool { tab.git?.fileState == .untracked }
+
+    /// Names the branch, since that is what the comparison is against.
+    private var lastCommitTitle: String {
+        tab.git?.branch.map { "Last commit on \($0)" } ?? "Last commit"
+    }
 
     /// Says plainly that unsaved edits are included, because they are — a commit saves
     /// first, so this is what would be recorded, not what is on disk.

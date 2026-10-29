@@ -137,10 +137,22 @@ extension AppState {
     }
 
     /// Steps through the list: +1 is further back in time, since the log is newest first.
+    /// The uncommitted changes sit above the newest commit, as they do in the sidebar.
     func stepThroughHistory(by offset: Int) {
-        guard let tab = active, let current = tab.viewingCommit,
+        guard let tab = active else { return }
+        if tab.pane == .workingChanges {
+            if offset > 0, let newest = tab.history.first {
+                showCommit(newest, for: tab)
+            }
+            return
+        }
+        guard let current = tab.viewingCommit,
               let index = tab.history.firstIndex(where: { $0.hash == current.hash }) else { return }
         let next = index + offset
+        if next < 0 {
+            if hasWorkingChanges(tab) { showWorkingChanges(for: tab) }
+            return
+        }
         guard tab.history.indices.contains(next) else { return }
         showCommit(tab.history[next], for: tab)
     }

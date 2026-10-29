@@ -236,4 +236,87 @@ struct WorkingChangesTests {
         workspace.state.recomputeMatches()
         #expect(!workspace.state.matches.isEmpty)
     }
+
+    // MARK: In the history list
+
+    /// The uncommitted entry sits above the newest commit, so stepping moves between them
+    /// the way the list reads.
+    @Test func steppingMovesBetweenTheUncommittedChangesAndTheNewestCommit() async throws {
+        let workspace = try Workspace()
+        try await workspace.start()
+        let file = try workspace.write("note.md", "# One\n")
+        try await workspace.commitAll("First")
+        try workspace.write("note.md", "# Two\n")
+        try await workspace.commitAll("Second")
+        try workspace.write("note.md", "# Three\n")
+
+        let tab = try await workspace.open(file)
+        workspace.state.setSidebarMode(.history, for: tab)
+        await workspace.waitFor("the log") { tab.history.count == 2 }
+
+        workspace.state.showWorkingChanges(for: tab)
+        #expect(tab.pane == .workingChanges)
+
+        workspace.state.stepThroughHistory(by: 1)
+        #expect(tab.viewingCommit?.subject == "Second")
+
+        workspace.state.stepThroughHistory(by: -1)
+        #expect(tab.pane == .workingChanges)
+
+        // Nothing is newer than what is not committed yet.
+        workspace.state.stepThroughHistory(by: -1)
+        #expect(tab.pane == .workingChanges)
+    }
+
+    @Test func aCleanFileStopsAtTheNewestCommit() async throws {
+        let workspace = try Workspace()
+        try await workspace.start()
+        let file = try workspace.write("note.md", "# One\n")
+        try await workspace.commitAll("First")
+
+        let tab = try await workspace.open(file)
+        workspace.state.setSidebarMode(.history, for: tab)
+        await workspace.waitFor("the log") { tab.history.count == 1 }
+        workspace.state.showCommit(tab.history[0], for: tab)
+
+        workspace.state.stepThroughHistory(by: -1)
+        #expect(tab.viewingCommit?.subject == "First")
+    }
+}
+
+/// The line under "Uncommitted changes" in the history list.
+@Suite("Uncommitted changes label")
+struct WorkingChangesDetailTests {
+
+    private func snapshot(_ state: GitSnapshot.FileState, branch: String? = "main",
+                          added: Int = 0, removed: Int = 0) -> GitSnapshot {
+        var snapshot = GitSnapshot(root: URL(fileURLWithPath: "/repo"))
+        snapshot.branch = branch
+        snapshot.fileState = state
+        snapshot.addedLines = added
+        snapshot.removedLines = removed
+        return snapshot
+    }
+
+    @Test func namesTheChangeAndTheBranchItIsAgainst() {
+        #expect(snapshot(.modified, added: 3, removed: 1)
+            .workingChangesDetail(hasUnsavedEdits: false) == "+3 −1 · against main")
+        #expect(snapshot(.untracked, branch: "feature/x")
+            .workingChangesDetail(hasUnsavedEdits: false) == "new file · against feature/x")
+        #expect(snapshot(.modified, branch: nil, added: 1)
+            .workingChangesDetail(hasUnsavedEdits: false) == "+1 · against HEAD")
+    }
+
+    /// The counts are from disk, so with a draft on top they would be wrong.
+    @Test func unsavedEditsAreNamedRatherThanCounted() {
+        #expect(snapshot(.modified, added: 3)
+            .workingChangesDetail(hasUnsavedEdits: true) == "unsaved edits · against main")
+        #expect(snapshot(.committed)
+            .workingChangesDetail(hasUnsavedEdits: true) == "unsaved edits · against main")
+    }
+
+    @Test func nothingOutstandingHasNoLabel() {
+        #expect(snapshot(.committed).workingChangesDetail(hasUnsavedEdits: false) == nil)
+        #expect(snapshot(.ignored).workingChangesDetail(hasUnsavedEdits: false) == nil)
+    }
 }

@@ -104,6 +104,26 @@ struct GitSnapshot: Equatable, Sendable {
             return "conflict"
         }
     }
+
+    /// The uncommitted entry at the top of the history list: what is outstanding, and
+    /// what it is measured against — `+3 −1 · against main`. nil when nothing is.
+    ///
+    /// The line counts come from the last status read, which is the file on disk; with
+    /// unsaved edits on top they would be out of date, so those are named instead.
+    func workingChangesDetail(hasUnsavedEdits: Bool) -> String? {
+        let against = "against \(branch ?? "HEAD")"
+        if hasUnsavedEdits {
+            return fileState == .untracked
+                ? "new file, unsaved edits · \(against)"
+                : "unsaved edits · \(against)"
+        }
+        switch fileState {
+        case .modified, .untracked:
+            return changeLabel.map { "\($0) · \(against)" }
+        case .committed, .ignored, .conflicted:
+            return nil
+        }
+    }
 }
 
 /// The git commands Folio needs, as questions and two answers.
