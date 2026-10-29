@@ -53,6 +53,18 @@ struct HistorySidebar: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // Above the log rather than inside it, so it is there for a file that has
+            // never been committed too — and that is the case with the most to show.
+            if state.hasWorkingChanges(tab) {
+                WorkingChangesRow(tab: tab,
+                                  isCurrent: tab.pane == .workingChanges,
+                                  hasHistoryBelow: !tab.visibleHistory.isEmpty)
+                    .padding(.horizontal, 8)
+                    .padding(.top, 6)
+                    .contentShape(Rectangle())
+                    .onTapGesture { state.showWorkingChanges(for: tab) }
+            }
+
             switch tab.historyState {
             case .idle, .loading:
                 VStack(spacing: 6) {
@@ -130,7 +142,7 @@ struct HistorySidebar: View {
 
     private var footer: some View {
         HStack(spacing: 4) {
-            if tab.viewingCommit != nil {
+            if tab.viewingCommit != nil || tab.pane == .workingChanges {
                 Button("Back to the Document") { state.closeCommit(for: tab) }
                     .buttonStyle(.link)
                     .font(.system(size: 10))
@@ -266,6 +278,61 @@ struct CommitRow: View {
     }
 }
 
+/// What is not committed yet, as the newest entry in the history: the file as it is now,
+/// against the last commit on its branch.
+struct WorkingChangesRow: View {
+
+    @Environment(AppState.self) private var state
+    let tab: DocumentTab
+    let isCurrent: Bool
+    /// Whether commits follow, so the timeline runs on into them.
+    let hasHistoryBelow: Bool
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 6) {
+            Color.clear.frame(width: 6, height: 1)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Uncommitted changes")
+                    .font(.system(size: 11, weight: isCurrent ? .semibold : .regular))
+                if let detail = tab.git?.workingChangesDetail(hasUnsavedEdits: tab.isDirty) {
+                    Text(detail)
+                        .font(.system(size: 9))
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 3)
+        .padding(.horizontal, 4)
+        .overlay(alignment: .topLeading) { timeline.padding(.leading, 4) }
+        .background {
+            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                .fill(isCurrent ? Theme.foldBackground : .clear)
+        }
+        .help("Compare \(tab.name) with the last commit on "
+              + "\(tab.git?.branch ?? "HEAD") — what a commit would record.")
+    }
+
+    /// A hollow dot, orange like the comparison it opens, since this is not a commit yet.
+    private var timeline: some View {
+        VStack(spacing: 0) {
+            Circle()
+                .strokeBorder(Color.orange, lineWidth: 1.5)
+                .background(Circle().fill(isCurrent ? Color.orange : .clear))
+                .frame(width: 7, height: 7)
+                .padding(.top, 6)
+            if hasHistoryBelow {
+                Rectangle()
+                    .fill(Color.secondary.opacity(0.2))
+                    .frame(width: 1)
+            }
+        }
+        .frame(width: 7)
+    }
+}
+
 /// How a commit's date is written in the list.
 enum CommitDate {
 
@@ -337,6 +404,8 @@ struct HistoricalCommitView: View {
         guard let index = tab.history.firstIndex(where: { $0.hash == commit.hash }) else {
             return false
         }
+        // Newer than the newest commit is what has not been committed yet.
+        if index == 0, offset < 0 { return state.hasWorkingChanges(tab) }
         return tab.history.indices.contains(index + offset)
     }
 }

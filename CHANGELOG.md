@@ -6,6 +6,22 @@ All notable changes to Folio are recorded here. The format follows
 
 ## [Unreleased]
 
+## [2.6.0] — 2026-10-29
+
+### Added
+
+- **Uncommitted changes at the top of the History list.** When the file differs from
+  the last commit on its branch — edited on disk, unsaved edits, or never committed — the
+  History list starts with an *Uncommitted changes* entry, e.g. `+3 −1 · against main`.
+  Clicking it shows the last commit beside the file as you have it now, which is what
+  a commit would record. ⌥⌘↑ and ⌥⌘↓ step between it and the newest commit. The same
+  comparison was already under *Uncommitted Changes…* (⌥⌘D), but nothing in the History
+  list pointed to it.
+
+### Changed
+
+- The left side of that comparison is titled *Last commit on* followed by the branch name.
+
 ## [2.5.1] — 2026-10-14
 
 ### Fixed
@@ -416,7 +432,8 @@ in one window with tabs, without ever writing to your files or touching the netw
   asking Launch Services which app would open a probe file.
 - 109 tests over the model, tab and scroll layers, run with Swift Testing.
 
-[Unreleased]: https://github.com/rwijnen/folio-viewer/compare/v2.5.1...HEAD
+[Unreleased]: https://github.com/rwijnen/folio-viewer/compare/v2.6.0...HEAD
+[2.6.0]: https://github.com/rwijnen/folio-viewer/compare/v2.5.1...v2.6.0
 [2.5.1]: https://github.com/rwijnen/folio-viewer/compare/v2.5.0...v2.5.1
 [2.5.0]: https://github.com/rwijnen/folio-viewer/compare/v2.4.0...v2.5.0
 [2.4.0]: https://github.com/rwijnen/folio-viewer/compare/v2.3.0...v2.4.0
