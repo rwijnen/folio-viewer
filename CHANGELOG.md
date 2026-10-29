@@ -14,7 +14,9 @@ All notable changes to Folio are recorded here. The format follows
   Mermaid's stock themes, with lavender boxes and yellow notes by day and Mermaid's own
   dark by night, and looked like they were pasted in from somewhere else. They now use
   the page's own colours. Nodes are the page background, so they stand out from the
-  diagram's box. Lines are the muted text colour, and the link blue is the one accent,
+  diagram's box, with a teal outline and rounded corners. That includes class boxes and
+  ER tables, which Mermaid draws as paths: once drawn, each is replaced by a rounded
+  rectangle, and an ER table's rows are clipped to it. Lines are the muted text colour, and the link blue is the one accent,
   used for sequence actors and Gantt tasks. Notes take the highlight yellow, and pie
   slices and mindmap branches take the syntax palette. All of it switches with the
   appearance. Every text colour meets WCAG AA contrast on its fill, in both themes.

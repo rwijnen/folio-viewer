@@ -39,6 +39,7 @@ struct MermaidThemeTests {
                      ("noteTextColor", "noteBkgColor"), ("actorTextColor", "actorBkg"),
                      ("taskTextColor", "taskBkgColor"), ("taskTextDarkColor", "activeTaskBkgColor"),
                      ("taskTextColor", "doneTaskBkgColor"), ("taskTextColor", "critBkgColor"),
+                     ("textColor", "rowOdd"), ("textColor", "rowEven"),
                      ("errorTextColor", "errorBkgColor")]
             + (0..<12).map { ("cScaleLabel\($0)", "cScale\($0)") }
         for isDark in [false, true] {
@@ -110,6 +111,24 @@ struct MermaidThemeTests {
             #expect(page.contains(isDark ? "#3e331a" : "#fff8c5"))
             #expect(page.contains("forest") == false)
         }
+    }
+
+    /// Boxes are rounded: rectangles by the stylesheet, class boxes and ER tables, which
+    /// Mermaid draws as paths, by the script once each diagram is drawn.
+    @Test func boxesAreRounded() {
+        let page = HTMLPage.wrap(body: "<pre class=\"mermaid\">graph TD\nA</pre>", title: "t",
+                                 isDark: false, mermaidScript: "/* mermaid */", diagramCount: 1)
+        #expect(page.contains(".diagram-rendered .node rect.label-container"))
+        #expect(page.contains("rx: 6px; ry: 6px;"))
+        #expect(page.contains("roundClassBoxes(holder);"))
+        #expect(page.contains("g.node > g.outer-path"))
+        // The rows of an ER table would otherwise square its corners off again.
+        #expect(page.contains("g.row-rect-odd, :scope > g.row-rect-even"))
+    }
+
+    @Test func nodesAreOutlinedInTheCalloutTeal() {
+        #expect(lookup(false)["nodeBorder"] == "#1b7c83")
+        #expect(lookup(true)["nodeBorder"] == "#2a9fa8")
     }
 
     // MARK: Contrast

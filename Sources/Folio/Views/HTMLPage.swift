@@ -303,6 +303,14 @@ enum HTMLPage {
     }
     .folio-fullscreen-stage.is-panning { cursor: grabbing; }
     .folio-fullscreen-stage svg { display: block; margin: 0 auto; }
+    /* Rounded corners on every box Mermaid draws as a rectangle: flowchart, state and ER
+       nodes, sequence actors and notes, Gantt bars. Class boxes and ER tables are
+       paths, swapped for rounded rectangles once drawn — see roundClassBoxes. */
+    .diagram-rendered .node rect.label-container,
+    .diagram-rendered rect.actor, .diagram-rendered rect.note { rx: 6px; ry: 6px; }
+    .diagram-rendered rect.task { rx: 3px; ry: 3px; }
+    /* ER's "zero" end is an open circle; Mermaid fills it white, a solid dot at night. */
+    .diagram-rendered svg[aria-roledescription="er"] marker circle { fill: var(--code-bg) !important; }
     .diagram-source { display: none; }
     .diagram.diagram-error { background: var(--error-bg); border-color: var(--error-fg); }
     .diagram.diagram-error .diagram-source {
@@ -543,6 +551,49 @@ enum HTMLPage {
             }
             return folioTheme + '\\n' + source;
           }
+          // Class boxes and ER tables are drawn as a group of two paths — a fill and an
+          // outline — which CSS cannot round. Each group is replaced by one rounded
+          // rectangle in the same place: the fill from the first path, the outline and
+          // any `style` the diagram set (`style Person stroke:…`) from the second.
+          function roundClassBoxes(holder) {
+            holder.querySelectorAll('g.node > g.outer-path').forEach(function (group) {
+              var paths = group.querySelectorAll('path');
+              var box = group.getBBox();
+              if (paths.length < 2 || !box.width || !box.height) { return; }
+              var fill = paths[0], line = paths[paths.length - 1];
+              var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+              [['x', box.x], ['y', box.y], ['width', box.width], ['height', box.height],
+               ['rx', 6], ['ry', 6],
+               ['fill', fill.getAttribute('fill')],
+               ['stroke', line.getAttribute('stroke')],
+               ['stroke-width', line.getAttribute('stroke-width')],
+               ['stroke-dasharray', line.getAttribute('stroke-dasharray')],
+               ['style', line.getAttribute('style')],
+               ['class', group.getAttribute('class')]].forEach(function (pair) {
+                if (pair[1] !== null && pair[1] !== '') { rect.setAttribute(pair[0], pair[1]); }
+              });
+              var node = group.parentNode;
+              node.replaceChild(rect, group);
+              // An ER table's attribute rows are square shapes drawn over the box, and
+              // would put its corners back. They are clipped to the rounded shape, and
+              // the outline is drawn again on top of them.
+              var rows = node.querySelectorAll(':scope > g.row-rect-odd, :scope > g.row-rect-even');
+              if (!rows.length) { return; }
+              var clip = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath');
+              clip.id = 'folio-round-' + (++roundedCount);
+              var shape = rect.cloneNode(false);
+              shape.removeAttribute('style');
+              shape.removeAttribute('class');
+              clip.appendChild(shape);
+              node.insertBefore(clip, node.firstChild);
+              Array.prototype.forEach.call(rows, function (row) { row.setAttribute('clip-path', 'url(#' + clip.id + ')'); });
+              var outline = rect.cloneNode(false);
+              outline.setAttribute('fill', 'none');
+              outline.style.fill = 'none';
+              node.appendChild(outline);
+            });
+          }
+          var roundedCount = 0;
           var blocks = Array.prototype.slice.call(document.querySelectorAll('pre.mermaid'));
           var failed = 0;
           var pending = blocks.length;
@@ -555,6 +606,7 @@ enum HTMLPage {
               holder.innerHTML = result.svg;
               block.replaceWith(holder);
               if (result.bindFunctions) { result.bindFunctions(holder); }
+              roundClassBoxes(holder);
             }).catch(function (error) {
               failed += 1;
               var container = block.parentElement;

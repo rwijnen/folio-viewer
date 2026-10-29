@@ -6,7 +6,8 @@ import Foundation
 /// boxes and yellow notes by day, Mermaid's own dark by night — so a diagram read as
 /// something pasted in. `base` is the one theme whose colours can all be replaced, and
 /// these values are the stylesheet's: nodes take the page background, so they stand
-/// out of the code-coloured box a diagram sits in; lines take the muted text colour;
+/// out of the code-coloured box a diagram sits in, outlined in the callout teal; lines
+/// take the muted text colour;
 /// the link blue is the one accent; series colours are the syntax palette.
 ///
 /// A document that names its own theme keeps it — see `declaresOwnTheme`.
@@ -44,7 +45,7 @@ enum MermaidTheme {
         // Nodes
         ("primaryColor", "#ffffff"),
         ("primaryTextColor", "#1f2328"),
-        ("primaryBorderColor", "#8c959f"),
+        ("primaryBorderColor", "#1b7c83"),
         ("secondaryColor", "#ddf4ff"),
         ("secondaryTextColor", "#1f2328"),
         ("secondaryBorderColor", "#0969da"),
@@ -52,7 +53,7 @@ enum MermaidTheme {
         ("tertiaryTextColor", "#1f2328"),
         ("tertiaryBorderColor", "#d1d9e0"),
         ("mainBkg", "#ffffff"),
-        ("nodeBorder", "#8c959f"),
+        ("nodeBorder", "#1b7c83"),
         ("nodeTextColor", "#1f2328"),
         ("textColor", "#1f2328"),
         ("titleColor", "#1f2328"),
@@ -104,6 +105,8 @@ enum MermaidTheme {
         // Entity–relationship rows
         ("attributeBackgroundColorOdd", "#ffffff"),
         ("attributeBackgroundColorEven", "#f6f8fa"),
+        ("rowOdd", "#ffffff"),
+        ("rowEven", "#f6f8fa"),
     ] + series(strong: daySeries, soft: dayTints, text: "#1f2328", onStrong: "#ffffff",
                stroke: "#ffffff", outline: "#d1d9e0")
 
@@ -115,7 +118,7 @@ enum MermaidTheme {
         ("background", "#0d1117"),
         ("primaryColor", "#0d1117"),
         ("primaryTextColor", "#e6edf3"),
-        ("primaryBorderColor", "#656c76"),
+        ("primaryBorderColor", "#2a9fa8"),
         ("secondaryColor", "#142339"),
         ("secondaryTextColor", "#e6edf3"),
         ("secondaryBorderColor", "#4493f8"),
@@ -123,7 +126,7 @@ enum MermaidTheme {
         ("tertiaryTextColor", "#e6edf3"),
         ("tertiaryBorderColor", "#3d444d"),
         ("mainBkg", "#0d1117"),
-        ("nodeBorder", "#656c76"),
+        ("nodeBorder", "#2a9fa8"),
         ("nodeTextColor", "#e6edf3"),
         ("textColor", "#e6edf3"),
         ("titleColor", "#e6edf3"),
@@ -172,6 +175,8 @@ enum MermaidTheme {
         ("errorTextColor", "#f85149"),
         ("attributeBackgroundColorOdd", "#0d1117"),
         ("attributeBackgroundColorEven", "#161b22"),
+        ("rowOdd", "#0d1117"),
+        ("rowEven", "#161b22"),
     ] + series(strong: nightSeries, soft: nightTints, text: "#e6edf3", onStrong: "#0d1117",
                stroke: "#0d1117", outline: "#3d444d")
 
