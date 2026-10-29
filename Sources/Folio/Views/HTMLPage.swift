@@ -528,12 +528,27 @@ enum HTMLPage {
             sequence: { useMaxWidth: true },
             gantt: { useMaxWidth: true }
           });
+          // Folio Day or Folio Night, unless the diagram chose a theme itself. Added to
+          // each source rather than passed to initialize, where it would be laid over
+          // the diagram's own choice. See MermaidTheme.swift.
+          var folioTheme = \(jsString(MermaidTheme.directive(isDark: isDark)));
+          var ownTheme = \(jsArray(MermaidTheme.ownThemePatterns)).map(function (p) { return new RegExp(p); });
+          var frontMatter = new RegExp(\(jsString(MermaidTheme.frontMatterPattern)));
+          function themed(source) {
+            if (ownTheme.some(function (pattern) { return pattern.test(source); })) { return source; }
+            var top = source.match(frontMatter);
+            if (top) {
+              var end = top.index + top[0].length;
+              return source.slice(0, end) + folioTheme + '\\n' + source.slice(end);
+            }
+            return folioTheme + '\\n' + source;
+          }
           var blocks = Array.prototype.slice.call(document.querySelectorAll('pre.mermaid'));
           var failed = 0;
           var pending = blocks.length;
           if (!pending) { post({ type: 'diagrams', total: 0, failed: 0 }); return; }
           blocks.forEach(function (block, index) {
-            var source = block.textContent;
+            var source = themed(block.textContent);
             mermaid.render('folio-diagram-' + index, source).then(function (result) {
               var holder = document.createElement('div');
               holder.className = 'diagram-rendered';
@@ -562,6 +577,17 @@ enum HTMLPage {
           });
         })();
         """
+    }
+
+    /// A Swift string as a JavaScript string literal.
+    private static func jsString(_ text: String) -> String {
+        let data = (try? JSONSerialization.data(withJSONObject: text, options: [.fragmentsAllowed])) ?? Data("\"\"".utf8)
+        // `</` would end the script element early, wherever it appears in the literal.
+        return String(decoding: data, as: UTF8.self).replacingOccurrences(of: "</", with: "<\\/")
+    }
+
+    private static func jsArray(_ items: [String]) -> String {
+        "[" + items.map(jsString).joined(separator: ", ") + "]"
     }
 
     /// Zoom and full-window controls for a drawn diagram.
