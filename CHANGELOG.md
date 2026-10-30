@@ -6,6 +6,25 @@ All notable changes to Folio are recorded here. The format follows
 
 ## [Unreleased]
 
+## [2.7.0] — 2026-10-29
+
+### Added
+
+- **Folio Day and Folio Night themes for Mermaid diagrams.** Diagrams were drawn in
+  Mermaid's stock themes, with lavender boxes and yellow notes by day and Mermaid's own
+  dark by night, and looked like they were pasted in from somewhere else. They now use
+  the page's own colours. Nodes are the page background, so they stand out from the
+  diagram's box, with a teal outline and rounded corners. That includes class boxes and
+  ER tables, which Mermaid draws as paths: once drawn, each is replaced by a rounded
+  rectangle, and an ER table's rows are clipped to it. Lines are the muted text colour, and the link blue is the one accent,
+  used for sequence actors and Gantt tasks. Notes take the highlight yellow, and pie
+  slices and mindmap branches take the syntax palette. All of it switches with the
+  appearance. Every text colour meets WCAG AA contrast on its fill, in both themes.
+  Flowchart, sequence, class, state, ER, Gantt, pie and mindmap diagrams were checked
+  in WebKit.
+- A diagram that picks its own theme keeps it, whether in an `%%{init}%%` directive or
+  in its front matter (`config:` → `theme:`).
+
 ## [2.6.0] — 2026-10-29
 
 ### Added
@@ -432,7 +451,8 @@ in one window with tabs, without ever writing to your files or touching the netw
   asking Launch Services which app would open a probe file.
 - 109 tests over the model, tab and scroll layers, run with Swift Testing.
 
-[Unreleased]: https://github.com/rwijnen/folio-viewer/compare/v2.6.0...HEAD
+[Unreleased]: https://github.com/rwijnen/folio-viewer/compare/v2.7.0...HEAD
+[2.7.0]: https://github.com/rwijnen/folio-viewer/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/rwijnen/folio-viewer/compare/v2.5.1...v2.6.0
 [2.5.1]: https://github.com/rwijnen/folio-viewer/compare/v2.5.0...v2.5.1
 [2.5.0]: https://github.com/rwijnen/folio-viewer/compare/v2.4.0...v2.5.0
