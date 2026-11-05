@@ -176,6 +176,17 @@ struct RenderedDiffTests {
         #expect(!body.contains("id=\"folio-change-4\""))
     }
 
+    @Test func aRunTooLongToPairIsShownRemovedThenAdded() {
+        // 600 × 600 is past the pairing ceiling: no table is built, and every block
+        // still appears once, in order.
+        let old = (0..<600).map { MarkdownConverter.Block(lines: $0..<($0 + 1), html: "<p>old \($0) words</p>\n") }
+        let new = (0..<600).map { MarkdownConverter.Block(lines: $0..<($0 + 1), html: "<p>new \($0) words</p>\n") }
+        let result = RenderedDiff.compare(old: old, new: new)
+        #expect(result.blocks.count == 1200)
+        #expect(result.blocks.prefix(600).allSatisfy { $0.change == .removed })
+        #expect(result.blocks.suffix(600).allSatisfy { $0.change == .added })
+    }
+
     // MARK: Marking words
 
     @Test func entitiesAreNeverCutInTwo() throws {

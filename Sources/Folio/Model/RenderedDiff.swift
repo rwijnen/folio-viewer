@@ -71,6 +71,11 @@ enum RenderedDiff {
     static let minimumMergeSimilarity = 0.5
     /// Below this, a removed and an added block are not paired at all.
     static let minimumPairSimilarity = 0.3
+    /// Ceiling on the removed-by-added table that pairs one run of changes. A run past
+    /// it — two long documents with nothing in common, or the coarse fallback above —
+    /// is shown as all removed, then all added, rather than spending the time and memory
+    /// the block ceiling exists to avoid.
+    static let maximumPairProduct = 250_000
 
     static func compare(original: [String], updated: [String], baseURL: URL? = nil) -> Result {
         let old = MarkdownConverter.convert(lines: original, baseURL: baseURL).blocks
@@ -154,6 +159,10 @@ enum RenderedDiff {
                                   added: [MarkdownConverter.Block]) -> [Block] {
         if removed.isEmpty { return added.map { Block(change: .added, html: $0.html) } }
         if added.isEmpty { return removed.map { Block(change: .removed, html: removedHTML($0.html)) } }
+        guard removed.count * added.count <= maximumPairProduct else {
+            return removed.map { Block(change: .removed, html: removedHTML($0.html)) }
+                + added.map { Block(change: .added, html: $0.html) }
+        }
 
         let pairs = pairing(removed.map { words($0.html) }, added.map { words($0.html) })
         var result: [Block] = []
