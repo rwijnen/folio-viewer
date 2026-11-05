@@ -110,6 +110,7 @@ someone else's work. **Diffs and other text files stay read-only.**
 | **Uncommitted changes** | ⌥⌘D shows the last commit against what you have now, unsaved edits included — what a commit would record |
 | **Watches the file** | If something else writes a document you have open, Folio reloads it, or — if you were editing — offers the two versions side by side |
 | **Whole repository** | ⌥⌘U opens everything uncommitted as one diff tab — every changed file in the sidebar, new files included |
+| **Rendered comparison** | Any of the comparisons above, for a Markdown file, can be read rendered: one page with what was added, removed and reworded marked on it. ⌘1 / ⌘2 switch |
 
 ### When something else writes the file
 
@@ -158,6 +159,24 @@ am I about to record.
 It includes unsaved edits, and says so, because committing saves first: what you see is
 exactly what the commit would contain. An untracked file shows as wholly new, and so does
 one in a repository with no commits yet.
+
+### Comparing what it says, not how it is written
+
+A Markdown comparison — a commit from the history, what arrived on disk, or what is not yet
+committed — opens as source, side by side. **Rendered** in its bar (or ⌘1) shows it as one
+page instead, the newer version, with the changes marked where they fall:
+
+- an added paragraph, list, table or callout is washed green, a removed one red and struck
+  through;
+- a reworded one is shown once, with the words that went struck through and the words that
+  came highlighted — inside bold, links and table cells too;
+- a changed code block or diagram is shown before and after, since half a diagram cannot be
+  drawn.
+
+It compares what the page *reads*, so re-wrapping a paragraph or renumbering a list is not
+a change, and editing a link definition at the bottom of the file marks every paragraph
+that uses it. The bar says how many blocks were added, removed and reworded. ⌘2 goes back
+to the source.
 
 ### Everything at once
 

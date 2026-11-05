@@ -242,8 +242,17 @@ final class DocumentTab: Identifiable {
     var preamble: [String] = []
     var baseFolder: URL?
     var selectedFileID: UUID?
-    var loadState: FileLoadState = .empty
+    var loadState: FileLoadState = .empty {
+        didSet { comparisonLoadVersion &+= 1 }
+    }
     var expandedFolds: Set<Int> = []
+    /// How a comparison of this Markdown document is drawn. Kept per document, so a
+    /// reader who prefers the rendered comparison gets it for the next commit too.
+    var comparisonStyle: ComparisonStyle = .source
+    /// Bumped whenever `loadState` is replaced, which is what the rendered comparison is
+    /// built from.
+    @ObservationIgnored var comparisonLoadVersion = 0
+    @ObservationIgnored var renderedComparisonCache: (key: String, page: RenderedComparisonPage)?
 
     // MARK: Text documents
 

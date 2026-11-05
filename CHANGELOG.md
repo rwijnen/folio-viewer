@@ -6,6 +6,20 @@ All notable changes to Folio are recorded here. The format follows
 
 ## [Unreleased]
 
+## [2.8.0] — 2026-11-05
+
+### Added
+
+- **Rendered comparisons for Markdown.** A commit from the history, what arrived on disk
+  and what is not yet committed could only be compared as source. Their bar now has
+  **Source | Rendered** (⌘2 / ⌘1). Rendered is one page, the newer version, with added
+  blocks washed green and removed ones struck through in red. A reworded paragraph,
+  heading, list or table is shown once, with the words that went struck through and the
+  words that came highlighted, inside bold, links and table cells too. Changed code blocks
+  and diagrams are shown before and after. Blocks are compared as they render, so
+  re-wrapping a paragraph is not a change and a changed link definition marks the
+  paragraphs that use it. Find (⌘F) searches the page.
+
 ## [2.7.0] — 2026-10-29
 
 ### Added
@@ -451,7 +465,8 @@ in one window with tabs, without ever writing to your files or touching the netw
   asking Launch Services which app would open a probe file.
 - 109 tests over the model, tab and scroll layers, run with Swift Testing.
 
-[Unreleased]: https://github.com/rwijnen/folio-viewer/compare/v2.7.0...HEAD
+[Unreleased]: https://github.com/rwijnen/folio-viewer/compare/v2.8.0...HEAD
+[2.8.0]: https://github.com/rwijnen/folio-viewer/compare/v2.7.0...v2.8.0
 [2.7.0]: https://github.com/rwijnen/folio-viewer/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/rwijnen/folio-viewer/compare/v2.5.1...v2.6.0
 [2.5.1]: https://github.com/rwijnen/folio-viewer/compare/v2.5.0...v2.5.1
