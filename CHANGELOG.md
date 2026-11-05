@@ -22,6 +22,9 @@ All notable changes to Folio are recorded here. The format follows
 
 ## [2.7.0] — 2026-10-29
 
+Not released on its own: the Release run for it failed on a flaky test, and these
+changes reached users in [2.8.0].
+
 ### Added
 
 - **Folio Day and Folio Night themes for Mermaid diagrams.** Diagrams were drawn in
@@ -466,8 +469,8 @@ in one window with tabs, without ever writing to your files or touching the netw
 - 109 tests over the model, tab and scroll layers, run with Swift Testing.
 
 [Unreleased]: https://github.com/rwijnen/folio-viewer/compare/v2.8.0...HEAD
-[2.8.0]: https://github.com/rwijnen/folio-viewer/compare/v2.7.0...v2.8.0
-[2.7.0]: https://github.com/rwijnen/folio-viewer/compare/v2.6.0...v2.7.0
+[2.8.0]: https://github.com/rwijnen/folio-viewer/compare/v2.6.0...v2.8.0
+[2.7.0]: https://github.com/rwijnen/folio-viewer/compare/v2.6.0...c5e8396
 [2.6.0]: https://github.com/rwijnen/folio-viewer/compare/v2.5.1...v2.6.0
 [2.5.1]: https://github.com/rwijnen/folio-viewer/compare/v2.5.0...v2.5.1
 [2.5.0]: https://github.com/rwijnen/folio-viewer/compare/v2.4.0...v2.5.0
