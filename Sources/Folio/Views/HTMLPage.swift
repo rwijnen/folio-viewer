@@ -79,6 +79,9 @@ enum HTMLPage {
       --fm-good: #1a7f37; --fm-good-bg: #dafbe1; --fm-warn: #9a6700; --fm-warn-bg: #fff8c5;
       --fm-bad: #cf222e; --fm-bad-bg: #ffebe9;
       --callout-cyan: #1b7c83; --callout-purple: #8250df;
+      --added-bg: #e6ffec; --added-edge: #1a7f37; --added-word: #abf2bc;
+      --removed-bg: #ffebe9; --removed-edge: #cf222e; --removed-word: #ffc1c0;
+      --modified-edge: #9a6700;
     }
     html[data-theme="dark"] {
       --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --border: #3d444d;
@@ -92,6 +95,9 @@ enum HTMLPage {
       --fm-good: #3fb950; --fm-good-bg: rgba(46,160,67,.15); --fm-warn: #d29922;
       --fm-warn-bg: rgba(187,128,9,.15); --fm-bad: #f85149; --fm-bad-bg: rgba(248,81,73,.15);
       --callout-cyan: #39c5cf; --callout-purple: #ab7df8;
+      --added-bg: rgba(63,185,80,.15); --added-edge: #3fb950; --added-word: rgba(63,185,80,.4);
+      --removed-bg: rgba(248,81,73,.15); --removed-edge: #f85149; --removed-word: rgba(248,81,73,.4);
+      --modified-edge: #d29922;
     }
     * { box-sizing: border-box; }
     body {
@@ -327,6 +333,30 @@ enum HTMLPage {
     .tk-annotation { color: var(--tk-annotation); }
     mark.folio-match { background: var(--mark); color: inherit; border-radius: 2px; }
     mark.folio-match.current { background: var(--mark-current); }
+    /* A rendered comparison. A changed block gets a bar in the margin, outside the text
+       column, so the page keeps its shape; added and removed blocks are washed as well,
+       a reworded one is not — its marked words already say what changed. */
+    .folio-change {
+      position: relative; margin: 0 -12px 1em; padding: 6px 12px 1px;
+      border-radius: 4px; box-shadow: inset 3px 0 0 0 var(--change-edge);
+    }
+    .folio-change > :last-child { margin-bottom: .4em; }
+    .folio-change-added { --change-edge: var(--added-edge); background: var(--added-bg); }
+    .folio-change-removed { --change-edge: var(--removed-edge); background: var(--removed-bg); }
+    .folio-change-removed > * { opacity: .75; }
+    .folio-change-removed :is(p, li, td, th, h1, h2, h3, h4, h5, h6, dd, dt) {
+      text-decoration: line-through; text-decoration-color: var(--removed-edge);
+    }
+    .folio-change-modified { --change-edge: var(--modified-edge); }
+    ins.folio-word {
+      background: var(--added-word); text-decoration: none; border-radius: 2px;
+    }
+    del.folio-word {
+      background: var(--removed-word); text-decoration: line-through;
+      text-decoration-color: var(--removed-edge); border-radius: 2px;
+    }
+    /* A word replaced in place: keep the old and the new from reading as one word. */
+    del.folio-word + ins.folio-word, del.folio-word + * ins.folio-word:first-child { margin-left: 3px; }
     """
 
     // MARK: - Find

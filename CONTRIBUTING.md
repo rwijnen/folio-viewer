@@ -72,6 +72,7 @@ Sources/Folio/
     GitHistory              reading the log, and one commit's change to one file
     GitWorkingTree          everything uncommitted in a repository, as one diff
     LineDiff                the only diff Folio computes rather than reads
+    RenderedDiff            two Markdown versions as one redline page, block by block
     DocumentGroup           listing and tidying project names
     Annotation              a note or change request against a passage
     AnnotationLocator       finds a rendered selection's lines in the source
@@ -90,6 +91,7 @@ Sources/Folio/
     ExternalChanges         what to do when a file changes underneath a tab
     DocumentGroups          the group filter, and moving a document between groups
     Annotations             leaving notes, and copying them out
+    RenderedComparison      a comparison drawn rendered: the switch and the page cache
   Views/
     ContentView             tab bar + sidebar + detail
     TabBar                  the strip of open documents
@@ -104,6 +106,7 @@ Sources/Folio/
     ExternalChangeView      the "changed on disk" bar and its side-by-side view
     ComparisonPane          the shared shell of all three side-by-side comparisons
     MarkdownWebView         container for the rendered page
+    RenderedComparisonView  the rendered comparison's own web view
     MarkdownPageController  owns one document's live WKWebView
     HTMLPage                the page template: CSS, CSP, find and diagram scripts
     ScrollOffsetKeeper      AppKit bridge that gives scroll views their memory

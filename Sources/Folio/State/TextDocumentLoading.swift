@@ -250,6 +250,17 @@ extension AppState {
     /// right must not change the mode of the document on the left. Menu commands leave
     /// it out and get the focused document, as they should.
     func setReadingMode(_ mode: ReadingMode, for requested: DocumentTab? = nil) {
+        // While a comparison is on screen, ⌘1 and ⌘2 choose how it is drawn — the
+        // document's own mode is out of sight behind it, and changing that unseen
+        // would surprise whoever closes the comparison.
+        if let tab = requested ?? active, tab.isShowingComparison {
+            switch mode {
+            case .rendered: setComparisonStyle(.rendered, for: tab)
+            case .source: setComparisonStyle(.source, for: tab)
+            case .sideBySide: break
+            }
+            return
+        }
         // Only Markdown has two modes; the menu no longer stops this being asked.
         guard let tab = requested ?? active, tab.isMarkdown, tab.readingMode != mode else { return }
         // The preview should show what you just typed, not what is on disk.

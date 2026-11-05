@@ -564,7 +564,8 @@ final class AppState {
 
     /// True when ⌘F should be handled by JavaScript inside the rendered page.
     var searchesRenderedPage: Bool {
-        guard let tab = active, !tab.isShowingComparison else { return false }
+        guard let tab = active else { return false }
+        if tab.isShowingComparison { return tab.showsRenderedComparison }
         // Side by side counts as source: the editor is the half you are working in,
         // and native search can select and reveal a match where the page cannot.
         return tab.content == .markdown && tab.readingMode == .rendered

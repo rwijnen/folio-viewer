@@ -18,12 +18,20 @@ struct ComparisonPane<Chrome: View>: View {
     var tint: Color = .accentColor
     @ViewBuilder var chrome: Chrome
 
+    @Environment(AppState.self) private var state
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         VStack(spacing: 0) {
-            chrome
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(tint.opacity(0.08))
+            HStack(spacing: 12) {
+                chrome
+                if tab.canRenderComparison {
+                    styleSwitch
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(tint.opacity(0.08))
             Divider()
 
             switch tab.loadState {
@@ -42,12 +50,52 @@ struct ComparisonPane<Chrome: View>: View {
                             systemImage: "doc.questionmark")
 
             case let .loaded(file):
-                if let entry = tab.selectedEntry {
+                if tab.showsRenderedComparison,
+                   let page = tab.renderedComparison(isDark: colorScheme == .dark) {
+                    renderedHeader(page)
+                    Divider()
+                    RenderedComparisonView(tab: tab, page: page,
+                                           baseURL: tab.url.deletingLastPathComponent())
+                } else if let entry = tab.selectedEntry {
                     SplitDiffView(tab: tab, entry: entry, file: file,
                                   leftTitle: leftTitle, rightTitle: rightTitle)
                 }
             }
         }
+    }
+
+    /// Source or rendered. ⌘1 and ⌘2 do the same while a comparison is showing.
+    private var styleSwitch: some View {
+        Picker("Show", selection: Binding(
+            get: { tab.comparisonStyle },
+            set: { state.setComparisonStyle($0, for: tab) })) {
+            Text("Source").tag(ComparisonStyle.source)
+            Text("Rendered").tag(ComparisonStyle.rendered)
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .controlSize(.small)
+        .fixedSize()
+        .help("Compare the Markdown as written, or as it reads (⌘2 / ⌘1)")
+    }
+
+    /// Where the column headings would be: which version the page is, and what changed.
+    private func renderedHeader(_ page: RenderedComparisonPage) -> some View {
+        HStack(spacing: 6) {
+            Text(rightTitle)
+                .font(.system(size: 11, weight: .semibold))
+            Text("· changes from “\(leftTitle)” marked")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text(page.isCoarse ? "Too different to line up — shown as replaced" : page.summary)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+        }
+        .lineLimit(1)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 5)
+        .background(Theme.rowBackground)
     }
 }
 

@@ -27,20 +27,28 @@ final class MarkdownPageController: NSObject, WKNavigationDelegate, WKScriptMess
     /// Offset to reapply once the reloaded page has laid out.
     private var offsetToRestore: CGFloat = 0
 
-    init(tab: DocumentTab, state: AppState) {
+    /// A comparison's page rather than the document's own. It reports nothing back —
+    /// no scroll offset, heading or selection — because each of those would be taken
+    /// as the document's, and none of them is. Find still works: its count comes back
+    /// as the result of the call, not as a message.
+    let isComparison: Bool
+
+    init(tab: DocumentTab, state: AppState, isComparison: Bool = false) {
         self.tab = tab
         self.state = state
+        self.isComparison = isComparison
 
         let configuration = WKWebViewConfiguration()
         configuration.defaultWebpagePreferences.allowsContentJavaScript = true
         webView = FolioWebView(frame: .zero, configuration: configuration)
         super.init()
 
-        configuration.userContentController.add(self, name: "folio")
         webView.navigationDelegate = self
         webView.setValue(false, forKey: "drawsBackground")
         webView.allowsMagnification = true
         webView.allowsBackForwardNavigationGestures = false
+        guard !isComparison else { return }
+        configuration.userContentController.add(self, name: "folio")
         // Right-clicking the page offers Folio's reload, which re-reads the file, rather
         // than WebKit's, which would re-render the same HTML string.
         webView.onReloadFromDisk = { [weak self] in
@@ -62,7 +70,9 @@ final class MarkdownPageController: NSObject, WKNavigationDelegate, WKScriptMess
         webView.onReloadFromDisk = nil
         webView.onAnnotate = nil
         webView.hasSelection = nil
-        webView.configuration.userContentController.removeScriptMessageHandler(forName: "folio")
+        if !isComparison {
+            webView.configuration.userContentController.removeScriptMessageHandler(forName: "folio")
+        }
         webView.navigationDelegate = nil
         webView.removeFromSuperview()
         webView.loadHTMLString("", baseURL: nil)
@@ -75,7 +85,7 @@ final class MarkdownPageController: NSObject, WKNavigationDelegate, WKScriptMess
         loadedToken = token
         isReady = false
         appliedQueryKey = nil
-        offsetToRestore = tab?.webScrollOffset ?? 0
+        offsetToRestore = isComparison ? 0 : tab?.webScrollOffset ?? 0
         webView.loadHTMLString(html, baseURL: baseURL)
     }
 

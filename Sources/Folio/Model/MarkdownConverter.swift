@@ -27,6 +27,17 @@ enum MarkdownConverter {
         var bodyHTML: String
         var outline: [OutlineItem]
         var diagramCount: Int
+        /// The top-level blocks `bodyHTML` is made of, in order. Concatenated, their HTML
+        /// is `bodyHTML` exactly.
+        var blocks: [Block] = []
+    }
+
+    /// One top-level block — a paragraph, heading, list, table, fence, quote — with the
+    /// source lines it was made from. What a rendered comparison lines up and marks.
+    struct Block: Equatable {
+        /// Zero-based source lines, including any blank lines inside the block.
+        var lines: Range<Int>
+        var html: String
     }
 
     /// Tags passed through verbatim when they appear as raw HTML. No attributes,
@@ -42,11 +53,14 @@ enum MarkdownConverter {
         var body = ""
         var offset = 0
         if let frontmatter = Frontmatter.extract(from: lines) {
-            body += builder.frontmatterHTML(frontmatter)
+            let html = builder.frontmatterHTML(frontmatter)
+            body += html
             offset = frontmatter.lineCount
+            builder.topLevelBlocks.append(Block(lines: 0..<offset, html: html))
         }
-        body += builder.blocks(Array(lines[offset...]), lineOffset: offset)
-        return Output(bodyHTML: body, outline: builder.outline, diagramCount: builder.diagramCount)
+        body += builder.blocks(Array(lines[offset...]), lineOffset: offset, recordsBlocks: true)
+        return Output(bodyHTML: body, outline: builder.outline, diagramCount: builder.diagramCount,
+                      blocks: builder.topLevelBlocks)
     }
 
     // MARK: - Builder
@@ -56,6 +70,7 @@ enum MarkdownConverter {
         let baseURL: URL?
         var outline: [OutlineItem] = []
         var diagramCount = 0
+        var topLevelBlocks: [Block] = []
         private var slugCounts: [String: Int] = [:]
         private var linkDefinitions: [String: String] = [:]
 
@@ -87,11 +102,27 @@ enum MarkdownConverter {
 
         // MARK: Block level
 
-        func blocks(_ lines: [String], lineOffset: Int) -> String {
+        func blocks(_ lines: [String], lineOffset: Int, recordsBlocks: Bool = false) -> String {
             var html = ""
             var index = 0
 
+            // Every pass of the loop below either skips a line or emits exactly one
+            // block, so a block runs from where one pass starts emitting to where the
+            // next pass begins. Recorded here rather than at each `continue`, where the
+            // next new kind of block would be the one that forgot.
+            var open: (line: Int, offset: Int)?
+            func closeBlock() {
+                guard recordsBlocks, let start = open else { return }
+                open = nil
+                let emitted = String(decoding: html.utf8.dropFirst(start.offset), as: UTF8.self)
+                guard !emitted.isEmpty else { return }
+                topLevelBlocks.append(Block(lines: (lineOffset + start.line)..<(lineOffset + index),
+                                            html: emitted))
+            }
+            defer { closeBlock() }
+
             while index < lines.count {
+                closeBlock()
                 let line = lines[index]
 
                 if line.trimmingCharacters(in: .whitespaces).isEmpty {
@@ -102,6 +133,7 @@ enum MarkdownConverter {
                     index += 1
                     continue
                 }
+                if recordsBlocks { open = (index, html.utf8.count) }
 
                 // Fenced code / mermaid
                 if let fence = Fence(opening: line) {

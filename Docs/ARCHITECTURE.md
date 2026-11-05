@@ -61,6 +61,21 @@ tab.
 its history, an incoming change on disk, or what is not yet committed. The last three are
 comparisons and share `ComparisonPane`.
 
+A comparison of a Markdown document can be drawn rendered (`DocumentTab.comparisonStyle`).
+**`RenderedDiff`** lines the two versions up by the top-level blocks the converter
+reports — `MarkdownConverter.Output.blocks`, each with the source lines it came from — and
+matches them on their HTML, with `id` and `data-line` taken out and whitespace flattened
+outside code, so a block that only moved or was re-wrapped is unchanged. Unmatched blocks
+between two matches are paired removed-to-added by shared words, keeping their order; a
+pair close enough is merged into one block with the changed words in `<del>`/`<ins>`.
+That marking works on the newer block's HTML tokens rather than on the Markdown, keeping
+every new tag and only old text, which is what keeps the result well formed. Code and
+diagrams are never merged. The page gets its own web view (`RenderedComparisonView`), a
+`MarkdownPageController` in comparison mode that reports nothing back, because the
+document's page reports its scroll offset, heading and selection as the document's.
+While a comparison is showing, ⌘1 and ⌘2 choose its style rather than the reading mode
+underneath it.
+
 **Source and preview** (`ReadingMode.sideBySide`) is a third reading mode, not a split
 window: one tab drawn twice, so both halves share its text, git status and unsaved state.
 It is the only mode with a live preview — `updateDraft` schedules a rebuild that each
