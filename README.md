@@ -304,13 +304,15 @@ click them, so a full set of tabs costs about 50 ms rather than a second.
 
 ⌘F searches the diff panels and the source view natively; in rendered mode it searches the
 laid-out page through injected JavaScript. Both report `n of m`, step with ⌘G / ⇧⌘G, and
-expand a collapsed fold to reveal a hit.
+expand a collapsed fold to reveal a hit. ⇧⌘F lists every hit in a pane beside the document,
+under the heading each falls in; clicking one scrolls to it.
 
 ## Shortcuts
 
 | | | | |
 |---|---|---|---|
 | ⌘O | Open (one or many) | ⌘F · ⌘G · ⇧⌘G | Find · next · previous |
+| ⇧⌘F | Find All: list every match | | |
 | ⌘W | Close tab | ⌘] / ⌘[ | Next / previous file in a diff |
 | ⌃⇥ / ⌃⇧⇥ | Next / previous tab | ⇧⌘B | Choose a diff's base folder |
 | ⌘1 / ⌘2 | Rendered / source | ⇧⌘L | Wrap or scroll long lines |

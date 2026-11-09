@@ -316,3 +316,9 @@ searches the model and highlights ranges. The rendered page is a web view, so it
 injected JavaScript that wraps hits in `<mark>` and reports the count back — and it
 excludes `<style>` inside the SVG, whose tag names are lower case. A document showing a
 comparison searches the comparison, not the page underneath.
+
+The Find All pane (⇧⌘F, `FindResultsPane`) has no search of its own. `FindResults` turns the
+matches those two machineries already hold into rows, and a row's id is the index ⌘G steps
+through, so the list and the `n of m` count cannot disagree. Native rows are built from
+`SearchMatch`; rendered rows come from `folioFindResults`, fetched as a call result so a
+comparison's page, which has no message handler, fills the pane too.

@@ -72,6 +72,9 @@ struct FolioApp: App {
                 Button("Find in Document") { state.presentFind() }
                     .keyboardShortcut("f", modifiers: .command)
 
+                Button("Find All") { state.presentFindAll() }
+                    .keyboardShortcut("f", modifiers: [.command, .shift])
+
                 Button("Find Next") { state.advanceMatch(by: 1) }
                     .keyboardShortcut("g", modifiers: .command)
 

@@ -118,6 +118,7 @@ extension AppState {
             tab.currentMatchIndex = 0
             tab.renderedMatchCount = 0
             tab.renderedMatchIndex = -1
+            tab.renderedFindResults = []
             tab.draftText = nil
             tab.editorVersion += 1
             // Whatever the file said a moment ago, this tab now holds what it says.
@@ -275,10 +276,11 @@ extension AppState {
             saveSession()
             return
         }
-        if mode == .source {
-            recomputeMatches()
-        } else {
+        if searchesRenderedPage {
             setMatches([])
+        } else {
+            // Side by side included: its editor half is searched natively.
+            recomputeMatches()
         }
         saveSession()
     }
@@ -296,20 +298,26 @@ extension AppState {
             setMatches([])
             return
         }
+        setMatches(textMatches(in: tab, document: document))
+    }
+
+    func textMatches(in tab: DocumentTab, document: TextDocument) -> [SearchMatch] {
         let needle = Array(searchCaseSensitive ? searchQuery : searchQuery.lowercased())
         var found: [SearchMatch] = []
-        // What is in the editor, not the last parse: `document.lines` is rebuilt when the
-        // preview is asked for, so it is stale the moment anyone types, and it is
-        // tab-expanded, so a count taken from it can disagree with what the editor finds
-        // in itself. A read-only document has no draft and the two are the same text.
-        let lines = tab.isEditable
-            ? TextNormalizer.splitLines(tab.currentText) : document.lines
-        for (index, line) in lines.enumerated() {
+        for (index, line) in searchableLines(of: tab, document: document).enumerated() {
             for range in AppState.occurrences(of: needle, in: line,
                                               caseSensitive: searchCaseSensitive) {
                 found.append(SearchMatch(rowIndex: index, isLeft: true, range: range))
             }
         }
-        setMatches(found)
+        return found
+    }
+
+    /// What is in the editor, not the last parse: `document.lines` is rebuilt when the
+    /// preview is asked for, so it is stale the moment anyone types, and it is
+    /// tab-expanded, so a count taken from it can disagree with what the editor finds
+    /// in itself. A read-only document has no draft and the two are the same text.
+    func searchableLines(of tab: DocumentTab, document: TextDocument) -> [String] {
+        tab.isEditable ? TextNormalizer.splitLines(tab.currentText) : document.lines
     }
 }

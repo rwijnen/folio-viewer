@@ -17,6 +17,11 @@ struct ContentView: View {
             } detail: {
                 detail
             }
+            .inspector(isPresented: Binding(get: { state.isFindAllPresented && state.canFind },
+                                            set: { if !$0 { state.closeFindAll() } })) {
+                FindResultsPane()
+                    .inspectorColumnWidth(min: 240, ideal: 320, max: 520)
+            }
         }
         .navigationTitle(state.documentTitle)
         .navigationSubtitle(subtitle)

@@ -213,7 +213,8 @@ struct DocumentView: View {
                            version: tab.editorVersion,
                            query: isFocused ? appState.searchQuery : "",
                            caseSensitive: appState.searchCaseSensitive,
-                           matchIndex: appState.currentMatchIndex)
+                           matchIndex: appState.currentMatchIndex,
+                           revealRequest: tab.scrollRequest)
             .background(Theme.rowBackground)
     }
 
