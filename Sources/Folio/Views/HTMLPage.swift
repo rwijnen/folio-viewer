@@ -439,6 +439,41 @@ enum HTMLPage {
         post({ type: 'matches', count: matches.length });
         return matches.length;
       };
+      // One entry per hit for the Find All pane, in the order folioFocus counts them.
+      // Headings and marks are asked for together because the result comes back in
+      // document order, which is what says which heading a hit falls under.
+      window.folioFindResults = function (limit) {
+        var items = document.getElementById('content')
+          .querySelectorAll('h1,h2,h3,h4,h5,h6,mark.folio-match');
+        var results = [], section = '';
+        for (var i = 0; i < items.length && results.length < limit; i++) {
+          var item = items[i];
+          if (!item.classList.contains('folio-match')) {
+            section = item.textContent.trim();
+            continue;
+          }
+          var block = item.closest('p,li,td,th,h1,h2,h3,h4,h5,h6,pre,blockquote,dd,dt,summary,figcaption')
+            || item.parentNode;
+          var head = document.createRange(), tail = document.createRange();
+          head.selectNodeContents(block);
+          head.setEndBefore(item);
+          tail.selectNodeContents(block);
+          tail.setStartAfter(item);
+          var before = head.toString(), after = tail.toString();
+          // Code is read by the line; prose is wrapped by whoever wrote the source.
+          if ((block.tagName || '').toLowerCase() === 'pre') {
+            before = before.split('\\n').pop();
+            after = after.split('\\n')[0];
+          }
+          results.push({
+            section: section,
+            before: before.replace(/\\s+/g, ' ').slice(-200),
+            match: item.textContent,
+            after: after.replace(/\\s+/g, ' ').slice(0, 200)
+          });
+        }
+        return results;
+      };
       window.folioFocus = function (index) {
         if (!matches.length) { return -1; }
         var wrapped = ((index % matches.length) + matches.length) % matches.length;

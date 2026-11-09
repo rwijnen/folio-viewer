@@ -100,6 +100,8 @@ final class AppState {
     var isFindPresented = false
     var searchQuery = ""
     var searchCaseSensitive = false
+    /// Whether the Find All pane is open beside the document.
+    var isFindAllPresented = false
     /// Bumped by ⌘F so the find field takes focus even when the bar is already showing.
     private(set) var findFocusRequest = 0
 
@@ -558,6 +560,7 @@ final class AppState {
 
     func dismissFind() {
         isFindPresented = false
+        isFindAllPresented = false
         searchQuery = ""
         recomputeMatches()
     }
@@ -620,7 +623,7 @@ final class AppState {
         focusCurrentMatch()
     }
 
-    private func focusCurrentMatch() {
+    func focusCurrentMatch() {
         guard let tab = active, let match = tab.currentMatch else { return }
         if let document = tab.loadedFile?.document {
             for fold in document.folds where fold.range.contains(match.rowIndex) {

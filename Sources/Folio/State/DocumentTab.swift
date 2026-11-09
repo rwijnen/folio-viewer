@@ -334,6 +334,8 @@ final class DocumentTab: Identifiable {
     var scrollRequest = 0
     var renderedMatchCount = 0
     var renderedMatchIndex = -1
+    /// The rendered page's hits, for the Find All pane.
+    var renderedFindResults: [FindResult] = []
     var renderedFocusRequest = 0
     var renderedFocusTarget = 0
     var pendingAnchor: String?

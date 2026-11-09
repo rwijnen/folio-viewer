@@ -22,6 +22,10 @@ extension AppState {
     func updateDraft(_ text: String, for tab: DocumentTab) {
         guard tab.isEditable else { return }
         tab.draftText = text
+        // Only with the list up: its rows have to keep pointing at the right hits.
+        if isFindAllPresented, tab.id == activeTabID, !searchQuery.isEmpty {
+            refreshTextMatchesKeepingPlace()
+        }
         scheduleLivePreview(for: tab)
     }
 
