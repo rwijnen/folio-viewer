@@ -6,6 +6,21 @@ All notable changes to Folio are recorded here. The format follows
 
 ## [Unreleased]
 
+## [2.9.0] — 2026-11-09
+
+### Added
+
+- **Find All (⇧⌘F).** Opens the find bar and a results pane beside the document, listing
+  every match with the text around it, grouped under the heading it falls in. Clicking a
+  row scrolls to that match. It works in rendered Markdown, source, the editor, diffs and
+  comparisons, and follows the same search as ⌘F, so ⌘G moves the highlighted row too.
+  The list button in the find bar shows or hides the pane.
+
+### Fixed
+
+- Switching to Source and Preview with a search running made the find bar say "no
+  results" while the editor still showed the highlights.
+
 ## [2.8.0] — 2026-11-05
 
 ### Added
@@ -468,7 +483,8 @@ in one window with tabs, without ever writing to your files or touching the netw
   asking Launch Services which app would open a probe file.
 - 109 tests over the model, tab and scroll layers, run with Swift Testing.
 
-[Unreleased]: https://github.com/rwijnen/folio-viewer/compare/v2.8.0...HEAD
+[Unreleased]: https://github.com/rwijnen/folio-viewer/compare/v2.9.0...HEAD
+[2.9.0]: https://github.com/rwijnen/folio-viewer/compare/v2.8.0...v2.9.0
 [2.8.0]: https://github.com/rwijnen/folio-viewer/compare/v2.6.0...v2.8.0
 [2.7.0]: https://github.com/rwijnen/folio-viewer/compare/v2.6.0...c5e8396
 [2.6.0]: https://github.com/rwijnen/folio-viewer/compare/v2.5.1...v2.6.0

@@ -77,6 +77,7 @@ extension AppState {
         tab.comparisonStyle = style
         tab.renderedMatchCount = 0
         tab.renderedMatchIndex = -1
+        tab.renderedFindResults = []
         guard tab.id == activeTabID else { return }
         if style == .source {
             recomputeMatches()

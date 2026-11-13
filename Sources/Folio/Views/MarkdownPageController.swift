@@ -133,6 +133,25 @@ final class MarkdownPageController: NSObject, WKNavigationDelegate, WKScriptMess
                 guard let self, let tab = self.tab else { return }
                 self.state?.handleWebMessage(["type": "matches", "count": count], for: tab.id)
                 if count > 0 { self.focus(index: 0) }
+                self.loadFindResults(count: count)
+            }
+        }
+    }
+
+    /// Fetched rather than posted, so a comparison's page, which has no message handler,
+    /// fills the Find All pane too.
+    private func loadFindResults(count: Int) {
+        guard let tab else { return }
+        guard count > 0 else {
+            state?.setRenderedFindResults([], for: tab.id)
+            return
+        }
+        webView.evaluateJavaScript("window.folioFindResults(\(FindResults.limit))") {
+            [weak self] result, _ in
+            let results = FindResults.page(result as? [[String: Any]] ?? [])
+            Task { @MainActor in
+                guard let self, let tab = self.tab else { return }
+                self.state?.setRenderedFindResults(results, for: tab.id)
             }
         }
     }

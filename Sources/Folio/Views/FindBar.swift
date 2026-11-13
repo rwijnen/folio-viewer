@@ -47,6 +47,12 @@ struct FindBar: View {
             .toggleStyle(.button)
             .help("Match case")
 
+            Toggle(isOn: $state.isFindAllPresented) {
+                Image(systemName: "list.bullet.rectangle")
+            }
+            .toggleStyle(.button)
+            .help("List every match (⇧⌘F)")
+
             Spacer(minLength: 0)
 
             Button {

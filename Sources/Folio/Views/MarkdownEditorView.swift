@@ -20,6 +20,8 @@ struct MarkdownEditorView: NSViewRepresentable {
     var query: String = ""
     var caseSensitive: Bool = false
     var matchIndex: Int = 0
+    /// Bumped to go to the current hit again, such as clicking its row a second time.
+    var revealRequest: Int = 0
 
     func makeCoordinator() -> Coordinator {
         Coordinator(tab: tab, state: state)
@@ -78,7 +80,8 @@ struct MarkdownEditorView: NSViewRepresentable {
                 coordinator.applyHighlighting()
             }
         }
-        coordinator.showSearch(query: query, caseSensitive: caseSensitive, current: matchIndex)
+        coordinator.showSearch(query: query, caseSensitive: caseSensitive, current: matchIndex,
+                               revealRequest: revealRequest)
     }
 
     // MARK: - Coordinator
@@ -172,7 +175,7 @@ struct MarkdownEditorView: NSViewRepresentable {
 
         /// What was last drawn, so an unchanged search does not fight the reader's own
         /// scrolling by dragging the view back to the current hit on every redraw.
-        private var shownSearch: (query: String, caseSensitive: Bool, current: Int)?
+        private var shownSearch: (query: String, caseSensitive: Bool, current: Int, reveal: Int)?
 
         /// Marks every hit and brings the current one into view.
         ///
@@ -181,8 +184,9 @@ struct MarkdownEditorView: NSViewRepresentable {
         /// anything written there would be wiped by the next keystroke. Temporary
         /// attributes sit on the layout manager, above all of that, which is what they
         /// are for.
-        func showSearch(query: String, caseSensitive: Bool, current: Int) {
-            let asked = (query: query, caseSensitive: caseSensitive, current: current)
+        func showSearch(query: String, caseSensitive: Bool, current: Int, revealRequest: Int = 0) {
+            let asked = (query: query, caseSensitive: caseSensitive, current: current,
+                         reveal: revealRequest)
             guard shownSearch == nil || shownSearch! != asked else { return }
             shownSearch = asked
             guard let textView, let layoutManager = textView.layoutManager else { return }
