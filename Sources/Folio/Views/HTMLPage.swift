@@ -16,6 +16,12 @@ enum HTMLPage {
     /// carry tables, code fences and diagrams that were being squeezed at the old 860.
     static let readingWidth = 990
 
+    /// The page's padding either side of the column, and the gutter a wide table keeps
+    /// from the edges of the pane when it spreads past the column.
+    static let sideGutter = 32
+
+    /// The width the column's text actually gets: the reading width less its padding.
+    static var columnWidth: Int { readingWidth - 2 * sideGutter }
 
     static func wrap(body: String, title: String, isDark: Bool,
                      mermaidScript: String?, diagramCount: Int,
@@ -41,6 +47,9 @@ enum HTMLPage {
         var scripts = "<script nonce=\"\(nonce)\">\(findScript)</script>"
         scripts += "<script nonce=\"\(nonce)\">\(selectionScript)</script>"
         scripts += "<script nonce=\"\(nonce)\">\(annotationScript(annotated))</script>"
+        if body.contains("class=\"table-wrap\"") {
+            scripts += "<script nonce=\"\(nonce)\">\(wideTableScript)</script>"
+        }
         if needsDiagrams {
             scripts += "<script nonce=\"\(nonce)\">\(diagramControlsScript)</script>"
             scripts += mermaid.isEmpty
@@ -105,7 +114,7 @@ enum HTMLPage {
       font: 14px/1.6 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
       -webkit-font-smoothing: antialiased;
     }
-    #content { max-width: \(readingWidth)px; margin: 0 auto; padding: 28px 32px 80px; }
+    #content { max-width: \(readingWidth)px; margin: 0 auto; padding: 28px \(sideGutter)px 80px; }
     /* The words a note or change request was left against. A wash and an underline
        rather than a border, so it is visible while reading without breaking the line. */
     mark.folio-annotated {
@@ -160,6 +169,22 @@ enum HTMLPage {
     th, td { border: 1px solid var(--border); padding: 6px 12px; text-align: left; }
     th { background: var(--table-stripe); font-weight: 600; }
     tbody tr:nth-child(2n) { background: var(--table-stripe); }
+    .table-wrap { margin: 0 0 1em; }
+    .table-wrap > table { margin: 0; }
+    /* A table with more columns than the reading column can hold spreads across the
+       whole pane instead of scrolling inside the column: the wrapper is as wide as the
+       pane, and its middle track is the column's width at least and the table's own
+       width at most, with the space left over split either side — so the table stays
+       centred on the text above and below it. Only when even the pane is too narrow
+       does it scroll. Set by wideTableScript, for tables at the top of the page only:
+       one inside a list or a callout is indented and would break out lopsided. */
+    #content > .table-wrap.is-wide, #content > .folio-change > .table-wrap.is-wide {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(min(\(columnWidth)px, 100%), max-content) minmax(0, 1fr);
+      width: calc(100vw - \(2 * sideGutter)px);
+      margin-left: calc(50% - 50vw + \(sideGutter)px);
+    }
+    .table-wrap.is-wide > table { grid-column: 2; min-width: 0; }
     img { max-width: 100%; border-radius: 6px; }
     /* Callouts (`> [!note] Title`, Obsidian and GitHub): a tinted box with a coloured
        edge and a title row. Each family sets --callout; the rest follows from it. */
@@ -357,6 +382,47 @@ enum HTMLPage {
     }
     /* A word replaced in place: keep the old and the new from reading as one word. */
     del.folio-word + ins.folio-word, del.folio-word + * ins.folio-word:first-child { margin-left: 3px; }
+    """
+
+    // MARK: - Wide tables
+
+    /// Marks the tables that do not fit the reading column, so the stylesheet can spread
+    /// them across the pane.
+    ///
+    /// Measured rather than left to CSS alone, because "wider than the column" has to
+    /// mean *would scroll*, not *could be wider*: a table of three columns of prose fits
+    /// by wrapping its cells, and spreading it across a wide window would only give it
+    /// lines too long to read. So each table is laid out in the column first, and only
+    /// one whose cells cannot wrap narrow enough — it overflows — is let out. Done again
+    /// when the window is resized, since a narrow window makes the column narrower, and
+    /// when the page has loaded, since an image in a cell can widen its table.
+    static let wideTableScript = """
+    (function () {
+      var selector = '#content > .table-wrap, #content > .folio-change > .table-wrap';
+      function measure() {
+        var wraps = document.querySelectorAll(selector);
+        var i;
+        // All out first, then all read: one layout for the lot instead of one each.
+        for (i = 0; i < wraps.length; i++) { wraps[i].classList.remove('is-wide'); }
+        var wide = [];
+        for (i = 0; i < wraps.length; i++) {
+          var table = wraps[i].querySelector('table');
+          if (table && table.scrollWidth > table.clientWidth + 1) { wide.push(wraps[i]); }
+        }
+        for (i = 0; i < wide.length; i++) { wide[i].classList.add('is-wide'); }
+      }
+      var pending = false;
+      function schedule() {
+        if (pending) { return; }
+        pending = true;
+        window.requestAnimationFrame(function () { pending = false; measure(); });
+      }
+      // Now, not on load: the page's scroll position is put back right after it loads,
+      // and it has to be put back onto the page as it will stay.
+      measure();
+      window.addEventListener('load', schedule);
+      window.addEventListener('resize', schedule);
+    })();
     """
 
     // MARK: - Find

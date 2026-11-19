@@ -6,6 +6,17 @@ All notable changes to Folio are recorded here. The format follows
 
 ## [Unreleased]
 
+## [2.10.0] — 2026-11-19
+
+### Added
+
+- **Wide tables use the whole window.** A table with more columns than the reading
+  column can hold no longer scrolls sideways inside it: it spreads across the full width
+  of the pane, centred on the text around it, and only scrolls if even that is too
+  narrow. Tables that fit — by wrapping their cells, too — stay in the column, so a table
+  of prose keeps lines short enough to read. Resizing the window re-decides which tables
+  are let out. Works in rendered Markdown and in rendered comparisons.
+
 ## [2.9.0] — 2026-11-09
 
 ### Added
@@ -483,7 +494,8 @@ in one window with tabs, without ever writing to your files or touching the netw
   asking Launch Services which app would open a probe file.
 - 109 tests over the model, tab and scroll layers, run with Swift Testing.
 
-[Unreleased]: https://github.com/rwijnen/folio-viewer/compare/v2.9.0...HEAD
+[Unreleased]: https://github.com/rwijnen/folio-viewer/compare/v2.10.0...HEAD
+[2.10.0]: https://github.com/rwijnen/folio-viewer/compare/v2.9.0...v2.10.0
 [2.9.0]: https://github.com/rwijnen/folio-viewer/compare/v2.8.0...v2.9.0
 [2.8.0]: https://github.com/rwijnen/folio-viewer/compare/v2.6.0...v2.8.0
 [2.7.0]: https://github.com/rwijnen/folio-viewer/compare/v2.6.0...c5e8396
