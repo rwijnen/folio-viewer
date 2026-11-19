@@ -549,7 +549,9 @@ enum MarkdownConverter {
 
             // Each row is one source line, so each row says which — a note left in a cell
             // is found from its row, and the editor beside the page lines up row by row.
-            var html = "<table>\n<thead>\n<tr data-line=\"\(lineOffset + start)\">"
+            // Wrapped so a table too wide for the reading column can spread across the
+            // whole pane — see `HTMLPage.wideTableScript`.
+            var html = "<div class=\"table-wrap\">\n<table>\n<thead>\n<tr data-line=\"\(lineOffset + start)\">"
             for (column, cell) in headerCells.enumerated() {
                 html += "<th\(alignment(column))>\(inline(cell))</th>"
             }
@@ -568,7 +570,7 @@ enum MarkdownConverter {
                 html += "</tr>\n"
                 index += 1
             }
-            html += "</tbody>\n</table>\n"
+            html += "</tbody>\n</table>\n</div>\n"
             return (html, index - start)
         }
 
